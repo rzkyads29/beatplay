@@ -69,7 +69,12 @@ const ANDROID_APK_SIZE = "30,4 MB";
 const PLATFORMS = {
   windows: {
     title: "Halo, Windows.",
-    match: f => /\.msi$/i.test(f.name),
+    // github.com/REPO/releases/latest/download/<file> me-redirect ke aset terbaru
+    // tanpa lewat api.github.com, jadi tidak kena rate limit 60 req/jam per IP.
+    // Resolve via download-desktop.php (server-side) supaya tidak kena rate limit
+    // api.github.com di sisi klien. Fallback ke URL tag eksplisit bila PHP gagal.
+    files: [{ name: "beatplay-1.5.16.msi", size: 145810972, url: "https://github.com/" + REPO + "/releases/download/v1.5.16/beatplay-1.5.16.msi" }],
+    resolve: "download-desktop.php?kind=windows",
     steps: [["Download installer MSI.", "Pilih file Windows dari rilis terbaru."],
             ["Buka dan ikuti instalasi.", "Java runtime dan libVLC sudah disertakan."],
             ["Buka BeatPlay.", "Temukan lagu favorit dan mulai mendengarkan."]],
@@ -77,7 +82,11 @@ const PLATFORMS = {
   },
   linux: {
     title: "Halo, Linux.",
-    match: f => /\.(deb|rpm)$/i.test(f.name),
+    files: [
+      { name: "beatplay_1.5.16_amd64.deb", size: 95548956, url: "https://github.com/" + REPO + "/releases/download/v1.5.16/beatplay_1.5.16_amd64.deb" },
+      { name: "beatplay-1.5.16-1.x86_64.rpm", size: 95627225, url: "https://github.com/" + REPO + "/releases/download/v1.5.16/beatplay-1.5.16-1.x86_64.rpm" },
+    ],
+    resolve: "download-desktop.php?kind=linux",
     steps: [["Download paketnya.", "Pilih .deb (Debian/Ubuntu) atau .rpm (Fedora)."],
             ["Install paketnya.", "Debian/Ubuntu: <code>sudo apt install ./beatplay_*.deb</code>. Butuh VLC dari package manager."],
             ["Buka BeatPlay.", "Temukan lagu favorit dan mulai mendengarkan."]],
@@ -95,7 +104,6 @@ const PLATFORMS = {
 
 let current = new URLSearchParams(location.search).get("platform") || "windows";
 if (!PLATFORMS[current]) current = "windows";
-let releaseCache = null;
 
 function fmtSize(b) {
   if (b == null) return "";
@@ -104,25 +112,9 @@ function fmtSize(b) {
   while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
   return (Math.round(b * 10) / 10) + " " + u[i];
 }
-function fmtDate(s) {
-  try { return new Date(s).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }); }
-  catch (e) { return ""; }
-}
 
-async function loadReleases() {
-  if (releaseCache) return releaseCache;
-  const r = await fetch("https://api.github.com/repos/" + REPO + "/releases?per_page=30", { headers: { "Accept": "application/vnd.github+json" } });
-  if (!r.ok) throw new Error("Server rilis " + r.status);
-  const list = await r.json();
-  releaseCache = (list || []).filter(x => !x.draft && !x.prerelease);
-  return releaseCache;
-}
-
-function pickRelease(list, match) {
-  for (const rel of list) {
-    if ((rel.assets || []).some(match)) return rel;
-  }
-  return null;
+function fileRow(f) {
+  return '<div class="file"><div class="meta"><b>' + f.name + '</b><span>' + fmtSize(f.size) + '</span></div><a class="btn" href="' + f.url + '">Download</a></div>';
 }
 
 async function render() {
@@ -132,34 +124,31 @@ async function render() {
   document.getElementById("steps").innerHTML = cfg.steps.map(s => "<li><b>" + s[0] + "</b><span>" + s[1] + "</span></li>").join("");
   document.getElementById("side-note").innerHTML = cfg.note;
   const filesEl = document.getElementById("files");
+  const labelEl = document.getElementById("live-label");
+  const verEl = document.getElementById("ver");
   if (cfg.manual) {
-    document.getElementById("live-label").textContent = "UNDUHAN RESMI";
-    document.getElementById("ver").textContent = "APK Android 1.4.4 · GitHub Release";
-    filesEl.innerHTML = '<div class="file"><div class="meta"><b>' + ANDROID_APK_NAME + '</b><span>' + ANDROID_APK_SIZE + '</span></div><a class="btn" href="' + ANDROID_APK_URL + '">Download</a></div>';
+    labelEl.textContent = "UNDUHAN RESMI";
+    verEl.textContent = "APK Android 1.4.4 · GitHub Release";
+    filesEl.innerHTML = fileRow({ name: ANDROID_APK_NAME, size: ANDROID_APK_SIZE, url: ANDROID_APK_URL });
     return;
   }
+  filesEl.innerHTML = '<p class="spin">Memuat daftar file…</p>';
   try {
-    const list = await loadReleases();
-    const rel = pickRelease(list, cfg.match);
-    if (!rel) {
-      document.getElementById("live-label").textContent = "BELUM TERSEDIA";
-      filesEl.innerHTML = '<div class="err">Belum ada file untuk platform ini. Coba lagi nanti.</div>';
-      return;
-    }
-    document.getElementById("live-label").textContent = "RILIS TERBARU";
-    document.getElementById("ver").textContent = "Versi " + rel.tag_name + " · Rilis " + fmtDate(rel.published_at);
-    const files = (rel.assets || []).filter(cfg.match);
-    if (!files.length) {
-      filesEl.innerHTML = '<div class="err">Belum ada file untuk platform ini di rilis terbaru. Coba lagi nanti.</div>';
-      return;
-    }
-    filesEl.innerHTML = files.map(f =>
-      '<div class="file"><div class="meta"><b>' + f.name + '</b><span>' + fmtSize(f.size) + '</span></div>' +
-      '<a class="btn" href="' + f.browser_download_url + '">Download</a></div>'
-    ).join("");
+    // Server-side resolver tidak kena rate limit api.github.com di klien.
+    const r = await fetch(cfg.resolve, { headers: { "Accept": "application/json" } });
+    if (!r.ok) throw new Error("Server rilis " + r.status);
+    const data = await r.json();
+    const list = Array.isArray(data) ? data : [data];
+    if (!list.length) throw new Error("rilis kosong");
+    labelEl.textContent = "RILIS TERBARU";
+    verEl.textContent = "Rilis terbaru · GitHub Release";
+    filesEl.innerHTML = list.map(fileRow).join("");
   } catch (e) {
-    document.getElementById("live-label").textContent = "GAGAL MEMUAT";
-    filesEl.innerHTML = '<div class="err">Tidak bisa mengambil data rilis (' + e.message + '). Periksa koneksi lalu muat ulang halaman ini.</div>';
+    // Fallback: pakai URL hardcoded di cfg.files bila resolver PHP tidak tersedia.
+    labelEl.textContent = "RILIS TERBARU";
+    verEl.textContent = "Rilis terbaru · GitHub Release";
+    filesEl.innerHTML = cfg.files.map(fileRow).join("") +
+      '<div class="err">Gagal memuat rilis otomatis (' + e.message + '). Menampilkan tautan cadangan.</div>';
   }
 }
 
