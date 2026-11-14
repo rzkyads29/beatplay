@@ -1,5 +1,11 @@
 # Changelog
 
+## [v1.4.5] - 2026-11-15
+
+### Fixed
+- **login:** "Ganti YouTube Channel" gagal dengan "Tidak dapat mengambil saluran YouTube" karena v1.4.4 mencampur cookie Google (`SID`/`HSID`/`SSID`) ke header InnerTube. YouTube Music menolak request yang membawa cookie lintas domain, jadi alur login kini memisahkan cookie YouTube (untuk InnerTube) dan cookie Google (untuk GAIA).
+- **premium:** "Deteksi email otomatis" kini mengirim Google session cookie dari WebView jar terpisah dari cookie InnerTube, sehingga GAIA mau menjawab dan Gmail address terbaca.
+
 ## [v1.4.4] - 2026-11-15
 
 ### Fixed

@@ -97,6 +97,7 @@ private enum class LoginStage {
 
 private data class AuthData(
     val cookie: String,
+    val googleCookie: String,
     val visitorData: String,
     val dataSyncId: String,
     val authUser: String,
@@ -126,8 +127,11 @@ fun LoginScreen(
             // GAIA (accounts.google.com/ListAccounts) only answers when the Google session
             // cookies (SID/HSID/SSID/SAPISID/APISID) travel with the request. They live on
             // .google.com / accounts.google.com in the WebView jar, not on the YouTube host.
-            val cookie = mergeGoogleCookies()
-            val cookieMap = runCatching { parseCookieString(cookie) }.getOrDefault(emptyMap())
+            val googleJar = mergeGoogleCookies()
+            val youtubeJar = runCatching {
+                parseCookieString(CookieManager.getInstance().getCookie("https://music.youtube.com").orEmpty())
+            }.getOrDefault(emptyMap())
+            val cookieMap = runCatching { parseCookieString(googleJar) }.getOrDefault(emptyMap())
             val visitorDataDeferred = CompletableDeferred<String?>()
             val dataSyncIdDeferred = CompletableDeferred<String?>()
             val authUserDeferred = CompletableDeferred<String?>()
@@ -162,12 +166,15 @@ fun LoginScreen(
                         authUser = authUserDeferred.await().orEmpty(),
                     )
                 }
-            hasAuthCookie = "SAPISID" in cookieMap
+            hasAuthCookie = "SAPISID" in cookieMap || "SAPISID" in youtubeJar
             val visitorData = pageAuthData?.visitorData
             hasVisitorData = !visitorData.isNullOrBlank()
             if (hasAuthCookie && pageAuthData != null && !visitorData.isNullOrBlank()) {
                 return AuthData(
-                    cookie = cookie,
+                    // InnerTube only tolerates YouTube cookies; the Google session cookies
+                    // make music.youtube.com reject the request, so keep the jars separate.
+                    cookie = youtubeJar.entries.joinToString("; ") { (name, value) -> "$name=$value" },
+                    googleCookie = googleJar,
                     visitorData = visitorData,
                     dataSyncId = pageAuthData.dataSyncId.orEmpty().substringBefore("||"),
                     authUser = pageAuthData.authUser.filter(Char::isDigit).ifBlank { "0" },
@@ -206,6 +213,7 @@ fun LoginScreen(
                 menuEmail ?: withTimeoutOrNull(12_000) {
                     fetchGoogleAccountEmail(
                         cookie = authData.cookie,
+                        extraCookie = authData.googleCookie,
                         authUserIndex = authData.authUser.toIntOrNull() ?: 0,
                     )
                 }.orEmpty()
