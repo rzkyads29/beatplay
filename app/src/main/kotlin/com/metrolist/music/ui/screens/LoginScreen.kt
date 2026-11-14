@@ -123,7 +123,10 @@ fun LoginScreen(
         var hasAuthCookie = false
         var hasVisitorData = false
         repeat(20) {
-            val cookie = CookieManager.getInstance().getCookie("https://music.youtube.com").orEmpty()
+            // GAIA (accounts.google.com/ListAccounts) only answers when the Google session
+            // cookies (SID/HSID/SSID/SAPISID/APISID) travel with the request. They live on
+            // .google.com / accounts.google.com in the WebView jar, not on the YouTube host.
+            val cookie = mergeGoogleCookies()
             val cookieMap = runCatching { parseCookieString(cookie) }.getOrDefault(emptyMap())
             val visitorDataDeferred = CompletableDeferred<String?>()
             val dataSyncIdDeferred = CompletableDeferred<String?>()
@@ -624,4 +627,24 @@ private fun restoreYouTubeCookies(cookie: String?) {
             )
         }
     cookieManager.flush()
+}
+
+/**
+ * YouTube cookies (needed by InnerTube) live on .youtube.com; the Google login cookies
+ * GAIA needs to reveal the owner Gmail live on .google.com. InnerTube ignores the extra
+ * Google cookies and GAIA ignores the YouTube ones, so a merged header is safe for both.
+ */
+private fun mergeGoogleCookies(): String {
+    val cookieManager = CookieManager.getInstance()
+    val merged = LinkedHashMap<String, String>()
+    for (url in arrayOf(
+        "https://music.youtube.com",
+        "https://accounts.google.com",
+        "https://www.google.com",
+    )) {
+        for ((name, value) in runCatching { parseCookieString(cookieManager.getCookie(url).orEmpty()) }.getOrDefault(emptyMap())) {
+            if (name.isNotBlank() && value.isNotBlank()) merged[name] = value
+        }
+    }
+    return merged.entries.joinToString("; ") { (name, value) -> "$name=$value" }
 }

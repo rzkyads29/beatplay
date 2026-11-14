@@ -287,10 +287,16 @@ fun PremiumSettingsScreen(
                             detectingEmail = true
                             detectEmailMessage = null
                             scope.launch {
+                                // Users who upgraded from an old build have a stored InnerTube
+                                // cookie without the Google session cookies GAIA needs; merge
+                                // whatever the WebView jar still holds as a fallback.
+                                val extra = android.webkit.CookieManager.getInstance()
+                                    .getCookie("https://accounts.google.com").orEmpty()
                                 val recovered = withTimeoutOrNull(20_000) {
                                     fetchGoogleAccountEmail(
                                         cookie = innerTubeCookie,
                                         authUserIndex = innerTubeAuthUser.toIntOrNull() ?: 0,
+                                        extraCookie = extra,
                                     )
                                 }
                                 detectingEmail = false

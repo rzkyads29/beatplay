@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.4.4] - 2026-11-15
+
+### Fixed
+- **premium:** "Deteksi email otomatis" never worked because only the YouTube Music cookies were sent to Google's account list. The Google session cookies (`SID`, `HSID`, `SSID`, `SAPISID`) that prove who the owner is live on `accounts.google.com`, not on YouTube, so the request was always rejected. The login flow now sends them, and the Premium retry merges anything the device's WebView cookie jar still holds — installs that already had 1.4.3 detect their Gmail address without re-logging in.
+
 ## [v1.4.3] - 2026-11-15
 
 ### Fixed

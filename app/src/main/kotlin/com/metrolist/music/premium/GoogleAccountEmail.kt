@@ -103,8 +103,11 @@ private fun isGoogleInternalEmail(email: String): Boolean {
 private val INTERNAL_DOMAINS = listOf("google.com", "gserviceaccount.com", "googleusercontent.com")
 
 /** Emails of the Google accounts signed in with [cookie]; empty when GAIA cannot read them. */
-suspend fun fetchGoogleAccountEmails(cookie: String): List<String> {
-    val cookieHeader = googleCookieHeader(cookie)
+suspend fun fetchGoogleAccountEmails(
+    cookie: String,
+    extraCookie: String = "",
+): List<String> {
+    val cookieHeader = googleCookieHeader(mergeCookieStrings(cookie, extraCookie))
     if (cookieHeader.isEmpty()) return emptyList()
 
     val client = HttpClient(OkHttp) {
@@ -150,11 +153,24 @@ private suspend fun HttpClient.requestListAccounts(
 suspend fun fetchGoogleAccountEmail(
     cookie: String,
     authUserIndex: Int = 0,
+    extraCookie: String = "",
 ): String? {
-    val emails = runCatching { fetchGoogleAccountEmails(cookie) }.getOrDefault(emptyList())
+    val emails = runCatching { fetchGoogleAccountEmails(cookie, extraCookie) }.getOrDefault(emptyList())
     if (emails.isEmpty()) return null
     if (emails.size == 1) return emails.first()
     return emails.getOrNull(authUserIndex.coerceAtLeast(0)) ?: emails.first()
+}
+
+/** Stored InnerTube cookie + Android's WebView jar (Google session cookies) as one header. */
+private fun mergeCookieStrings(vararg sources: String): String {
+    val merged = LinkedHashMap<String, String>()
+    for (source in sources) {
+        if (source.isBlank()) continue
+        for ((name, value) in runCatching { parseCookieString(source) }.getOrDefault(emptyMap())) {
+            if (name.isNotBlank() && value.isNotBlank()) merged[name] = value
+        }
+    }
+    return merged.entries.joinToString("; ") { (name, value) -> "$name=$value" }
 }
 
 /** Rebuilds the `Cookie` header from the stored InnerTube cookie string. */
