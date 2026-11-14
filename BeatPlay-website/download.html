@@ -62,8 +62,8 @@
 
 <script>
 const REPO = "cukimai29/beatplay";
-const ANDROID_APK_URL = "https://github.com/cukimai29/beatplay/releases/download/android-v1.4.4/BeatPlay-1.4.4-android.apk";
-const ANDROID_APK_NAME = "BeatPlay-1.4.4-android.apk";
+const ANDROID_APK_URL = "https://github.com/cukimai29/beatplay/releases/download/android-v1.4.5/BeatPlay-1.4.5-android.apk";
+const ANDROID_APK_NAME = "BeatPlay-1.4.5-android.apk";
 const ANDROID_APK_SIZE = "30,4 MB";
 
 const PLATFORMS = {
@@ -128,7 +128,7 @@ async function render() {
   const verEl = document.getElementById("ver");
   if (cfg.manual) {
     labelEl.textContent = "UNDUHAN RESMI";
-    verEl.textContent = "APK Android 1.4.4 · GitHub Release";
+    verEl.textContent = "APK Android 1.4.5 · GitHub Release";
     filesEl.innerHTML = fileRow({ name: ANDROID_APK_NAME, size: ANDROID_APK_SIZE, url: ANDROID_APK_URL });
     return;
   }
