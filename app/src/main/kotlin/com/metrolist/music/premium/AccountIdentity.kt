@@ -36,7 +36,13 @@ fun resolveAccountEmail(
         }?.let { return it }
     }
 
-    return accounts.firstOrNull { it.isSelected }?.byline?.let(::emailOrNull)
+    accounts.firstOrNull { it.isSelected }?.byline?.let(::emailOrNull)?.let { return it }
+
+    // Fallback: If no channel matched by name/handle/selected, take the first valid email
+    // found across all associated channels under this Google account.
+    return accounts.firstNotNullOfOrNull { candidate ->
+        emailOrNull(candidate.byline)
+    }
 }
 
 /** "@RzkyyAds" -> "rzkyyads" so handles from different endpoints compare equal. */

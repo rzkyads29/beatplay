@@ -261,15 +261,25 @@ fun PremiumSettingsScreen(
             }
 
             if (signedInEmail == null) {
-                Text(
-                    if (accountNamePref.isBlank()) {
-                        "Login YouTube/Google diperlukan agar email Premium terdeteksi otomatis."
-                    } else {
-                        "Channel ini tidak menyertakan email. Buka \"Ganti Youtube channel\" lalu pilih akun Google pemiliknya agar Premium terdeteksi."
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        if (accountNamePref.isBlank()) {
+                            "Login YouTube/Google diperlukan agar email Premium terdeteksi otomatis."
+                        } else {
+                            "Channel \"$accountNamePref\" belum mendeteksi email Google secara otomatis."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            navController.navigate("switch_channel")
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Buka Ganti YouTube Channel")
+                    }
+                }
             } else {
                 Text("Akun login: $signedInEmail", style = MaterialTheme.typography.bodyMedium)
             }

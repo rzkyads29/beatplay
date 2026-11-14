@@ -78,9 +78,20 @@ class AccountIdentityTest {
     @Test
     fun nullHandleDoesNotMatchEveryChannel() {
         val info = account("rzkyy ads", email = null, handle = null)
-        val accounts = listOf(channel("Rzkyy", byline = "owner@gmail.com", handle = null))
+        val accounts = listOf(channel("Rzkyy", byline = "not an email", handle = null))
 
         assertNull(resolveAccountEmail(info, accounts))
+    }
+
+    @Test
+    fun fallsBackToAnyValidEmailInChannelList() {
+        val info = account("unrelated channel", email = null, handle = "@unrelated")
+        val accounts = listOf(
+            channel("channel 1", byline = "no email here"),
+            channel("channel 2", byline = "mainowner@gmail.com"),
+        )
+
+        assertEquals("mainowner@gmail.com", resolveAccountEmail(info, accounts))
     }
 
     @Test

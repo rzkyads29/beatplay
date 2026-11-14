@@ -195,6 +195,7 @@ fun LoginScreen(
                     YouTube.accountsList().getOrDefault(emptyList())
                 }.orEmpty()
             val ownerEmail = resolveAccountEmail(accountInfo, channelAccounts).orEmpty()
+            Timber.d("Login: resolved ownerEmail='$ownerEmail' for account='${accountInfo.name}' from ${channelAccounts.size} channels")
             val saved =
                 withContext(Dispatchers.IO) {
                     context.safeDataStoreEdit { settings ->

@@ -326,8 +326,8 @@ class App :
 
     private fun observeSettingsChanges() {
         applicationScope.launch {
-            dataStore.data.map { it[AccountEmailKey] }.distinctUntilChanged().collect {
-                // Login/logout changes the account email. Re-check entitlement immediately;
+            dataStore.data.map { it[AccountEmailKey] to it[AccountNameKey] }.distinctUntilChanged().collect {
+                // Login/logout or channel switch changes the account. Re-check entitlement immediately;
                 // the Premium screen does not need a manually typed address or button press.
                 refreshPremiumForSignedInAccount(dataStore.data.first())
             }
