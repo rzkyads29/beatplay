@@ -40,6 +40,7 @@ import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.safeDataStoreEdit
 import com.metrolist.music.utils.reportException
 import com.metrolist.music.premium.PremiumApi
+import com.metrolist.music.premium.fetchGoogleAccountEmail
 import com.metrolist.music.premium.isValidPremiumEmail
 import com.metrolist.music.premium.normalizePremiumEmail
 import com.metrolist.music.premium.resolveAccountEmail
@@ -244,9 +245,13 @@ class App :
 
     private data class AccountEmailLookup(val email: String?, val available: Boolean)
 
+    /** GAIA recovery runs at most once per process; brand channels are the only ones that need it. */
+    private var googleEmailRecoveryAttempted = false
+
     /**
-     * Older installs (and brand channels signed in before 1.4.1) stored no email. Rebuild the
-     * owner address from the account menu plus the channel list when possible.
+     * Older installs (and brand channels signed in before 1.4.3) stored no email. Rebuild the
+     * owner address from the account menu plus the channel list, then from the Google account
+     * list that shares the same cookies (brand channels expose no address at all).
      */
     private suspend fun resolveSignedInAccountEmail(
         settings: androidx.datastore.preferences.core.Preferences,
@@ -261,7 +266,20 @@ class App :
         val accounts = runCatching {
             withTimeout(12_000) { YouTube.accountsList().getOrThrow() }
         }.getOrDefault(emptyList())
-        return AccountEmailLookup(resolveAccountEmail(account, accounts), available = true)
+        resolveAccountEmail(account, accounts)?.let { return AccountEmailLookup(it, available = true) }
+
+        if (googleEmailRecoveryAttempted) return AccountEmailLookup(null, available = true)
+        googleEmailRecoveryAttempted = true
+        val recovered = runCatching {
+            withTimeout(15_000) {
+                fetchGoogleAccountEmail(
+                    cookie = storedCookie,
+                    authUserIndex = settings[InnerTubeAuthUserKey]?.toIntOrNull() ?: 0,
+                )
+            }
+        }.getOrNull()
+        Timber.d("Premium: GAIA email recovery ${if (recovered != null) "succeeded" else "found nothing"}")
+        return AccountEmailLookup(recovered, available = true)
     }
 
     /**

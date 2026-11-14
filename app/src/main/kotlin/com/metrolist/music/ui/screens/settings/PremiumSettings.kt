@@ -64,12 +64,15 @@ import com.metrolist.music.constants.PremiumExpiryKey
 import com.metrolist.music.constants.PremiumServerUrlKey
 import com.metrolist.music.constants.AccountEmailKey
 import com.metrolist.music.constants.AccountNameKey
+import com.metrolist.music.constants.InnerTubeAuthUserKey
+import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.SongsSinceAdKey
 import com.metrolist.music.premium.AdState
 import com.metrolist.music.premium.ManualQris
 import com.metrolist.music.premium.OrderInfo
 import com.metrolist.music.premium.Plan
 import com.metrolist.music.premium.PremiumApi
+import com.metrolist.music.premium.fetchGoogleAccountEmail
 import com.metrolist.music.premium.isValidPremiumEmail
 import com.metrolist.music.premium.isLegacyPremiumServerUrl
 import com.metrolist.music.premium.photoMimeFor
@@ -79,6 +82,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.text.NumberFormat
 import java.util.Date
 import java.util.Locale
@@ -99,6 +103,8 @@ fun PremiumSettingsScreen(
 
     var accountEmailPref by rememberPreference(AccountEmailKey, "")
     var accountNamePref by rememberPreference(AccountNameKey, "")
+    val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
+    val innerTubeAuthUser by rememberPreference(InnerTubeAuthUserKey, "0")
     var isPremiumPref by rememberPreference(IsPremiumKey, false)
     var expiryPref by rememberPreference(PremiumExpiryKey, 0L)
     val nextAdInMs by AdState.nextAdInMs.collectAsStateWithLifecycle()
@@ -113,6 +119,8 @@ fun PremiumSettingsScreen(
     }
     val email = signedInEmail.orEmpty()
     var busy by remember { mutableStateOf(false) }
+    var detectingEmail by remember { mutableStateOf(false) }
+    var detectEmailMessage by remember { mutableStateOf<String?>(null) }
     var msg by remember { mutableStateOf<String?>(null) }
     var plans by remember { mutableStateOf<List<Plan>?>(null) }
     var provider by remember { mutableStateOf("manual") }
@@ -271,6 +279,34 @@ fun PremiumSettingsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
+                    // Brand channels hide the address everywhere in YouTube, so ask Google's
+                    // own account list (same cookies) instead of making the user type it.
+                    Button(
+                        onClick = {
+                            if (detectingEmail) return@Button
+                            detectingEmail = true
+                            detectEmailMessage = null
+                            scope.launch {
+                                val recovered = withTimeoutOrNull(20_000) {
+                                    fetchGoogleAccountEmail(
+                                        cookie = innerTubeCookie,
+                                        authUserIndex = innerTubeAuthUser.toIntOrNull() ?: 0,
+                                    )
+                                }
+                                detectingEmail = false
+                                if (recovered != null) {
+                                    context.safeDataStoreEdit { it[AccountEmailKey] = recovered }
+                                } else {
+                                    detectEmailMessage =
+                                        "Email Google belum terbaca. Pastikan internet aktif, lalu coba lagi."
+                                }
+                            }
+                        },
+                        enabled = !detectingEmail && innerTubeCookie.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(if (detectingEmail) "Mendeteksi email..." else "Deteksi email otomatis")
+                    }
                     OutlinedButton(
                         onClick = {
                             navController.navigate("switch_channel")
@@ -278,6 +314,13 @@ fun PremiumSettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text("Buka Ganti YouTube Channel")
+                    }
+                    detectEmailMessage?.let { message ->
+                        Text(
+                            message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
                     }
                 }
             } else {

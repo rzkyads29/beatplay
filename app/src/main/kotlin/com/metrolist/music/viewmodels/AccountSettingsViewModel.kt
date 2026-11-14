@@ -17,6 +17,7 @@ import com.metrolist.music.constants.DataSyncIdKey
 import com.metrolist.music.constants.InnerTubeAuthUserKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.VisitorDataKey
+import com.metrolist.music.premium.fetchGoogleAccountEmail
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.safeDataStoreEdit
@@ -24,6 +25,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -89,13 +91,26 @@ class AccountSettingsViewModel @Inject constructor(
         accountChannelHandle: String,
     ) {
         viewModelScope.launch(Dispatchers.IO) {
+            // Pasted cookies for brand channels carry no email line; GAIA still knows the
+            // owner Gmail address through the same cookies, so recover it automatically.
+            val resolvedEmail =
+                accountEmail.ifBlank {
+                    runCatching {
+                        withTimeout(15_000) {
+                            fetchGoogleAccountEmail(
+                                cookie = cookie,
+                                authUserIndex = authUser.filter(Char::isDigit).ifBlank { "0" }.toInt(),
+                            )
+                        }
+                    }.getOrNull().orEmpty()
+                }
             val saved = context.safeDataStoreEdit { settings ->
                 settings[InnerTubeCookieKey] = cookie
                 settings[VisitorDataKey] = visitorData
                 settings[DataSyncIdKey] = dataSyncId
                 settings[InnerTubeAuthUserKey] = authUser.filter(Char::isDigit).ifBlank { "0" }
                 settings[AccountNameKey] = accountName
-                settings[AccountEmailKey] = accountEmail
+                settings[AccountEmailKey] = resolvedEmail
                 settings[AccountChannelHandleKey] = accountChannelHandle
             }
             if (!saved) {

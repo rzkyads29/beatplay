@@ -1,5 +1,14 @@
 # Changelog
 
+## [v1.4.3] - 2026-11-15
+
+### Fixed
+- **premium:** Brand YouTube channels expose no email anywhere in YouTube now, so Premium stayed inactive after login. The app reads the owner Gmail address from Google's own account list with the same login cookies, so nothing has to be typed.
+- **premium:** The address is recovered during login, when a token is pasted, and once at startup for installs that already had no email stored.
+
+### Added
+- **premium:** One-tap "Deteksi email otomatis" retry on the Premium screen while the address has not been detected yet.
+
 ## [v1.4.2] - 2026-11-14
 
 ### Fixed

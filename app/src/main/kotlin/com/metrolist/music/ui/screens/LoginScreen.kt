@@ -67,6 +67,7 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AccountChannelHandleKey
 import com.metrolist.music.constants.AccountEmailKey
+import com.metrolist.music.premium.fetchGoogleAccountEmail
 import com.metrolist.music.premium.resolveAccountEmail
 import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.DataSyncIdKey
@@ -194,8 +195,25 @@ fun LoginScreen(
                 withTimeoutOrNull(8_000) {
                     YouTube.accountsList().getOrDefault(emptyList())
                 }.orEmpty()
-            val ownerEmail = resolveAccountEmail(accountInfo, channelAccounts).orEmpty()
-            Timber.d("Login: resolved ownerEmail='$ownerEmail' for account='${accountInfo.name}' from ${channelAccounts.size} channels")
+            val menuEmail = resolveAccountEmail(accountInfo, channelAccounts)
+            // Brand channels hide the address in both the account menu and the channel list.
+            // The same Google cookies also authenticate GAIA, which still knows the Gmail
+            // address, so the owner email is recovered without any manual typing.
+            val ownerEmail =
+                menuEmail ?: withTimeoutOrNull(12_000) {
+                    fetchGoogleAccountEmail(
+                        cookie = authData.cookie,
+                        authUserIndex = authData.authUser.toIntOrNull() ?: 0,
+                    )
+                }.orEmpty()
+            Timber.d(
+                "Login: account='${accountInfo.name}' emailSource=" +
+                    when {
+                        menuEmail != null -> "account-menu"
+                        ownerEmail.isNotBlank() -> "google-account-list"
+                        else -> "none"
+                    } + " channels=${channelAccounts.size}",
+            )
             val saved =
                 withContext(Dispatchers.IO) {
                     context.safeDataStoreEdit { settings ->
