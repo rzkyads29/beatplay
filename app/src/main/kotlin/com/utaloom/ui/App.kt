@@ -62,35 +62,12 @@ fun applySession() {
         }
     }.start()
 
-    // Premium follows the signed-in Google account, not a manually typed email.
-    val accountEmail = s.accountEmail?.trim()?.lowercase().orEmpty()
-    if (com.utaloom.premium.isValidEmail(accountEmail)) {
-        // Avoid showing the previous account's cached entitlement while the refresh is in flight.
-        if (s.premiumEmail?.trim()?.lowercase() != accountEmail) {
-            Stores.settings.update {
-                it.copy(isPremium = false, premiumEmail = accountEmail, premiumExpiry = null, songsSinceAd = 0)
-            }
-        }
+    // Premium follows the BeatPlay account (email + password), not the Google address.
+    val beatPlayToken = s.beatPlayAuthToken.orEmpty()
+    if (beatPlayToken.isNotBlank()) {
         Thread {
             kotlinx.coroutines.runBlocking {
-                com.utaloom.premium.PremiumRepository.refresh(accountEmail, s.premiumServerUrl)
-            }
-        }.start()
-    } else if (s.cookie != null) {
-        // Sessions saved before this fix (or brand channels, which show no email in the account
-        // menu) have no address stored. Rebuild it from the channel list instead of losing premium.
-        Thread {
-            kotlinx.coroutines.runBlocking {
-                val resolved = resolveSessionAccountEmail()
-                if (resolved != null) {
-                    Stores.settings.update { it.copy(accountEmail = resolved) }
-                    if (Stores.settings.value.premiumEmail?.trim()?.lowercase() != resolved) {
-                        Stores.settings.update {
-                            it.copy(isPremium = false, premiumEmail = resolved, premiumExpiry = null, songsSinceAd = 0)
-                        }
-                    }
-                    com.utaloom.premium.PremiumRepository.refresh(resolved, s.premiumServerUrl)
-                }
+                com.utaloom.premium.BeatPlayAuth.refreshEntitlement(s.premiumServerUrl)
             }
         }.start()
     } else if (s.isPremium || s.premiumEmail != null) {
@@ -98,17 +75,6 @@ fun applySession() {
             it.copy(isPremium = false, premiumEmail = null, premiumExpiry = null, songsSinceAd = 0)
         }
     }
-}
-
-/** Owner address of the signed-in account, using the channel list when the menu omits it. */
-private suspend fun resolveSessionAccountEmail(): String? = withContext(Dispatchers.IO) {
-    val account = withTimeoutOrNull(15_000) {
-        runCatching { YouTube.accountInfo().getOrThrow() }.getOrNull()
-    } ?: return@withContext null
-    val accounts = withTimeoutOrNull(15_000) {
-        runCatching { YouTube.accountsList().getOrThrow() }.getOrDefault(emptyList())
-    }.orEmpty()
-    com.utaloom.premium.resolveAccountEmail(account, accounts)
 }
 
 private enum class Panel { NONE, QUEUE, LYRICS }

@@ -141,6 +141,9 @@ data class Settings(
     val premiumLastChecked: Long = 0L,
     val premiumExpiry: Long? = null, // epoch detik dari server; null = lifetime/manual
     val premiumServerUrl: String = "https://premium.adminbeat.my.id",
+    // Akun BeatPlay (email + kata sandi). Premium terikat ke akun ini, bukan ke akun Google.
+    val beatPlayAccountEmail: String? = null,
+    val beatPlayAuthToken: String? = null,
     val premiumDevMode: Boolean = false, // tampilkan opsi developer di layar Premium
     val songsSinceAd: Int = 0,
     val adEveryNSongs: Int = 3,

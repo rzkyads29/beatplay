@@ -172,6 +172,28 @@ object PremiumRepository {
             }
         }
 
+    /**
+     * Create an order for the signed-in BeatPlay account. The auth token is sent so the server
+     * resolves the account email itself; the email is never taken from the Google account.
+     */
+    suspend fun createOrderAuthed(planId: String, serverUrl: String = Stores.settings.value.premiumServerUrl): Result<OrderInfo> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val token = Stores.settings.value.beatPlayAuthToken
+                require(!token.isNullOrBlank()) { "Masuk akun BeatPlay dulu untuk membeli Premium" }
+                val base = serverUrl.trim().trimEnd('/')
+                val payload = """{"plan_id":"${planId.replace("\"", "")}"}"""
+                val req = HttpRequest.newBuilder(URI("$base/api/orders/create"))
+                    .timeout(Duration.ofSeconds(20))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer $token")
+                    .POST(HttpRequest.BodyPublishers.ofString(payload)).build()
+                val res = http.send(req, HttpResponse.BodyHandlers.ofString())
+                check(res.statusCode() == 200) { "Gagal buat order: ${res.body().take(200)}" }
+                parseOrder(Json.parseToJsonElement(res.body()).jsonObject["order"]!!.jsonObject)
+            }
+        }
+
     suspend fun orderStatus(merchantRef: String, serverUrl: String = Stores.settings.value.premiumServerUrl): Result<OrderStatus> =
         withContext(Dispatchers.IO) {
             runCatching {

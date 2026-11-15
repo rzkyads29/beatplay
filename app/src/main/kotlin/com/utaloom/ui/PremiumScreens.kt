@@ -36,11 +36,6 @@ fun PremiumScreen() {
 @Composable
 fun PremiumSection() {
     val s by Stores.settings.state.collectAsState()
-    val scope = rememberCoroutineScope()
-    val email = s.accountEmail?.trim()?.lowercase().orEmpty()
-    var busy by remember { mutableStateOf(false) }
-    var msg by remember { mutableStateOf<String?>(null) }
-    var server by remember(s.premiumServerUrl) { mutableStateOf(s.premiumServerUrl) }
     val dev by remember { mutableStateOf(isDevMode()) }
 
     SectionTitle("Premium")
@@ -71,48 +66,19 @@ fun PremiumSection() {
                 }
             }
         }
-        if (email.isBlank() || !isValidEmail(email)) {
-            Text(
-                if (s.accountName.isNullOrBlank()) {
-                    "Login YouTube/Google diperlukan agar email Premium terdeteksi otomatis."
-                } else {
-                    "Channel ini tidak menyertakan email. Login ulang dengan akun Google pemiliknya agar Premium terdeteksi."
-                },
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
-            )
-        } else {
-            Text("Akun login: $email", style = MaterialTheme.typography.bodyMedium)
-        }
-        if (dev) {
-            OutlinedTextField(server, { server = it; msg = null }, Modifier.fillMaxWidth(), label = { Text("Server Premium") }, supportingText = { Text("URL server BeatPlay (dari admin).") }, singleLine = true)
-        }
-        if (dev) {
+    }
+
+    // Premium follows the BeatPlay account (email + password), not the Google address.
+    BeatPlayAccountSection(showServerField = dev)
+
+    if (dev) {
+        val scope = rememberCoroutineScope()
+        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             var adVideo by remember(s.adVideoPath) { mutableStateOf(s.adVideoPath) }
             OutlinedTextField(adVideo, {
                 adVideo = it
                 Stores.settings.update { cur -> cur.copy(adVideoPath = it.trim()) }
             }, Modifier.fillMaxWidth(), label = { Text("Video iklan (path file, kosong = bawaan)") }, singleLine = true)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Button({
-                busy = true; msg = null
-                scope.launch {
-                    // The production server URL is not user-editable; only developer mode
-                    // exposes the override field above.
-                    val r = PremiumRepository.refresh(email, server.trim())
-                    msg = if (r.isSuccess && r.getOrNull() == true) "Premium aktif untuk $email."
-                    else if (r.isSuccess) "$email belum premium."
-                    else "Gagal cek: ${r.exceptionOrNull()?.message ?: r.exceptionOrNull()?.javaClass?.simpleName ?: "?"}"
-                    busy = false
-                }
-            }, enabled = !busy && isValidEmail(email)) { Text(if (busy) "Mengecek…" else "Cek status") }
-            if (s.isPremium) TextButton({
-            Stores.settings.update { it.copy(isPremium = false, premiumEmail = null, premiumExpiry = null, songsSinceAd = 0) }
-            msg = "Premium lokal direset; akun login tetap sama."
-        }) { Text("Reset status lokal") }
-        }
-        msg?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-        if (dev) {
             OutlinedButton({
                 scope.launch { AdManager.showAdBlocking(s.adSeconds, "BeatPlay Premium — dengarkan tanpa jeda iklan. (Tes tampilan)") }
             }) { Text("Tes iklan ${s.adSeconds} dtk") }
@@ -186,14 +152,13 @@ fun BuyPremiumSection() {
                 }
             }
         }
-        val emailOk = s.accountEmail?.let(::isValidEmail) == true
-        if (!emailOk) Text("Login YouTube/Google dulu untuk membeli Premium.", style = MaterialTheme.typography.bodySmall)
+        val emailOk = s.beatPlayAccountEmail?.let(::isValidEmail) == true && !s.beatPlayAuthToken.isNullOrBlank()
+        if (!emailOk) Text("Masuk akun BeatPlay dulu untuk membeli Premium.", style = MaterialTheme.typography.bodySmall)
         Button({
-            val email = s.accountEmail?.trim()?.lowercase()?.takeIf(::isValidEmail) ?: return@Button
             val plan = selected ?: return@Button
-            busy = true; statusMsg = "Membuat order…"
+            busy = true; statusMsg = "Membuat order..."
             scope.launch {
-                PremiumRepository.createOrder(email, plan, s.premiumServerUrl).onSuccess {
+                PremiumRepository.createOrderAuthed(plan, s.premiumServerUrl).onSuccess {
                     order = it; polling = true
                     photoFile = null; sender = ""; note = ""
                     statusMsg = if (provider == "manual")
