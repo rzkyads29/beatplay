@@ -1,5 +1,11 @@
 # Changelog
 
+## [v1.5.19] - 2026-11-15
+
+* fix(premium): make server calls survive a bad connection and explain the failure (bf88762)
+* docs(web): Android download points at android-v1.5.3 (order creation fix) (a8e3d21)
+* docs(web): point downloads at v1.5.18 desktop and android-v1.5.2 (d671c60)
+
 ## [v1.5.18] - 2026-11-15
 
 * feat(premium): show QRIS inside the app instead of opening the gateway page (81dbef9)
