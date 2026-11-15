@@ -82,10 +82,10 @@ const PLATFORMS = {
   },
   linux: {
     title: "Halo, Linux.",
-    files: [
-      { name: "beatplay_1.5.16_amd64.deb", size: 95548956, url: "https://github.com/" + REPO + "/releases/download/v1.5.16/beatplay_1.5.16_amd64.deb" },
-      { name: "beatplay-1.5.16-1.x86_64.rpm", size: 95627225, url: "https://github.com/" + REPO + "/releases/download/v1.5.16/beatplay-1.5.16-1.x86_64.rpm" },
-    ],
+    // Rilis 1.5.16 hanya menyertakan installer Windows; paket Linux menyusul.
+    // Daftar di bawah dikosongkan supaya halaman tidak menampilkan tautan mati.
+    files: [],
+    unavailable: "Paket Linux (.deb / .rpm) belum tersedia di rilis baru. Installer yang bisa diunduh saat ini adalah versi Windows (.msi). Cek halaman ini lagi setelah paket Linux diunggah.",
     resolve: "download-desktop.php?kind=linux",
     steps: [["Download paketnya.", "Pilih .deb (Debian/Ubuntu) atau .rpm (Fedora)."],
             ["Install paketnya.", "Debian/Ubuntu: <code>sudo apt install ./beatplay_*.deb</code>. Butuh VLC dari package manager."],
@@ -147,8 +147,12 @@ async function render() {
     // Fallback: pakai URL hardcoded di cfg.files bila resolver PHP tidak tersedia.
     labelEl.textContent = "RILIS TERBARU";
     verEl.textContent = "Rilis terbaru · GitHub Release";
-    filesEl.innerHTML = cfg.files.map(fileRow).join("") +
-      '<div class="err">Gagal memuat rilis otomatis (' + e.message + '). Menampilkan tautan cadangan.</div>';
+    if (cfg.files.length) {
+      filesEl.innerHTML = cfg.files.map(fileRow).join("") +
+        '<div class="err">Gagal memuat rilis otomatis (' + e.message + '). Menampilkan tautan cadangan.</div>';
+    } else {
+      filesEl.innerHTML = '<div class="err">' + (cfg.unavailable || "Belum ada file untuk platform ini.") + '</div>';
+    }
   }
 }
 

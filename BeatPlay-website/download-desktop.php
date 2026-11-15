@@ -83,6 +83,8 @@ function beatplay_latest_desktop_assets(): array
     if ($body !== null) {
         $releases = json_decode($body, true);
         if (is_array($releases)) {
+            // Ambil aset dari rilis terbaru yang punya file desktop (tidak perlu lengkap
+            // msi+deb+rpm: sebagian rilis hanya mengirim installer Windows).
             foreach ($releases as $release) {
                 if (!is_array($release)
                     || !empty($release['draft'])
@@ -91,6 +93,7 @@ function beatplay_latest_desktop_assets(): array
                 ) {
                     continue;
                 }
+                $found = [];
                 foreach ($release['assets'] as $asset) {
                     if (!is_array($asset)) {
                         continue;
@@ -101,15 +104,16 @@ function beatplay_latest_desktop_assets(): array
                         continue;
                     }
                     $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-                    if (in_array($ext, ['msi', 'deb', 'rpm'], true) && !isset($assets[$ext])) {
-                        $assets[$ext] = [
+                    if (in_array($ext, ['msi', 'deb', 'rpm'], true) && !isset($found[$ext])) {
+                        $found[$ext] = [
                             'name' => $name,
                             'size' => (int) ($asset['size'] ?? 0),
                             'url' => $downloadUrl,
                         ];
                     }
                 }
-                if (isset($assets['msi'], $assets['deb'], $assets['rpm'])) {
+                if ($found !== []) {
+                    $assets = $found;
                     break;
                 }
             }
