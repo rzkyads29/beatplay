@@ -13,7 +13,7 @@ import java.time.Duration
 /** Checks GitHub for a newer production release (drafts and pre-releases are skipped by /releases/latest). */
 object Updates {
     // Repo GitHub BeatPlay. Cek update dalam app + tombol Download membaca releases dari repo ini.
-    const val REPO = "cukimai29/beatplay"
+    const val REPO = "rzkyads29/beatplay"
 
     /** Set by the packaged app's launcher (-Dutaloom.version), "dev" when run from source. */
     val current: String = System.getProperty("utaloom.version") ?: "dev"
