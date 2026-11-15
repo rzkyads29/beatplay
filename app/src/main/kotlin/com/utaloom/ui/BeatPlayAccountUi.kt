@@ -51,6 +51,7 @@ import androidx.compose.ui.window.Dialog
 import com.utaloom.data.Stores
 import com.utaloom.premium.BeatPlayAuth
 import com.utaloom.premium.isValidEmail
+import com.utaloom.premium.networkErrorMessage
 import kotlinx.coroutines.launch
 
 /**
@@ -125,7 +126,7 @@ fun BeatPlayAccountSection(showServerField: Boolean = false) {
                             }
                             .onFailure {
                                 messageIsError = true
-                                message = "Gagal cek: ${it.message}"
+                                message = "Gagal cek: ${networkErrorMessage(it, s.premiumServerUrl)}"
                             }
                         busy = false
                     }
@@ -152,11 +153,25 @@ fun BeatPlayAccountSection(showServerField: Boolean = false) {
                 supportingText = { Text("URL server BeatPlay (dari admin).") },
                 singleLine = true,
             )
-            OutlinedButton({
-                Stores.settings.update { it.copy(premiumServerUrl = server.trim().trimEnd('/')) }
-                messageIsError = false
-                message = "Server disimpan."
-            }) { Text("Simpan server") }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton({
+                    Stores.settings.update { it.copy(premiumServerUrl = server.trim().trimEnd('/')) }
+                    messageIsError = false
+                    message = "Server disimpan."
+                }) { Text("Simpan server") }
+                OutlinedButton({
+                    if (busy) return@OutlinedButton
+                    busy = true
+                    message = null
+                    // Step-by-step probe: tells apart DNS, blocked-port and TLS problems.
+                    scope.launch {
+                        val report = BeatPlayAuth.probe(server)
+                        messageIsError = !report.contains("HTTPS OK")
+                        message = report
+                        busy = false
+                    }
+                }, enabled = !busy) { Text(if (busy) "Menguji..." else "Tes koneksi") }
+            }
         }
 
         message?.let {
@@ -222,13 +237,14 @@ fun BeatPlayAuthDialog(onDismiss: () -> Unit) {
                             .onSuccess { onDismiss() }
                             .onFailure {
                                 messageIsError = true
-                                message = "Masuk berhasil, tapi cek status gagal: ${it.message}"
+                                message = "Masuk berhasil, tapi cek status gagal: ${networkErrorMessage(it, server)}"
                             }
                     }
                 }
                 .onFailure {
                     messageIsError = true
-                    message = (if (tab == AuthTab.LOGIN) "Gagal masuk: " else "Gagal daftar: ") + it.message
+                    message = (if (tab == AuthTab.LOGIN) "Gagal masuk: " else "Gagal daftar: ") +
+                        networkErrorMessage(it, server)
                 }
             busy = false
         }

@@ -73,7 +73,7 @@ object AdGate {
 
 object PremiumRepository {
     private val http: HttpClient by lazy {
-        HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build()
+        HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build()
     }
 
     fun checkUrl(serverUrl: String, email: String): String {

@@ -20,6 +20,7 @@ import com.utaloom.premium.Plan
 import com.utaloom.premium.PremiumRepository
 import com.utaloom.premium.isDevMode
 import com.utaloom.premium.isValidEmail
+import com.utaloom.premium.networkErrorMessage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -118,7 +119,7 @@ fun BuyPremiumSection() {
             if (selected == null) selected = shop.plans.firstOrNull()?.id
             statusMsg = if (shop.provider == "manual") "Bayar ke QRIS merchant di bawah, lalu kirim bukti. Admin verifikasi, premium aktif."
             else "Bayar via QRIS. Setelah bayar, akun otomatis premium."
-        }.onFailure { plansErr = "Gagal muat paket: ${it.message}" }
+        }.onFailure { plansErr = "Gagal muat paket: ${networkErrorMessage(it, s.premiumServerUrl)}" }
     }
     LaunchedEffect(polling, order?.merchantRef) {
         val ref = order?.merchantRef ?: return@LaunchedEffect
@@ -165,7 +166,7 @@ fun BuyPremiumSection() {
                     statusMsg = if (provider == "manual")
                         "Order ${it.merchantRef} (${rupiah(it.amount)}). Bayar ke QRIS di bawah, lalu kirim bukti."
                     else "Order ${it.merchantRef} (${rupiah(it.amount)}). Scan QRIS di bawah, lalu tunggu status."
-                }.onFailure { statusMsg = "Gagal: ${it.message}" }
+                }.onFailure { statusMsg = "Gagal: ${networkErrorMessage(it, s.premiumServerUrl)}" }
                 busy = false
             }
         }, enabled = !busy && emailOk && selected != null) { Text(if (busy) "Membuat…" else if (provider == "manual") "Buat order" else "Buat QRIS") }
@@ -204,7 +205,7 @@ fun BuyPremiumSection() {
                             order = it; polling = true
                             photoFile = null
                             statusMsg = "Bukti + foto terkirim. Menunggu verifikasi admin."
-                        }.onFailure { statusMsg = "Gagal: ${it.message}" }
+                        }.onFailure { statusMsg = "Gagal: ${networkErrorMessage(it, s.premiumServerUrl)}" }
                         busy = false
                     }
                 }, enabled = !busy && sender.isNotBlank() && photoFile != null) { Text("Kirim bukti bayar") }

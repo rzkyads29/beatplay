@@ -38,9 +38,17 @@ class SessionExpiredException(message: String) : Exception(message)
  */
 object BeatPlayAuth {
     private val http: HttpClient by lazy {
-        HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build()
+        HttpClient.newBuilder()
+            // 5 s was too tight for a first TLS handshake on a slow or lossy connection.
+            .connectTimeout(Duration.ofSeconds(15))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build()
     }
     private val json = Json { ignoreUnknownKeys = true }
+
+    /** Attempts per request: a dropped packet on a phone tether should not end the sign up. */
+    private const val ATTEMPTS = 3
+    private const val RETRY_DELAY_MS = 700L
 
     private fun esc(s: String) = s.replace("\\", "\\\\").replace("\"", "\\\"")
 
@@ -49,28 +57,66 @@ object BeatPlayAuth {
             json.parseToJsonElement(body).jsonObject["error"]?.jsonPrimitive?.content
         }.getOrNull()?.takeIf { it.isNotBlank() } ?: "Server HTTP $code"
 
+    private fun sendOnce(
+        serverUrl: String,
+        path: String,
+        payload: String?,
+        token: String?,
+    ): String {
+        val base = serverUrl.trim().trimEnd('/')
+        val builder = HttpRequest.newBuilder(URI("$base$path")).timeout(Duration.ofSeconds(25))
+        if (token != null) builder.header("Authorization", "Bearer $token")
+        if (payload == null) {
+            builder.GET()
+        } else {
+            builder.header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(payload))
+        }
+        val res = http.send(builder.build(), HttpResponse.BodyHandlers.ofString())
+        val body = res.body()
+        if (res.statusCode() == 401) throw SessionExpiredException(errorOf(body, 401))
+        check(res.statusCode() == 200) { errorOf(body, res.statusCode()) }
+        return body
+    }
+
     private fun send(
         serverUrl: String,
         path: String,
         payload: String?,
         token: String? = null,
+        /** Retry only when the request never left the device (safe for register). */
+        retryUnsentOnly: Boolean = false,
     ): Result<String> {
-        val base = serverUrl.trim().trimEnd('/')
-        return runCatching {
-            val builder = HttpRequest.newBuilder(URI("$base$path")).timeout(Duration.ofSeconds(12))
-            if (token != null) builder.header("Authorization", "Bearer $token")
-            if (payload == null) {
-                builder.GET()
-            } else {
-                builder.header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(payload))
-            }
-            val res = http.send(builder.build(), HttpResponse.BodyHandlers.ofString())
-            val body = res.body()
-            if (res.statusCode() == 401) throw SessionExpiredException(errorOf(body, 401))
-            check(res.statusCode() == 200) { errorOf(body, res.statusCode()) }
-            body
+        var last: Throwable? = null
+        for (attempt in 1..ATTEMPTS) {
+            val result = runCatching { sendOnce(serverUrl, path, payload, token) }
+            val error = result.exceptionOrNull() ?: return result
+            last = error
+            if (!isTransientNetworkError(error)) return result
+            if (retryUnsentOnly && !requestNeverSent(error)) return result
+            if (attempt == ATTEMPTS) return result
+            Thread.sleep(RETRY_DELAY_MS * attempt)
         }
+        return Result.failure(last ?: IllegalStateException("Gagal menghubungi server"))
+    }
+
+    /**
+     * Checks the server step by step (DNS, then HTTPS) and reports what happened. Used by the
+     * developer tools so a failing connection can be diagnosed without guessing.
+     */
+    suspend fun probe(serverUrl: String): String = withContext(Dispatchers.IO) {
+        val base = serverUrl.trim().trimEnd('/')
+        val host = runCatching { URI(base).host }.getOrNull()
+            ?: return@withContext "Alamat server tidak valid: $serverUrl"
+        val address = runCatching { java.net.InetAddress.getByName(host) }
+            .getOrElse { return@withContext "DNS gagal untuk $host. ${networkErrorMessage(it, base)}" }
+        val dns = "DNS $host -> ${address.hostAddress}"
+        val httpsResult = runCatching {
+            val req = HttpRequest.newBuilder(URI("$base/api/plans")).timeout(Duration.ofSeconds(20)).GET().build()
+            val res = http.send(req, HttpResponse.BodyHandlers.ofString())
+            "HTTPS OK (HTTP ${res.statusCode()})"
+        }.getOrElse { "HTTPS gagal: ${networkErrorMessage(it, base)}" }
+        "$dns\n$httpsResult"
     }
 
     suspend fun register(serverUrl: String, email: String, password: String): Result<AuthResult> =
@@ -79,6 +125,7 @@ object BeatPlayAuth {
                 serverUrl,
                 "/api/auth/register",
                 """{"email":"${esc(normalizeEmail(email))}","password":"${esc(password)}"}""",
+                retryUnsentOnly = true,
             ).map { body ->
                 val root = json.parseToJsonElement(body).jsonObject
                 AuthResult(
