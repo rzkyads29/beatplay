@@ -8,6 +8,9 @@ local.properties
 server/tripay_config.json
 server/orders.json
 server/premium_expiry.json
+server/users.json
+server/sessions.json
+server/smtp_config.json
 server/proofs/
 server/__test_tmp/
 __pycache__/

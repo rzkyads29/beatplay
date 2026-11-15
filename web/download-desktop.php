@@ -12,7 +12,7 @@ declare(strict_types=1);
  * halaman tetap jalan tanpa cache, hanya lebih lambat.
  */
 
-const GITHUB_REPO = 'cukimai29/beatplay';
+const GITHUB_REPO = 'rzkyads29/beatplay';
 const CACHE_FILE = __DIR__ . '/.beatplay-desktop-release.json';
 const CACHE_TTL = 600;
 
