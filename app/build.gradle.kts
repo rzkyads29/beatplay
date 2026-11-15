@@ -35,6 +35,7 @@ dependencies {
     implementation(libs.dbus.transport)
     implementation(libs.kuromoji.ipadic)
     implementation(libs.tinypinyin)
+    implementation(libs.zxing.core)
     testImplementation(libs.junit)
 }
 

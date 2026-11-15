@@ -14,6 +14,7 @@ protobufPlugin = "0.10.0"
 dbus = "5.2.2"
 kuromoji = "0.9.0"
 tinypinyin = "2.0.3"
+zxing = "3.5.3"
 
 [libraries]
 innertubex-desktop = { module = "com.github.MetrolistGroup.innertubex:innertubex-desktop", version.ref = "innertubex" }
@@ -37,6 +38,7 @@ dbus-transport = { module = "com.github.hypfvieh:dbus-java-transport-native-unix
 junit = { module = "junit:junit", version = "4.13.2" }
 kuromoji-ipadic = { module = "com.atilika.kuromoji:kuromoji-ipadic", version.ref = "kuromoji" }
 tinypinyin = { module = "com.github.promeg:tinypinyin", version.ref = "tinypinyin" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

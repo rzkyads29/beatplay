@@ -126,15 +126,16 @@ fun BuyPremiumSection() {
             delay(5000)
             PremiumRepository.orderStatus(ref, s.premiumServerUrl).onSuccess { st ->
                 order = st.order
-                if (st.premium) {
-                    polling = false
-                    statusMsg = "Pembayaran lunas. Premium aktif s/d ${st.expiry?.let { java.util.Date(it * 1000) } ?: "-"}."
-                } else if (st.order.status == "PENDING") {
-                    statusMsg = "Bukti diterima. Menunggu verifikasi admin."
-                } else if (st.order.status != "UNPAID") {
-                    polling = false
-                    statusMsg = "Status order: ${st.order.status}."
+                statusMsg = when {
+                    st.order.status == "PAID" ->
+                        "Pembayaran lunas. Premium aktif" +
+                            (st.expiry?.let { " s/d ${java.util.Date(it * 1000)}" } ?: "") + "."
+                    st.order.status == "PENDING" -> "Bukti diterima. Menunggu verifikasi admin."
+                    st.premium -> "Order ini belum dibayar. Akun BeatPlay kamu sudah Premium."
+                    st.order.status != "UNPAID" -> "Status order: ${st.order.status}."
+                    else -> statusMsg
                 }
+                if (st.premium || st.order.status !in listOf("UNPAID", "PENDING")) polling = false
             }
         }
     }
@@ -163,19 +164,21 @@ fun BuyPremiumSection() {
                     photoFile = null; sender = ""; note = ""
                     statusMsg = if (provider == "manual")
                         "Order ${it.merchantRef} (${rupiah(it.amount)}). Bayar ke QRIS di bawah, lalu kirim bukti."
-                    else "Order ${it.merchantRef} (${rupiah(it.amount)}). Scan QR / buka halaman bayar, lalu tunggu status."
+                    else "Order ${it.merchantRef} (${rupiah(it.amount)}). Scan QRIS di bawah, lalu tunggu status."
                 }.onFailure { statusMsg = "Gagal: ${it.message}" }
                 busy = false
             }
         }, enabled = !busy && emailOk && selected != null) { Text(if (busy) "Membuat…" else if (provider == "manual") "Buat order" else "Buat QRIS") }
-        if (provider == "manual") manual?.let { m ->
-            Text("Bayar ke: ${m.accountName}", style = MaterialTheme.typography.titleSmall)
-            Text(m.instructions, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (m.hasImage) OutlinedButton({ openLink("$shopBase/manual-qris.png") }) { Text("Buka gambar QRIS") }
-        }
+        // QRIS ditampilkan langsung di aplikasi: tidak perlu membuka halaman web gateway.
+        QrisPanel(
+            order = order,
+            provider = provider,
+            manual = manual,
+            shopBase = shopBase,
+            onOpenExternal = { openLink(it) },
+            onMessage = { statusMsg = it },
+        )
         order?.let { o ->
-            Text("Ref: ${o.merchantRef} • ${rupiah(o.amount)} • ${o.status}", style = MaterialTheme.typography.bodySmall)
-            o.qrString?.let { Text("QR payload: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             if (provider == "manual" && o.status != "PAID") {
                 OutlinedTextField(sender, { sender = it }, Modifier.fillMaxWidth(), label = { Text("Nama pengirim DANA") }, singleLine = true)
                 OutlinedTextField(note, { note = it }, Modifier.fillMaxWidth(), label = { Text("Catatan (opsional)") }, singleLine = true)
@@ -207,21 +210,18 @@ fun BuyPremiumSection() {
                 }, enabled = !busy && sender.isNotBlank() && photoFile != null) { Text("Kirim bukti bayar") }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                o.checkoutUrl?.let { url ->
-                    OutlinedButton({ openLink(url) }) { Text("Buka halaman bayar") }
-                }
-                o.qrUrl?.let { url ->
-                    OutlinedButton({ openLink(url) }) { Text("Buka gambar QR") }
-                }
                 if (polling) OutlinedButton({ polling = false }) { Text("Stop cek") }
                 else OutlinedButton({
                     polling = true
                     scope.launch {
                         PremiumRepository.orderStatus(o.merchantRef, s.premiumServerUrl).onSuccess {
                             order = it.order
-                            statusMsg = if (it.premium) "Pembayaran lunas. Premium aktif."
-                            else if (it.order.status == "PENDING") "Bukti diterima. Menunggu verifikasi admin."
-                            else "Status: ${it.order.status}."
+                            statusMsg = when {
+                                it.order.status == "PAID" -> "Pembayaran lunas. Premium aktif."
+                                it.order.status == "PENDING" -> "Bukti diterima. Menunggu verifikasi admin."
+                                it.premium -> "Order ini belum dibayar. Akun BeatPlay kamu sudah Premium."
+                                else -> "Status: ${it.order.status}."
+                            }
                             if (it.premium || it.order.status !in listOf("UNPAID", "PENDING")) polling = false
                         }
                     }
