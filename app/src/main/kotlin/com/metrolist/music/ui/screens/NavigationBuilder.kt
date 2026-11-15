@@ -49,6 +49,7 @@ import com.metrolist.music.ui.screens.settings.AiSettings
 import com.metrolist.music.ui.screens.settings.AndroidAutoSettings
 import com.metrolist.music.ui.screens.settings.AppearanceSettings
 import com.metrolist.music.ui.screens.settings.BackupAndRestore
+import com.metrolist.music.ui.screens.settings.BeatPlayAuthScreen
 import com.metrolist.music.ui.screens.settings.ContentSettings
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.screens.settings.LyricsProviderSettings
@@ -61,6 +62,7 @@ import com.metrolist.music.ui.screens.settings.SpotifyLoginScreen
 import com.metrolist.music.ui.screens.settings.StorageSettings
 import com.metrolist.music.ui.screens.settings.ThemeScreen
 import com.metrolist.music.ui.screens.settings.UpdaterScreen
+import com.metrolist.music.ui.screens.settings.YouTubeAccountScreen
 import com.metrolist.music.ui.screens.settings.integrations.DiscordSettings
 import com.metrolist.music.ui.screens.settings.integrations.IntegrationScreen
 import com.metrolist.music.ui.screens.settings.integrations.LastFMSettings
@@ -369,6 +371,14 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable("settings/premium/advanced") {
         PremiumSettingsScreen(navController, showAdvanced = true)
+    }
+
+    composable("beatplay_auth") {
+        BeatPlayAuthScreen(navController)
+    }
+
+    composable("settings/youtube_account") {
+        YouTubeAccountScreen(navController)
     }
 
     composable("settings/appearance") {

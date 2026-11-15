@@ -124,8 +124,6 @@ fun PremiumSettingsScreen(
     // not to the Google account, so no Gmail detection is needed.
     var authEmail by rememberPreference(BeatPlayAccountEmailKey, "")
     var authToken by rememberPreference(BeatPlayAuthTokenKey, "")
-    var authEmailInput by remember { mutableStateOf(authEmail) }
-    var authPasswordInput by remember { mutableStateOf("") }
     var authMsg by remember { mutableStateOf<String?>(null) }
     var authMsgIsError by remember { mutableStateOf(false) }
     var authLoading by remember { mutableStateOf(false) }
@@ -274,7 +272,7 @@ fun PremiumSettingsScreen(
                     Modifier.fillMaxWidth().padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(stringResource(R.string.premium_account_headline), style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.bp_account_section), style = MaterialTheme.typography.titleMedium)
                     if (isLoggedIn) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             Icon(
@@ -288,38 +286,7 @@ fun PremiumSettingsScreen(
                                 modifier = Modifier.weight(1f),
                             )
                         }
-                    } else {
-                        Text(
-                            stringResource(R.string.premium_account_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        OutlinedTextField(
-                            authEmailInput,
-                            {
-                                authEmailInput = it
-                                authMsg = null
-                                authMsgIsError = false
-                            },
-                            Modifier.fillMaxWidth(),
-                            label = { Text(stringResource(R.string.premium_email_label)) },
-                            singleLine = true,
-                        )
-                        OutlinedTextField(
-                            authPasswordInput,
-                            {
-                                authPasswordInput = it
-                                authMsg = null
-                                authMsgIsError = false
-                            },
-                            Modifier.fillMaxWidth(),
-                            label = { Text(stringResource(R.string.premium_account_password)) },
-                            singleLine = true,
-                            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                        )
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        if (isLoggedIn) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             Button(
                                 onClick = {
                                     authLoading = true
@@ -363,8 +330,6 @@ fun PremiumSettingsScreen(
                                         }
                                         applyPremiumResult(false, null, null)
                                         authEmail = ""
-                                        authEmailInput = ""
-                                        authPasswordInput = ""
                                         authMsg = null
                                         authMsgIsError = false
                                         authLoading = false
@@ -373,81 +338,20 @@ fun PremiumSettingsScreen(
                                 modifier = Modifier.weight(1f),
                                 enabled = !authLoading,
                             ) {
-                                Text(stringResource(R.string.premium_logout))
+                                Text(stringResource(R.string.bp_auth_logout))
                             }
-                        } else {
-                            OutlinedButton(
-                                onClick = {
-                                    if (authLoading) return@OutlinedButton
-                                    authLoading = true
-                                    authMsg = null
-                                    authMsgIsError = false
-                                    scope.launch {
-                                        val base = serverPref.trim().trimEnd('/')
-                                        val inputEmail = authEmailInput.trim()
-                                        runCatching { api.login(base, inputEmail, authPasswordInput) }
-                                            .onSuccess { res ->
-                                                authEmail = res.email
-                                                authToken = res.token
-                                                context.safeDataStoreEdit {
-                                                    it[BeatPlayAccountEmailKey] = res.email
-                                                    it[BeatPlayAuthTokenKey] = res.token
-                                                }
-                                                authMsg = context.getString(R.string.premium_logged_in, res.email)
-                                            }
-                                            .onFailure {
-                                                authMsgIsError = true
-                                                authMsg = context.getString(
-                                                    R.string.premium_login_failed,
-                                                    it.message ?: it.javaClass.simpleName,
-                                                )
-                                            }
-                                        authLoading = false
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                                enabled = !authLoading && authEmailInput.isNotBlank() && authPasswordInput.isNotBlank(),
-                            ) {
-                                Text(stringResource(if (authLoading) R.string.premium_logging else R.string.premium_login))
-                            }
-                            Button(
-                                onClick = {
-                                    if (authLoading) return@Button
-                                    authLoading = true
-                                    authMsg = null
-                                    authMsgIsError = false
-                                    scope.launch {
-                                        val base = serverPref.trim().trimEnd('/')
-                                        val inputEmail = authEmailInput.trim()
-                                        runCatching { api.register(base, inputEmail, authPasswordInput) }
-                                            .onSuccess { res ->
-                                                if (res.requiresVerification) {
-                                                    authMsg = context.getString(R.string.premium_account_register_sent)
-                                                } else {
-                                                    authEmail = res.email
-                                                    authToken = res.token
-                                                    context.safeDataStoreEdit {
-                                                        it[BeatPlayAccountEmailKey] = res.email
-                                                        it[BeatPlayAuthTokenKey] = res.token
-                                                    }
-                                                    authMsg = context.getString(R.string.premium_logged_in, res.email)
-                                                }
-                                            }
-                                            .onFailure {
-                                                authMsgIsError = true
-                                                authMsg = context.getString(
-                                                    R.string.premium_register_failed,
-                                                    it.message ?: it.javaClass.simpleName,
-                                                )
-                                            }
-                                        authLoading = false
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                                enabled = !authLoading && authEmailInput.isNotBlank() && authPasswordInput.isNotBlank(),
-                            ) {
-                                Text(stringResource(if (authLoading) R.string.premium_registering else R.string.premium_register))
-                            }
+                        }
+                    } else {
+                        Text(
+                            stringResource(R.string.bp_account_login_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Button(
+                            onClick = { navController.navigate("beatplay_auth") },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(stringResource(R.string.bp_account_login_cta))
                         }
                     }
                     authMsg?.let {

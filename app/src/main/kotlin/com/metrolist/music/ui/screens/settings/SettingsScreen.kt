@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -32,12 +33,16 @@ import androidx.navigation.NavController
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
+import com.metrolist.music.constants.AccountNameKey
+import com.metrolist.music.constants.InnerTubeCookieKey
+import com.metrolist.innertube.utils.parseCookieString
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.ReleaseNotesCard
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.Updater
+import com.metrolist.music.utils.rememberPreference
 import androidx.compose.runtime.remember
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,6 +65,17 @@ fun SettingsScreen(
         }
     }
 
+    // YouTube login is optional (library sync only), so it lives here instead of the account sheet.
+    val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
+    val accountNamePref by rememberPreference(AccountNameKey, "")
+    val youtubeAccountName = remember(innerTubeCookie, accountNamePref) {
+        if (innerTubeCookie.isNotBlank() && "SAPISID" in parseCookieString(innerTubeCookie)) {
+            accountNamePref
+        } else {
+            ""
+        }
+    }
+
     Column(
         Modifier
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
@@ -74,14 +90,27 @@ fun SettingsScreen(
             )
         )
 
-        // BeatPlay Premium (top-level for visibility)
+        // BeatPlay Premium + Akun YouTube (top-level for visibility)
         Material3SettingsGroup(
-            title = stringResource(R.string.premium),
             items = listOf(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.crown),
                     title = { Text(stringResource(R.string.premium)) },
                     onClick = { navController.navigate("settings/premium") }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.account),
+                    title = { Text(stringResource(R.string.settings_youtube_account)) },
+                    description = {
+                        Text(
+                            if (youtubeAccountName.isNotBlank()) {
+                                stringResource(R.string.settings_youtube_account_logged, youtubeAccountName)
+                            } else {
+                                stringResource(R.string.settings_youtube_account_out)
+                            }
+                        )
+                    },
+                    onClick = { navController.navigate("settings/youtube_account") }
                 )
             )
         )
