@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.5.20] - 2026-11-15
+
+* fix(premium): repair a stale server address on every launch (407488d)
+* docs(web): downloads point at v1.5.19 desktop and android-v1.5.4 (cc58fdc)
+
 ## [v1.5.19] - 2026-11-15
 
 * fix(premium): make server calls survive a bad connection and explain the failure (bf88762)
