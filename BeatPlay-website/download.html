@@ -73,7 +73,7 @@ const PLATFORMS = {
     // tanpa lewat api.github.com, jadi tidak kena rate limit 60 req/jam per IP.
     // Resolve via download-desktop.php (server-side) supaya tidak kena rate limit
     // api.github.com di sisi klien. Fallback ke URL tag eksplisit bila PHP gagal.
-    files: [{ name: "beatplay-1.5.19.msi", size: 146481160, url: "https://github.com/" + REPO + "/releases/download/v1.5.19/beatplay-1.5.19.msi" }],
+    files: [{ name: "beatplay-1.5.20.msi", size: 146481160, url: "https://github.com/" + REPO + "/releases/download/v1.5.20/beatplay-1.5.20.msi" }],
     resolve: "download-desktop.php?kind=windows",
     steps: [["Download installer MSI.", "Pilih file Windows dari rilis terbaru."],
             ["Buka dan ikuti instalasi.", "Java runtime dan libVLC sudah disertakan."],
@@ -83,8 +83,8 @@ const PLATFORMS = {
   linux: {
     title: "Halo, Linux.",
     files: [
-      { name: "beatplay_1.5.19_amd64.deb", size: 96192308, url: "https://github.com/" + REPO + "/releases/download/v1.5.19/beatplay_1.5.19_amd64.deb" },
-      { name: "beatplay-1.5.19-1.x86_64.rpm", size: 96266293, url: "https://github.com/" + REPO + "/releases/download/v1.5.19/beatplay-1.5.19-1.x86_64.rpm" },
+      { name: "beatplay_1.5.20_amd64.deb", size: 96197120, url: "https://github.com/" + REPO + "/releases/download/v1.5.20/beatplay_1.5.20_amd64.deb" },
+      { name: "beatplay-1.5.20-1.x86_64.rpm", size: 96258105, url: "https://github.com/" + REPO + "/releases/download/v1.5.20/beatplay-1.5.20-1.x86_64.rpm" },
     ],
     resolve: "download-desktop.php?kind=linux",
     steps: [["Download paketnya.", "Pilih .deb (Debian/Ubuntu) atau .rpm (Fedora)."],
