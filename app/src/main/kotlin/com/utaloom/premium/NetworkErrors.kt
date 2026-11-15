@@ -1,5 +1,6 @@
 package com.utaloom.premium
 
+import com.utaloom.data.PREMIUM_SERVER_DEFAULT
 import java.io.IOException
 import java.net.ConnectException
 import java.net.NoRouteToHostException
@@ -21,6 +22,7 @@ import javax.net.ssl.SSLHandshakeException
 fun networkErrorMessage(error: Throwable, serverUrl: String = ""): String {
     val host = runCatching { java.net.URI(serverUrl.trim()).host }.getOrNull()
     val where = if (host.isNullOrBlank()) "server BeatPlay" else host
+    val stale = staleAddressHint(serverUrl, where)
     return when (error) {
         is SessionExpiredException -> error.message ?: "Sesi akun sudah berakhir."
 
@@ -29,7 +31,7 @@ fun networkErrorMessage(error: Throwable, serverUrl: String = ""): String {
 
         is HttpConnectTimeoutException, is HttpTimeoutException, is SocketTimeoutException ->
             "Koneksi ke $where habis waktu. Periksa internet dan coba lagi. Kalau tetap gagal, " +
-                "izinkan BeatPlay di firewall/antivirus, atau matikan dulu VPN-nya."
+                "izinkan BeatPlay di firewall/antivirus, atau matikan dulu VPN-nya.$stale"
 
         is SSLHandshakeException ->
             "Koneksi aman (HTTPS) ditolak. Periksa tanggal dan jam di komputer ini, lalu coba lagi."
@@ -39,14 +41,37 @@ fun networkErrorMessage(error: Throwable, serverUrl: String = ""): String {
 
         is ConnectException, is NoRouteToHostException ->
             "Tidak bisa menghubungi $where. Jaringan ini sepertinya memblokirnya — " +
-                "coba jaringan lain, misalnya hotspot dari HP."
+                "coba jaringan lain, misalnya hotspot dari HP.$stale"
 
         is IOException ->
-            "Koneksi ke $where bermasalah: ${error.message ?: error.javaClass.simpleName}."
+            "Koneksi ke $where bermasalah: ${error.message ?: error.javaClass.simpleName}.$stale"
 
         else -> error.message ?: error.javaClass.simpleName
     }
 }
+
+/** True when the saved server address is a bare IPv4 literal rather than a hostname. */
+internal fun isBareIpServer(serverUrl: String): Boolean {
+    val trimmed = serverUrl.trim()
+    if (trimmed.isEmpty()) return false
+    // URI only parses an authority when a scheme is present, so a bare "52.141.21.195:8080"
+    // falls back to slicing the host out by hand.
+    val host = runCatching { java.net.URI(trimmed).host }.getOrNull()
+        ?: trimmed.substringAfter("://").substringBefore('/').substringBefore('?').substringBefore(':')
+    return Regex("^\\d{1,3}(?:\\.\\d{1,3}){3}$").matches(host)
+}
+
+/**
+ * Names the real cause when the app is still pointed at an old IP address. The pre-1.5.x default
+ * was the VPS on port 8080, which is closed to the internet, so requests only ever time out —
+ * pointing that out beats letting the user blame their own connection.
+ */
+private fun staleAddressHint(serverUrl: String, where: String): String =
+    if (isBareIpServer(serverUrl)) {
+        " Server yang dipakai masih alamat IP lama ($where); ganti ke $PREMIUM_SERVER_DEFAULT."
+    } else {
+        ""
+    }
 
 /**
  * True for failures that are worth retrying straight away: dropped packets, a slow TLS

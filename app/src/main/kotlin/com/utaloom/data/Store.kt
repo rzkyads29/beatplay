@@ -27,6 +27,19 @@ import java.io.File
  */
 private const val DEFAULT_CROSSFADE_SECONDS = 8
 
+/** Canonical premium server: HTTPS on the domain, which is the only address the firewall allows. */
+internal const val PREMIUM_SERVER_DEFAULT = "https://premium.adminbeat.my.id"
+
+/**
+ * The pre-1.5.x default pointed at the bare VPS address on port 8080. That port is closed to the
+ * internet, so every request sat there until it timed out ("Koneksi ke 52.141.21.195 habis waktu").
+ * Matches the address with or without a scheme, any port, and an optional trailing slash.
+ */
+private val PREMIUM_SERVER_LEGACY = Regex("^(?:https?://)?52\\.141\\.21\\.195(?::\\d+)?/?$")
+
+/** Same server reached over plain HTTP, which only costs a redirect round trip. */
+private const val PREMIUM_SERVER_HTTP = "http://premium.adminbeat.my.id"
+
 /** Serializable song snapshot used for library, history, playlists and the persisted queue. */
 @Serializable
 data class Song(
@@ -140,7 +153,7 @@ data class Settings(
     val isPremium: Boolean = false,
     val premiumLastChecked: Long = 0L,
     val premiumExpiry: Long? = null, // epoch detik dari server; null = lifetime/manual
-    val premiumServerUrl: String = "https://premium.adminbeat.my.id",
+    val premiumServerUrl: String = PREMIUM_SERVER_DEFAULT,
     // Akun BeatPlay (email + kata sandi). Premium terikat ke akun ini, bukan ke akun Google.
     val beatPlayAccountEmail: String? = null,
     val beatPlayAuthToken: String? = null,
@@ -167,6 +180,24 @@ data class Settings(
         if (ltServerUrl.trim() == "wss://metrolist.caliph.dev/ws") copy(ltServerUrl = "wss://utaloom.caliph.dev/ws") else this
 
     /**
+     * Points the premium client back at the current server when the saved address is a legacy one.
+     *
+     * This is deliberately not a schema-gated migration: a settings file written before
+     * `settingsSchema` existed reads back with the *current* schema number, so the one-time
+     * upgrade below never fires for it and the dead address survives every later update. Files
+     * like that are exactly why a friend kept seeing "Koneksi ke 52.141.21.195 habis waktu" while
+     * a fresh install worked, so the repair is applied on every load instead.
+     */
+    internal fun repairLegacyPremiumServerUrl(): Settings {
+        val url = premiumServerUrl.trim()
+        return when {
+            PREMIUM_SERVER_LEGACY.matches(url) -> copy(premiumServerUrl = PREMIUM_SERVER_DEFAULT)
+            url.trimEnd('/') == PREMIUM_SERVER_HTTP -> copy(premiumServerUrl = PREMIUM_SERVER_DEFAULT)
+            else -> this
+        }
+    }
+
+    /**
      * One-time upgrades for settings saved by older builds. Existing files already contain the old
      * defaults, so changing a default alone would never reach users who are upgrading.
      */
@@ -184,12 +215,7 @@ data class Settings(
             else s.copy(gaplessPlayback = true, crossfadeSeconds = DEFAULT_CROSSFADE_SECONDS, settingsSchema = 2)
         }
         if (s.settingsSchema < 4) {
-            val premiumServerUrl = if (s.premiumServerUrl.trim().trimEnd('/') == "http://52.141.21.195:8080") {
-                "https://premium.adminbeat.my.id"
-            } else {
-                s.premiumServerUrl
-            }
-            s = s.copy(premiumServerUrl = premiumServerUrl, settingsSchema = 4)
+            s = s.repairLegacyPremiumServerUrl().copy(settingsSchema = 4)
         }
         if (s.settingsSchema < 5) {
             // Normalization was re-enabled by default for fresh installs, but users again
@@ -311,7 +337,9 @@ object Stores {
     val queue = JsonStore(Paths.dir.resolve("queue.json"), ::PersistedQueue, PersistedQueue.serializer())
 
     init {
-        val migrated = settings.value.migrate().normalizeLegacyLtServerUrl()
+        // repairLegacyPremiumServerUrl runs unconditionally on top of the schema migrations: files
+        // that already report the current schema can still carry a legacy premium address.
+        val migrated = settings.value.migrate().normalizeLegacyLtServerUrl().repairLegacyPremiumServerUrl()
         if (migrated != settings.value) {
             settings.update { migrated }
             settings.flush()

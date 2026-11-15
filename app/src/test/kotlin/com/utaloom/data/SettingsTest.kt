@@ -113,6 +113,49 @@ class SettingsTest {
     }
 
     @Test
+    fun legacyPremiumAddressIsRepairedEvenWhenTheSchemaLooksCurrent() {
+        // A settings.json written before settingsSchema existed decodes with the *current* schema
+        // number, so the one-time "< 4" upgrade never fires and the dead address survives every
+        // update. That is why one machine kept timing out against 52.141.21.195 while a fresh
+        // install on the same network worked, so the repair must run on every load.
+        val legacy = "http://52.141.21.195:8080"
+        val parsed = Json.decodeFromString(Settings.serializer(), """{"premiumServerUrl":"$legacy"}""")
+        assertEquals(Settings().settingsSchema, parsed.settingsSchema)
+        assertEquals("the schema-gated migration is what missed it", legacy, parsed.migrate().premiumServerUrl)
+        assertEquals(PREMIUM_SERVER_DEFAULT, parsed.repairLegacyPremiumServerUrl().premiumServerUrl)
+    }
+
+    @Test
+    fun everyLegacyPremiumAddressFormIsRepairedAndCustomUrlsKept() {
+        val kept = Settings(
+            darkMode = "dark",
+            volume = 37,
+            accountEmail = "iyasaja788@gmail.com",
+            lyricsOrder = listOf("LRCLib", "LyricsPlus"),
+            minimizeToTray = false,
+        )
+        listOf(
+            "http://52.141.21.195:8080" to PREMIUM_SERVER_DEFAULT,
+            "http://52.141.21.195:8080/" to PREMIUM_SERVER_DEFAULT,
+            "http://52.141.21.195" to PREMIUM_SERVER_DEFAULT,
+            "https://52.141.21.195" to PREMIUM_SERVER_DEFAULT,
+            "https://52.141.21.195:8080" to PREMIUM_SERVER_DEFAULT,
+            "  52.141.21.195:8080  " to PREMIUM_SERVER_DEFAULT,
+            "http://premium.adminbeat.my.id" to PREMIUM_SERVER_DEFAULT,
+            PREMIUM_SERVER_DEFAULT to PREMIUM_SERVER_DEFAULT,
+            // Anything else the user or an admin configured stays exactly as saved.
+            "https://custom.example/premium" to "https://custom.example/premium",
+            "http://52.141.21.195:8080/premium" to "http://52.141.21.195:8080/premium",
+            "http://52.141.21.195.evil.example" to "http://52.141.21.195.evil.example",
+        ).forEach { (url, expected) ->
+            val repaired = kept.copy(premiumServerUrl = url).repairLegacyPremiumServerUrl()
+            assertEquals("other settings must survive $url", expected, repaired.premiumServerUrl)
+            assertEquals(kept.copy(premiumServerUrl = expected), repaired)
+            assertSame("repairing twice must be a no-op", repaired, repaired.repairLegacyPremiumServerUrl())
+        }
+    }
+
+    @Test
     fun legacyVolumeAndBlurDefaultsAreResetOnce() {
         // Schema 0 installations use the historical defaults, so the old migration
         // must still run for them even though fresh installs start at schema 5.

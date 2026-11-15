@@ -75,4 +75,24 @@ class NetworkErrorsTest {
         val message = networkErrorMessage(SocketTimeoutException(), "")
         assertTrue(message.contains("server BeatPlay"))
     }
+
+    @Test
+    fun aStaleIpAddressIsNamedInsteadOfBlamingTheNetwork() {
+        // The pre-1.5.x default pointed at the VPS on port 8080, which the firewall blocks, so the
+        // request can only ever time out. Saying which address is stale ends the guessing.
+        val message = networkErrorMessage(HttpConnectTimeoutException("HTTP connect timed out"), "http://52.141.21.195:8080")
+        assertTrue(message.contains("52.141.21.195"))
+        assertTrue("the message must name the address to use instead", message.contains("premium.adminbeat.my.id"))
+        assertTrue(isBareIpServer("http://52.141.21.195:8080"))
+        assertTrue(isBareIpServer("52.141.21.195"))
+    }
+
+    @Test
+    fun aHostnameIsNeverBlamedOnAStaleAddress() {
+        assertFalse(isBareIpServer("https://premium.adminbeat.my.id"))
+        assertFalse(isBareIpServer("https://custom.example/premium"))
+        assertFalse(isBareIpServer(""))
+        val message = networkErrorMessage(HttpConnectTimeoutException("HTTP connect timed out"), "https://premium.adminbeat.my.id")
+        assertFalse("a hostname has no stale-address hint", message.contains("alamat IP lama"))
+    }
 }
