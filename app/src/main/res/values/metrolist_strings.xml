@@ -1030,7 +1030,7 @@
     <string name="top_result">Top result</string>
     <string name="other">Other</string>
     <string name="utaloom_name" translatable="false">BeatPlay</string>
-    <string name="utaloom_github_releases_url" translatable="false">https://github.com/cukimai29/beatplay/releases</string>
+    <string name="utaloom_github_releases_url" translatable="false">https://github.com/rzkyads29/beatplay/releases</string>
     <string name="utaloom_update_available_message" translatable="false">BeatPlay %s is ready to download.</string>
     <string name="utaloom_last_fm_send_likes_description" translatable="false">Love or unlove songs in Last.fm when you like or unlike them in BeatPlay</string>
     <string name="utaloom_wrapped_intro_title" translatable="false">BEATPLAY</string>
@@ -1100,4 +1100,22 @@
     <string name="premium_ad_upgrade">Lihat Premium</string>
     <string name="premium_pay_to">Bayar ke: %1$s</string>
     <string name="premium_sender_required">Nama pengirim wajib diisi</string>
+    <string name="premium_login">Masuk</string>
+    <string name="premium_logging">Memproses…</string>
+    <string name="premium_register">Daftar</string>
+    <string name="premium_registering">Mendaftar…</string>
+    <string name="premium_logout">Keluar akun BeatPlay</string>
+    <string name="premium_logged_in">Berhasil masuk sebagai %1$s.</string>
+    <string name="premium_login_failed">Gagal masuk: %1$s</string>
+    <string name="premium_register_failed">Gagal daftar: %1$s</string>
+    <string name="premium_account_headline">Masuk atau daftar akun BeatPlay</string>
+    <string name="premium_account_desc">Premium terikat ke akun BeatPlay ini, bukan akun Google. Login YouTube opsional untuk sinkron library.</string>
+    <string name="premium_account_password">Kata sandi (min. 8 karakter)</string>
+    <string name="premium_account_connected">Terhubung sebagai %1$s</string>
+    <string name="premium_account_register_sent">Registrasi berhasil. Cek email untuk tautan verifikasi.</string>
+    <string name="premium_login_required">Masuk akun BeatPlay dulu untuk membeli Premium.</string>
+    <string name="premium_server_label">Server Premium</string>
+    <string name="premium_server_desc">URL server BeatPlay (dari admin).</string>
+    <string name="premium_server_save">Simpan server</string>
+    <string name="premium_server_saved">Server disimpan.</string>
 </resources>

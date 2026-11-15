@@ -552,6 +552,11 @@ val PremiumDevModeKey = booleanPreferencesKey("premiumDevMode")
 // VPS IP get rewritten to the domain (see App.initializeSettings()).
 val PremiumServerUrlMigratedKey = booleanPreferencesKey("premiumServerUrlMigrated")
 
+// BeatPlay account (email + password) auth token. Premium is tied to this account,
+// not to the Google account, so YouTube login is only needed for library sync.
+val BeatPlayAuthTokenKey = stringPreferencesKey("beatPlayAuthToken")
+val BeatPlayAccountEmailKey = stringPreferencesKey("beatPlayAccountEmail")
+
 const val DEFAULT_PREMIUM_SERVER_URL = "https://premium.adminbeat.my.id"
 const val DEFAULT_AD_EVERY_N_SONGS = 3
 const val DEFAULT_AD_SECONDS = 10

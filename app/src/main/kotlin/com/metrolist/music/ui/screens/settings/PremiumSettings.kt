@@ -55,6 +55,8 @@ import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdSecondsKey
+import com.metrolist.music.constants.BeatPlayAccountEmailKey
+import com.metrolist.music.constants.BeatPlayAuthTokenKey
 import com.metrolist.music.constants.DEFAULT_AD_SECONDS
 import com.metrolist.music.constants.DEFAULT_PREMIUM_SERVER_URL
 import com.metrolist.music.constants.IsPremiumKey
@@ -62,18 +64,12 @@ import com.metrolist.music.constants.PremiumDevModeKey
 import com.metrolist.music.constants.PremiumEmailKey
 import com.metrolist.music.constants.PremiumExpiryKey
 import com.metrolist.music.constants.PremiumServerUrlKey
-import com.metrolist.music.constants.AccountEmailKey
-import com.metrolist.music.constants.AccountNameKey
-import com.metrolist.music.constants.InnerTubeAuthUserKey
-import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.SongsSinceAdKey
 import com.metrolist.music.premium.AdState
 import com.metrolist.music.premium.ManualQris
 import com.metrolist.music.premium.OrderInfo
 import com.metrolist.music.premium.Plan
 import com.metrolist.music.premium.PremiumApi
-import com.metrolist.music.premium.fetchGoogleAccountEmail
-import com.metrolist.music.premium.isValidPremiumEmail
 import com.metrolist.music.premium.isLegacyPremiumServerUrl
 import com.metrolist.music.premium.photoMimeFor
 import com.metrolist.music.utils.rememberPreference
@@ -82,7 +78,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import java.text.NumberFormat
 import java.util.Date
 import java.util.Locale
@@ -101,10 +96,6 @@ fun PremiumSettingsScreen(
     val api = remember { PremiumApi() }
     DisposableEffect(api) { onDispose { api.close() } }
 
-    var accountEmailPref by rememberPreference(AccountEmailKey, "")
-    var accountNamePref by rememberPreference(AccountNameKey, "")
-    val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
-    val innerTubeAuthUser by rememberPreference(InnerTubeAuthUserKey, "0")
     var isPremiumPref by rememberPreference(IsPremiumKey, false)
     var expiryPref by rememberPreference(PremiumExpiryKey, 0L)
     val nextAdInMs by AdState.nextAdInMs.collectAsStateWithLifecycle()
@@ -112,15 +103,7 @@ fun PremiumSettingsScreen(
     var devPref by rememberPreference(PremiumDevModeKey, false)
     var adSecondsPref by rememberPreference(AdSecondsKey, DEFAULT_AD_SECONDS)
 
-    // Premium follows the signed-in account. Typing an arbitrary premium email
-    // here would otherwise unlock the device for anyone who knows one.
-    val signedInEmail = remember(accountEmailPref) {
-        accountEmailPref.trim().lowercase().takeIf(::isValidPremiumEmail)
-    }
-    val email = signedInEmail.orEmpty()
     var busy by remember { mutableStateOf(false) }
-    var detectingEmail by remember { mutableStateOf(false) }
-    var detectEmailMessage by remember { mutableStateOf<String?>(null) }
     var msg by remember { mutableStateOf<String?>(null) }
     var plans by remember { mutableStateOf<List<Plan>?>(null) }
     var provider by remember { mutableStateOf("manual") }
@@ -137,12 +120,26 @@ fun PremiumSettingsScreen(
     var photoMime by remember { mutableStateOf<String?>(null) }
     var photoMsg by remember { mutableStateOf<String?>(null) }
 
-    suspend fun applyPremiumResult(premium: Boolean, expiry: Long?) {
-        // Entitlement always follows the login; a typed address is never trusted.
-        val bound = signedInEmail ?: return
+    // BeatPlay account auth (email + password). Premium is bound to this account,
+    // not to the Google account, so no Gmail detection is needed.
+    var authEmail by rememberPreference(BeatPlayAccountEmailKey, "")
+    var authToken by rememberPreference(BeatPlayAuthTokenKey, "")
+    var authEmailInput by remember { mutableStateOf(authEmail) }
+    var authPasswordInput by remember { mutableStateOf("") }
+    var authMsg by remember { mutableStateOf<String?>(null) }
+    var authMsgIsError by remember { mutableStateOf(false) }
+    var authLoading by remember { mutableStateOf(false) }
+    val isLoggedIn = authEmail.isNotBlank() && authToken.isNotBlank()
+
+    suspend fun applyPremiumResult(
+        premium: Boolean,
+        expiry: Long?,
+        boundEmail: String?,
+    ) {
+        if (boundEmail.isNullOrBlank()) return
         context.safeDataStoreEdit {
             it[IsPremiumKey] = premium
-            it[PremiumEmailKey] = bound
+            it[PremiumEmailKey] = boundEmail
             if (premium) {
                 if (expiry != null) it[PremiumExpiryKey] = expiry else it.remove(PremiumExpiryKey)
                 it[SongsSinceAdKey] = 0
@@ -172,7 +169,7 @@ fun PremiumSettingsScreen(
                 .onSuccess { st ->
                     order = st.order
                     if (st.premium) {
-                        applyPremiumResult(true, st.expiry)
+                        applyPremiumResult(true, st.expiry, authEmail)
                         polling = false
                         statusMsg = context.getString(R.string.premium_paid)
                     } else if (st.order.status == "PENDING") {
@@ -268,76 +265,207 @@ fun PremiumSettingsScreen(
                 }
             }
 
-            if (signedInEmail == null) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        if (accountNamePref.isBlank()) {
-                            "Login YouTube/Google diperlukan agar email Premium terdeteksi otomatis."
-                        } else {
-                            "Channel \"$accountNamePref\" belum mendeteksi email Google secara otomatis."
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                    // Brand channels hide the address everywhere in YouTube, so ask Google's
-                    // own account list (same cookies) instead of making the user type it.
-                    Button(
-                        onClick = {
-                            if (detectingEmail) return@Button
-                            detectingEmail = true
-                            detectEmailMessage = null
-                            scope.launch {
-                                // Users who upgraded from an old build have a stored InnerTube
-                                // cookie without the Google session cookies GAIA needs; merge
-                                // whatever the WebView jar still holds as a fallback.
-                                val extra = android.webkit.CookieManager.getInstance()
-                                    .getCookie("https://accounts.google.com").orEmpty()
-                                val recovered = withTimeoutOrNull(20_000) {
-                                    fetchGoogleAccountEmail(
-                                        cookie = innerTubeCookie,
-                                        authUserIndex = innerTubeAuthUser.toIntOrNull() ?: 0,
-                                        extraCookie = extra,
-                                    )
-                                }
-                                detectingEmail = false
-                                if (recovered != null) {
-                                    context.safeDataStoreEdit { it[AccountEmailKey] = recovered }
-                                } else {
-                                    detectEmailMessage =
-                                        "Email Google belum terbaca. Pastikan internet aktif, lalu coba lagi."
-                                }
-                            }
-                        },
-                        enabled = !detectingEmail && innerTubeCookie.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(if (detectingEmail) "Mendeteksi email..." else "Deteksi email otomatis")
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            navController.navigate("switch_channel")
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Buka Ganti YouTube Channel")
-                    }
-                    detectEmailMessage?.let { message ->
+            // Premium follows the BeatPlay account: register/login with email+password,
+            // then fetch /api/auth/me(token) for premium status. YouTube login stays
+            // optional and only used for library sync.
+            var server by remember(serverPref) { mutableStateOf(serverPref) }
+            ElevatedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                Column(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(stringResource(R.string.premium_account_headline), style = MaterialTheme.typography.titleMedium)
+                    if (isLoggedIn) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Icon(
+                                painterResource(R.drawable.check),
+                                null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                stringResource(R.string.premium_account_connected, authEmail),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    } else {
                         Text(
-                            message,
+                            stringResource(R.string.premium_account_desc),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedTextField(
+                            authEmailInput,
+                            {
+                                authEmailInput = it
+                                authMsg = null
+                                authMsgIsError = false
+                            },
+                            Modifier.fillMaxWidth(),
+                            label = { Text(stringResource(R.string.premium_email_label)) },
+                            singleLine = true,
+                        )
+                        OutlinedTextField(
+                            authPasswordInput,
+                            {
+                                authPasswordInput = it
+                                authMsg = null
+                                authMsgIsError = false
+                            },
+                            Modifier.fillMaxWidth(),
+                            label = { Text(stringResource(R.string.premium_account_password)) },
+                            singleLine = true,
+                            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        if (isLoggedIn) {
+                            Button(
+                                onClick = {
+                                    authLoading = true
+                                    authMsg = null
+                                    authMsgIsError = false
+                                    scope.launch {
+                                        val base = serverPref.trim().trimEnd('/')
+                                        runCatching { api.me(base, authToken) }
+                                            .onSuccess { info ->
+                                                applyPremiumResult(info.premium, info.expiry, info.email)
+                                                authMsg = if (info.premium) {
+                                                    context.getString(R.string.premium_active_for, info.email)
+                                                } else {
+                                                    context.getString(R.string.premium_not_premium, info.email)
+                                                }
+                                            }
+                                            .onFailure {
+                                                authMsgIsError = true
+                                                authMsg = context.getString(
+                                                    R.string.premium_check_failed,
+                                                    it.message ?: it.javaClass.simpleName,
+                                                )
+                                            }
+                                        authLoading = false
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                enabled = !authLoading,
+                            ) {
+                                Text(stringResource(if (authLoading) R.string.premium_checking else R.string.premium_check))
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    authLoading = true
+                                    scope.launch {
+                                        val base = serverPref.trim().trimEnd('/')
+                                        api.logout(base, authToken)
+                                        context.safeDataStoreEdit {
+                                            it.remove(BeatPlayAuthTokenKey)
+                                            it.remove(BeatPlayAccountEmailKey)
+                                        }
+                                        applyPremiumResult(false, null, null)
+                                        authEmail = ""
+                                        authEmailInput = ""
+                                        authPasswordInput = ""
+                                        authMsg = null
+                                        authMsgIsError = false
+                                        authLoading = false
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                enabled = !authLoading,
+                            ) {
+                                Text(stringResource(R.string.premium_logout))
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = {
+                                    if (authLoading) return@OutlinedButton
+                                    authLoading = true
+                                    authMsg = null
+                                    authMsgIsError = false
+                                    scope.launch {
+                                        val base = serverPref.trim().trimEnd('/')
+                                        val inputEmail = authEmailInput.trim()
+                                        runCatching { api.login(base, inputEmail, authPasswordInput) }
+                                            .onSuccess { res ->
+                                                authEmail = res.email
+                                                authToken = res.token
+                                                context.safeDataStoreEdit {
+                                                    it[BeatPlayAccountEmailKey] = res.email
+                                                    it[BeatPlayAuthTokenKey] = res.token
+                                                }
+                                                authMsg = context.getString(R.string.premium_logged_in, res.email)
+                                            }
+                                            .onFailure {
+                                                authMsgIsError = true
+                                                authMsg = context.getString(
+                                                    R.string.premium_login_failed,
+                                                    it.message ?: it.javaClass.simpleName,
+                                                )
+                                            }
+                                        authLoading = false
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                enabled = !authLoading && authEmailInput.isNotBlank() && authPasswordInput.isNotBlank(),
+                            ) {
+                                Text(stringResource(if (authLoading) R.string.premium_logging else R.string.premium_login))
+                            }
+                            Button(
+                                onClick = {
+                                    if (authLoading) return@Button
+                                    authLoading = true
+                                    authMsg = null
+                                    authMsgIsError = false
+                                    scope.launch {
+                                        val base = serverPref.trim().trimEnd('/')
+                                        val inputEmail = authEmailInput.trim()
+                                        runCatching { api.register(base, inputEmail, authPasswordInput) }
+                                            .onSuccess { res ->
+                                                if (res.requiresVerification) {
+                                                    authMsg = context.getString(R.string.premium_account_register_sent)
+                                                } else {
+                                                    authEmail = res.email
+                                                    authToken = res.token
+                                                    context.safeDataStoreEdit {
+                                                        it[BeatPlayAccountEmailKey] = res.email
+                                                        it[BeatPlayAuthTokenKey] = res.token
+                                                    }
+                                                    authMsg = context.getString(R.string.premium_logged_in, res.email)
+                                                }
+                                            }
+                                            .onFailure {
+                                                authMsgIsError = true
+                                                authMsg = context.getString(
+                                                    R.string.premium_register_failed,
+                                                    it.message ?: it.javaClass.simpleName,
+                                                )
+                                            }
+                                        authLoading = false
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                enabled = !authLoading && authEmailInput.isNotBlank() && authPasswordInput.isNotBlank(),
+                            ) {
+                                Text(stringResource(if (authLoading) R.string.premium_registering else R.string.premium_register))
+                            }
+                        }
+                    }
+                    authMsg?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (authMsgIsError) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
-            } else {
-                Text("Akun login: $signedInEmail", style = MaterialTheme.typography.bodyMedium)
             }
-            var server by remember(serverPref) { mutableStateOf(serverPref) }
+
             if (showAdvanced) {
                 OutlinedTextField(
                     server, { server = it; msg = null }, Modifier.fillMaxWidth(),
-                    label = { Text("Server Premium") },
-                    supportingText = { Text("URL server BeatPlay (dari admin).") },
+                    label = { Text(stringResource(R.string.premium_server_label)) },
+                    supportingText = { Text(stringResource(R.string.premium_server_desc)) },
                     singleLine = true,
                 )
             }
@@ -347,38 +475,27 @@ fun PremiumSettingsScreen(
                     Text(stringResource(R.string.premium_dev_mode), style = MaterialTheme.typography.bodySmall)
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Button({
-                    busy = true
-                    msg = null
-                    scope.launch {
+            if (showAdvanced) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button({
                         serverPref = if (isLegacyPremiumServerUrl(server)) DEFAULT_PREMIUM_SERVER_URL else server.trim()
-                        runCatching { api.refresh(serverPref, email) }
-                            .onSuccess { (premium, expiry) ->
-                                applyPremiumResult(premium, expiry)
-                                msg = if (premium) context.getString(R.string.premium_active_for, email)
-                                else context.getString(R.string.premium_not_premium, email)
-                            }
-                            .onFailure { msg = context.getString(R.string.premium_check_failed, it.message ?: it.javaClass.simpleName) }
-                        busy = false
-                    }
-                }, enabled = !busy && signedInEmail != null && server.isNotBlank()) {
-                    Text(stringResource(if (busy) R.string.premium_checking else R.string.premium_check))
+                        msg = context.getString(R.string.premium_server_saved)
+                    }) { Text(stringResource(R.string.premium_server_save)) }
                 }
-                    if (isPremiumPref) {
-                        TextButton({
-                            scope.launch {
-                                context.safeDataStoreEdit {
-                                    it[IsPremiumKey] = false
-                                    it.remove(PremiumEmailKey)
-                                    it.remove(PremiumExpiryKey)
-                                    it[SongsSinceAdKey] = 0
-                                }
-                            }
-                        }) { Text(stringResource(R.string.premium_switch_account)) }
-                    }
-                }
+            }
             msg?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+            if (isPremiumPref) {
+                TextButton({
+                    scope.launch {
+                        context.safeDataStoreEdit {
+                            it[IsPremiumKey] = false
+                            it.remove(PremiumEmailKey)
+                            it.remove(PremiumExpiryKey)
+                            it[SongsSinceAdKey] = 0
+                        }
+                    }
+                }) { Text(stringResource(R.string.premium_switch_account)) }
+            }
             if (devPref) {
                 OutlinedButton({
                     scope.launch {
@@ -404,14 +521,14 @@ fun PremiumSettingsScreen(
                     }
                 }
             }
-            val emailOk = signedInEmail != null
-            if (!emailOk) Text("Login akun dulu untuk membeli Premium.", style = MaterialTheme.typography.bodySmall)
+            val emailOk = isLoggedIn
+            if (!emailOk) Text(stringResource(R.string.premium_login_required), style = MaterialTheme.typography.bodySmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button({
                     val plan = selected ?: return@Button
                     busy = true
                     scope.launch {
-                        runCatching { api.createOrder(serverPref, requireNotNull(signedInEmail), plan) }
+                        runCatching { api.createOrder(serverPref.trim().trimEnd('/'), plan, "", authToken) }
                             .onSuccess {
                                 order = it
                                 polling = true
@@ -487,7 +604,7 @@ fun PremiumSettingsScreen(
                                 .onSuccess {
                                     order = it.order
                                     if (it.premium) {
-                                        applyPremiumResult(true, it.expiry)
+                                        applyPremiumResult(true, it.expiry, authEmail)
                                         polling = false
                                         statusMsg = context.getString(R.string.premium_paid)
                                     } else if (it.order.status == "PENDING") {

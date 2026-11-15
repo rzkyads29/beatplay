@@ -40,10 +40,9 @@ import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.safeDataStoreEdit
 import com.metrolist.music.utils.reportException
 import com.metrolist.music.premium.PremiumApi
-import com.metrolist.music.premium.fetchGoogleAccountEmail
+import com.metrolist.music.premium.PremiumAuthException
 import com.metrolist.music.premium.isValidPremiumEmail
 import com.metrolist.music.premium.normalizePremiumEmail
-import com.metrolist.music.premium.resolveAccountEmail
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -243,70 +242,22 @@ class App :
         }
     }
 
-    private data class AccountEmailLookup(val email: String?, val available: Boolean)
-
-    /** GAIA recovery runs at most once per process; brand channels are the only ones that need it. */
-    private var googleEmailRecoveryAttempted = false
-
-    /**
-     * Older installs (and brand channels signed in before 1.4.3) stored no email. Rebuild the
-     * owner address from the account menu plus the channel list, then from the Google account
-     * list that shares the same cookies (brand channels expose no address at all).
-     */
-    private suspend fun resolveSignedInAccountEmail(
-        settings: androidx.datastore.preferences.core.Preferences,
-    ): AccountEmailLookup {
-        val storedCookie = settings[InnerTubeCookieKey]
-        if (storedCookie.isNullOrBlank() || YouTube.cookie.isNullOrBlank()) {
-            return AccountEmailLookup(null, available = true)
-        }
-        val account = runCatching {
-            withTimeout(12_000) { YouTube.accountInfo().getOrThrow() }
-        }.getOrNull() ?: return AccountEmailLookup(null, available = false)
-        val accounts = runCatching {
-            withTimeout(12_000) { YouTube.accountsList().getOrThrow() }
-        }.getOrDefault(emptyList())
-        resolveAccountEmail(account, accounts)?.let { return AccountEmailLookup(it, available = true) }
-
-        if (googleEmailRecoveryAttempted) return AccountEmailLookup(null, available = true)
-        googleEmailRecoveryAttempted = true
-        val recovered = runCatching {
-            withTimeout(15_000) {
-                fetchGoogleAccountEmail(
-                    cookie = storedCookie,
-                    authUserIndex = settings[InnerTubeAuthUserKey]?.toIntOrNull() ?: 0,
-                )
-            }
-        }.getOrNull()
-        Timber.d("Premium: GAIA email recovery ${if (recovered != null) "succeeded" else "found nothing"}")
-        return AccountEmailLookup(recovered, available = true)
-    }
-
-    /**
-     * Premium belongs to the Google/YouTube account saved by the app, never to an email typed
-     * on the Premium screen. A failed network request leaves the previously known status intact.
-     */
+    /** Premium belongs to the BeatPlay account (email + password), not to the Google account. */
     private suspend fun refreshPremiumForSignedInAccount(settings: androidx.datastore.preferences.core.Preferences) {
-        var accountEmail = settings[AccountEmailKey]
+        val token = settings[BeatPlayAuthTokenKey].orEmpty().trim()
+        val accountEmail = settings[BeatPlayAccountEmailKey]
             ?.let(::normalizePremiumEmail)
             ?.takeIf(::isValidPremiumEmail)
-        if (accountEmail == null) {
-            val lookup = resolveSignedInAccountEmail(settings)
-            if (lookup.email != null) {
-                accountEmail = lookup.email
-                safeDataStoreEdit { prefs -> prefs[AccountEmailKey] = lookup.email }
-            } else if (!lookup.available) {
-                // Signed in but the account menu could not be read (offline). Keep the cached
-                // entitlement instead of silently dropping it.
-                return
-            }
-        }
-        if (accountEmail == null) {
+
+        if (token.isBlank() || accountEmail == null) {
+            // Not signed in to a BeatPlay account: no premium entitlement.
             safeDataStoreEdit { prefs ->
-                prefs[IsPremiumKey] = false
-                prefs.remove(PremiumEmailKey)
-                prefs.remove(PremiumExpiryKey)
-                prefs[SongsSinceAdKey] = 0
+                if (prefs[PremiumEmailKey] != null || prefs[IsPremiumKey] == true) {
+                    prefs[IsPremiumKey] = false
+                    prefs.remove(PremiumEmailKey)
+                    prefs.remove(PremiumExpiryKey)
+                    prefs[SongsSinceAdKey] = 0
+                }
             }
             return
         }
@@ -325,18 +276,34 @@ class App :
         val serverUrl = settings[PremiumServerUrlKey] ?: DEFAULT_PREMIUM_SERVER_URL
         val api = PremiumApi()
         try {
-            runCatching { api.refresh(serverUrl, accountEmail) }
-                .onSuccess { (premium, expiry) ->
+            runCatching { api.me(serverUrl, token) }
+                .onSuccess { info ->
                     safeDataStoreEdit { prefs ->
-                        // Confirm the result is stored against the signed-in account only.
                         prefs[PremiumEmailKey] = accountEmail
-                        prefs[IsPremiumKey] = premium
-                        if (premium && expiry != null) prefs[PremiumExpiryKey] = expiry
-                        else prefs.remove(PremiumExpiryKey)
-                        if (premium) prefs[SongsSinceAdKey] = 0
+                        prefs[IsPremiumKey] = info.premium
+                        if (info.premium && info.expiry != null) {
+                            prefs[PremiumExpiryKey] = info.expiry
+                            prefs[SongsSinceAdKey] = 0
+                        } else {
+                            prefs.remove(PremiumExpiryKey)
+                        }
                     }
                 }
-                .onFailure { Timber.w(it, "Premium refresh skipped; keeping cached status") }
+                .onFailure { error ->
+                    if (error is PremiumAuthException) {
+                        // Token expired or revoked: drop it so the Premium screen asks to log in again.
+                        safeDataStoreEdit { prefs ->
+                            prefs.remove(BeatPlayAuthTokenKey)
+                            prefs.remove(BeatPlayAccountEmailKey)
+                            prefs[IsPremiumKey] = false
+                            prefs.remove(PremiumEmailKey)
+                            prefs.remove(PremiumExpiryKey)
+                            prefs[SongsSinceAdKey] = 0
+                        }
+                    } else {
+                        Timber.w(error, "Premium refresh skipped; keeping cached status")
+                    }
+                }
         } finally {
             api.close()
         }
@@ -344,11 +311,14 @@ class App :
 
     private fun observeSettingsChanges() {
         applicationScope.launch {
-            dataStore.data.map { it[AccountEmailKey] to it[AccountNameKey] }.distinctUntilChanged().collect {
-                // Login/logout or channel switch changes the account. Re-check entitlement immediately;
-                // the Premium screen does not need a manually typed address or button press.
-                refreshPremiumForSignedInAccount(dataStore.data.first())
-            }
+            dataStore.data
+                .map { Triple(it[BeatPlayAuthTokenKey], it[BeatPlayAccountEmailKey], it[AccountEmailKey]) }
+                .distinctUntilChanged()
+                .collect {
+                    // Login/logout on the BeatPlay account (or a YouTube channel switch) changes
+                    // who the entitlement belongs to, so re-check immediately.
+                    refreshPremiumForSignedInAccount(dataStore.data.first())
+                }
         }
         applicationScope.launch {
             dataStore.data.map { it[OfflineModeKey] ?: false }.distinctUntilChanged().collect {

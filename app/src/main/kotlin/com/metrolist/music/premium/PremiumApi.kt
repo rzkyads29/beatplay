@@ -9,6 +9,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -34,6 +35,69 @@ class PremiumApi(
     },
 ) {
     fun close() = client.close()
+
+    // ---- BeatPlay account auth ----
+
+    /** Register new BeatPlay account. Returns (token, requiresVerification). Throws on error. */
+    suspend fun register(serverUrl: String, email: String, password: String): AuthResult {
+        val base = serverUrl.trim().trimEnd('/')
+        val payload = "{\"email\":\"${esc(email)}\",\"password\":\"${esc(password)}\"}"
+        val res = client.post("$base/api/auth/register") {
+            contentType(ContentType.Application.Json)
+            setBody(payload)
+        }
+        val text = res.bodyAsText()
+        check(res.status.value == 200) { parseError(text) }
+        val root = Json.parseToJsonElement(text).jsonObject
+        val token = root["token"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content.orEmpty()
+        val requiresVerification = root["requires_verification"]?.jsonPrimitive?.booleanOrNull == true
+        return AuthResult(token, requiresVerification, email)
+    }
+
+    suspend fun login(serverUrl: String, email: String, password: String): AuthResult {
+        val base = serverUrl.trim().trimEnd('/')
+        val payload = "{\"email\":\"${esc(email)}\",\"password\":\"${esc(password)}\"}"
+        val res = client.post("$base/api/auth/login") {
+            contentType(ContentType.Application.Json)
+            setBody(payload)
+        }
+        val text = res.bodyAsText()
+        check(res.status.value == 200) { parseError(text) }
+        val root = Json.parseToJsonElement(text).jsonObject
+        val token = root["token"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content.orEmpty()
+        return AuthResult(token, false, email)
+    }
+
+    /** Fetch account info + premium status. Throws on 401. */
+    suspend fun me(serverUrl: String, token: String): MeInfo {
+        val base = serverUrl.trim().trimEnd('/')
+        val res = client.get("$base/api/auth/me") {
+            header("Authorization", "Bearer $token")
+        }
+        val text = res.bodyAsText()
+        if (res.status.value == 401) throw PremiumAuthException(parseError(text))
+        check(res.status.value == 200) { parseError(text) }
+        val root = Json.parseToJsonElement(text).jsonObject
+        val email = root["email"]?.jsonPrimitive?.content.orEmpty()
+        val verified = root["verified"]?.jsonPrimitive?.booleanOrNull == true
+        val premium = root["premium"]?.jsonPrimitive?.booleanOrNull == true
+        val expiry = root["expiry"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.longOrNull
+        return MeInfo(email, verified, premium, expiry)
+    }
+
+    suspend fun logout(serverUrl: String, token: String) {
+        val base = serverUrl.trim().trimEnd('/')
+        runCatching {
+            client.post("$base/api/auth/logout") {
+                header("Authorization", "Bearer $token")
+            }
+        }
+    }
+
+    private fun parseError(text: String): String =
+        runCatching {
+            Json.parseToJsonElement(text).jsonObject["error"]?.jsonPrimitive?.content
+        }.getOrNull() ?: text.take(200)
 
     fun checkUrl(
         serverUrl: String,
@@ -71,14 +135,24 @@ class PremiumApi(
 
     suspend fun createOrder(
         serverUrl: String,
-        email: String,
         planId: String,
         customerName: String = "",
+        token: String? = null,
     ): OrderInfo {
-        require(isValidPremiumEmail(email)) { "Email tidak valid" }
         val base = serverUrl.trim().trimEnd('/')
-        val payload = "{\"email\":\"${esc(normalizePremiumEmail(email))}\",\"plan_id\":\"${esc(planId)}\"," +
-            "\"customer_name\":\"${esc(customerName.ifBlank { normalizePremiumEmail(email).substringBefore('@') })}\"}"
+        val email = normalizePremiumEmail(token?: run { error("email required") })
+        // Kalau ada token, email diambil dari session server; cukup kirim plan_id + nama.
+        val payload = buildString {
+            if (token != null) {
+                append("{\"plan_id\":\"${esc(planId)}\"")
+                if (customerName.isNotBlank()) append(",\"customer_name\":\"${esc(customerName)}\"")
+                append("}")
+            } else {
+                require(isValidPremiumEmail(email)) { "Email tidak valid" }
+                append("{\"email\":\"${esc(email)}\",\"plan_id\":\"${esc(planId)}\"," +
+                    "\"customer_name\":\"${esc(customerName.ifBlank { email.substringBefore('@') })}\"}")
+            }
+        }
         val res = client.post("$base/api/orders/create") {
             contentType(ContentType.Application.Json)
             setBody(payload)
@@ -143,3 +217,19 @@ class PremiumApi(
 
     private fun esc(s: String): String = s.replace("\\", "\\\\").replace("\"", "\\\"")
 }
+
+data class AuthResult(
+    val token: String,
+    val requiresVerification: Boolean,
+    val email: String,
+)
+
+/** Thrown when the server rejects the session token (expired/revoked/logged out elsewhere). */
+class PremiumAuthException(message: String) : Exception(message)
+
+data class MeInfo(
+    val email: String,
+    val verified: Boolean,
+    val premium: Boolean,
+    val expiry: Long?,
+)
