@@ -70,6 +70,7 @@ import com.metrolist.music.premium.ManualQris
 import com.metrolist.music.premium.OrderInfo
 import com.metrolist.music.premium.Plan
 import com.metrolist.music.premium.PremiumApi
+import com.metrolist.music.premium.PremiumAuthException
 import com.metrolist.music.premium.isLegacyPremiumServerUrl
 import com.metrolist.music.premium.photoMimeFor
 import com.metrolist.music.utils.rememberPreference
@@ -441,7 +442,13 @@ fun PremiumSettingsScreen(
                                 photoBytes = null
                                 photoMime = null
                             }
-                            .onFailure { statusMsg = context.getString(R.string.premium_create_failed, it.message ?: "?") }
+                            .onFailure {
+                                statusMsg = if (it is PremiumAuthException) {
+                                    context.getString(R.string.premium_session_expired)
+                                } else {
+                                    context.getString(R.string.premium_create_failed, it.message ?: "?")
+                                }
+                            }
                         busy = false
                     }
                 }, enabled = !busy && emailOk && selected != null) {

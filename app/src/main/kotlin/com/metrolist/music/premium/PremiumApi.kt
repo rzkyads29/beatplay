@@ -133,31 +133,40 @@ class PremiumApi(
         return ShopInfo(plans, root["provider"]?.jsonPrimitive?.content ?: "mock", manual, base)
     }
 
+    /**
+     * Create an order. When the user is signed in to a BeatPlay account pass [token]: the
+     * server resolves the account email from the session token, so no email goes in the body.
+     * Without a token the email must be sent and comes from [email].
+     */
     suspend fun createOrder(
         serverUrl: String,
         planId: String,
         customerName: String = "",
         token: String? = null,
+        email: String = "",
     ): OrderInfo {
         val base = serverUrl.trim().trimEnd('/')
-        val email = normalizePremiumEmail(token?: run { error("email required") })
+        val authed = !token.isNullOrBlank()
         // Kalau ada token, email diambil dari session server; cukup kirim plan_id + nama.
-        val payload = buildString {
-            if (token != null) {
+        val payload = if (authed) {
+            buildString {
                 append("{\"plan_id\":\"${esc(planId)}\"")
                 if (customerName.isNotBlank()) append(",\"customer_name\":\"${esc(customerName)}\"")
                 append("}")
-            } else {
-                require(isValidPremiumEmail(email)) { "Email tidak valid" }
-                append("{\"email\":\"${esc(email)}\",\"plan_id\":\"${esc(planId)}\"," +
-                    "\"customer_name\":\"${esc(customerName.ifBlank { email.substringBefore('@') })}\"}")
             }
+        } else {
+            val normalized = normalizePremiumEmail(email)
+            require(isValidPremiumEmail(normalized)) { "Email tidak valid" }
+            "{\"email\":\"${esc(normalized)}\",\"plan_id\":\"${esc(planId)}\"," +
+                "\"customer_name\":\"${esc(customerName.ifBlank { normalized.substringBefore('@') })}\"}"
         }
         val res = client.post("$base/api/orders/create") {
             contentType(ContentType.Application.Json)
+            if (authed) header("Authorization", "Bearer $token")
             setBody(payload)
         }
         val text = res.bodyAsText()
+        if (res.status.value == 401) throw PremiumAuthException(parseError(text))
         check(res.status.value == 200) { "Gagal buat order: ${text.take(200)}" }
         return parseOrder(Json.parseToJsonElement(text).jsonObject["order"]!!.jsonObject)
     }

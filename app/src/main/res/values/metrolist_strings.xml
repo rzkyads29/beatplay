@@ -1090,6 +1090,7 @@
     <string name="premium_qris_after_pay">Setelah bayar, kirim nama pengirim dan foto bukti di bawah.</string>
     <string name="premium_order_ref">Order %1$s • %2$s • %3$s</string>
     <string name="premium_order_unpaid_already_premium">Order ini belum dibayar. Akun BeatPlay kamu sudah Premium.</string>
+    <string name="premium_session_expired">Sesi akun BeatPlay sudah berakhir. Keluar lalu masuk lagi untuk membeli Premium.</string>
     <string name="premium_open_in_browser">Buka di browser</string>
     <string name="premium_pick_proof">Pilih foto bukti (wajib)</string>
     <string name="premium_change_photo">Ganti foto</string>
