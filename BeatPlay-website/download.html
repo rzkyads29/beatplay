@@ -62,8 +62,8 @@
 
 <script>
 const REPO = "rzkyads29/beatplay";
-const ANDROID_APK_URL = "https://github.com/rzkyads29/beatplay/releases/download/android-v1.5.3/BeatPlay-1.5.3-android.apk";
-const ANDROID_APK_NAME = "BeatPlay-1.5.3-android.apk";
+const ANDROID_APK_URL = "https://github.com/rzkyads29/beatplay/releases/download/android-v1.5.4/BeatPlay-1.5.4-android.apk";
+const ANDROID_APK_NAME = "BeatPlay-1.5.4-android.apk";
 const ANDROID_APK_SIZE = "30,5 MB";
 
 const PLATFORMS = {
@@ -73,7 +73,7 @@ const PLATFORMS = {
     // tanpa lewat api.github.com, jadi tidak kena rate limit 60 req/jam per IP.
     // Resolve via download-desktop.php (server-side) supaya tidak kena rate limit
     // api.github.com di sisi klien. Fallback ke URL tag eksplisit bila PHP gagal.
-    files: [{ name: "beatplay-1.5.18.msi", size: 146468872, url: "https://github.com/" + REPO + "/releases/download/v1.5.18/beatplay-1.5.18.msi" }],
+    files: [{ name: "beatplay-1.5.19.msi", size: 146481160, url: "https://github.com/" + REPO + "/releases/download/v1.5.19/beatplay-1.5.19.msi" }],
     resolve: "download-desktop.php?kind=windows",
     steps: [["Download installer MSI.", "Pilih file Windows dari rilis terbaru."],
             ["Buka dan ikuti instalasi.", "Java runtime dan libVLC sudah disertakan."],
@@ -83,8 +83,8 @@ const PLATFORMS = {
   linux: {
     title: "Halo, Linux.",
     files: [
-      { name: "beatplay_1.5.18_amd64.deb", size: 96188204, url: "https://github.com/" + REPO + "/releases/download/v1.5.18/beatplay_1.5.18_amd64.deb" },
-      { name: "beatplay-1.5.18-1.x86_64.rpm", size: 96247944, url: "https://github.com/" + REPO + "/releases/download/v1.5.18/beatplay-1.5.18-1.x86_64.rpm" },
+      { name: "beatplay_1.5.19_amd64.deb", size: 96192308, url: "https://github.com/" + REPO + "/releases/download/v1.5.19/beatplay_1.5.19_amd64.deb" },
+      { name: "beatplay-1.5.19-1.x86_64.rpm", size: 96266293, url: "https://github.com/" + REPO + "/releases/download/v1.5.19/beatplay-1.5.19-1.x86_64.rpm" },
     ],
     resolve: "download-desktop.php?kind=linux",
     steps: [["Download paketnya.", "Pilih .deb (Debian/Ubuntu) atau .rpm (Fedora)."],
@@ -98,7 +98,7 @@ const PLATFORMS = {
     steps: [["Download APK.", "Tombol Download langsung mengunduh file resmi BeatPlay."],
             ["Buka file APK.", "Izinkan instalasi dari browser atau file manager yang kamu gunakan."],
             ["Install, lalu tekan play.", "Memerlukan Android 8.0 atau lebih baru."]],
-    note: "<b>Catatan:</b> APK tidak dari Play Store, jadi Android meminta izin instalasi manual satu kali. Versi 1.5.3 dapat memperbarui instalasi BeatPlay lama tanpa menghapus data. Unduhan langsung dari GitHub Release."
+    note: "<b>Catatan:</b> APK tidak dari Play Store, jadi Android meminta izin instalasi manual satu kali. Versi 1.5.4 dapat memperbarui instalasi BeatPlay lama tanpa menghapus data. Unduhan langsung dari GitHub Release."
   }
 };
 
@@ -128,7 +128,7 @@ async function render() {
   const verEl = document.getElementById("ver");
   if (cfg.manual) {
     labelEl.textContent = "UNDUHAN RESMI";
-    verEl.textContent = "APK Android 1.5.3 · GitHub Release";
+    verEl.textContent = "APK Android 1.5.4 · GitHub Release";
     filesEl.innerHTML = fileRow({ name: ANDROID_APK_NAME, size: ANDROID_APK_SIZE, url: ANDROID_APK_URL });
     return;
   }
