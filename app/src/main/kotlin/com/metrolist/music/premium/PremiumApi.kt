@@ -28,13 +28,39 @@ import kotlinx.serialization.json.longOrNull
 class PremiumApi(
     private val client: HttpClient = HttpClient(OkHttp) {
         install(HttpTimeout) {
-            connectTimeoutMillis = 5_000
-            requestTimeoutMillis = 10_000
-            socketTimeoutMillis = 10_000
+            // 5 s was too tight for a first TLS handshake on a slow or lossy mobile network.
+            connectTimeoutMillis = 15_000
+            requestTimeoutMillis = 25_000
+            socketTimeoutMillis = 25_000
         }
     },
 ) {
     fun close() = client.close()
+
+    /** Attempts per request: a dropped packet should not fail a sign up. */
+    private val attempts = 3
+
+    /**
+     * Runs [block], retrying only failures that can plausibly recover (timeouts, dropped
+     * connections, flaky DNS). Server errors and rejected credentials return immediately.
+     * With [onlyIfNotSent] a write is retried only when the request never left the device, so
+     * a lost response cannot create a second account or a second order.
+     */
+    private suspend fun <T> retrying(onlyIfNotSent: Boolean = false, block: suspend () -> T): T {
+        var last: Throwable? = null
+        for (attempt in 1..attempts) {
+            try {
+                return block()
+            } catch (error: Throwable) {
+                last = error
+                if (!isTransientNetworkError(error)) throw error
+                if (onlyIfNotSent && !requestNeverSent(error)) throw error
+                if (attempt == attempts) throw error
+                kotlinx.coroutines.delay(700L * attempt)
+            }
+        }
+        throw last ?: IllegalStateException("Gagal menghubungi server")
+    }
 
     // ---- BeatPlay account auth ----
 
@@ -42,12 +68,14 @@ class PremiumApi(
     suspend fun register(serverUrl: String, email: String, password: String): AuthResult {
         val base = serverUrl.trim().trimEnd('/')
         val payload = "{\"email\":\"${esc(email)}\",\"password\":\"${esc(password)}\"}"
-        val res = client.post("$base/api/auth/register") {
-            contentType(ContentType.Application.Json)
-            setBody(payload)
+        val (status, text) = retrying(onlyIfNotSent = true) {
+            val res = client.post("$base/api/auth/register") {
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }
+            res.status.value to res.bodyAsText()
         }
-        val text = res.bodyAsText()
-        check(res.status.value == 200) { parseError(text) }
+        check(status == 200) { parseError(text) }
         val root = Json.parseToJsonElement(text).jsonObject
         val token = root["token"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content.orEmpty()
         val requiresVerification = root["requires_verification"]?.jsonPrimitive?.booleanOrNull == true
@@ -57,12 +85,14 @@ class PremiumApi(
     suspend fun login(serverUrl: String, email: String, password: String): AuthResult {
         val base = serverUrl.trim().trimEnd('/')
         val payload = "{\"email\":\"${esc(email)}\",\"password\":\"${esc(password)}\"}"
-        val res = client.post("$base/api/auth/login") {
-            contentType(ContentType.Application.Json)
-            setBody(payload)
+        val (status, text) = retrying {
+            val res = client.post("$base/api/auth/login") {
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }
+            res.status.value to res.bodyAsText()
         }
-        val text = res.bodyAsText()
-        check(res.status.value == 200) { parseError(text) }
+        check(status == 200) { parseError(text) }
         val root = Json.parseToJsonElement(text).jsonObject
         val token = root["token"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content.orEmpty()
         return AuthResult(token, false, email)
@@ -71,12 +101,14 @@ class PremiumApi(
     /** Fetch account info + premium status. Throws on 401. */
     suspend fun me(serverUrl: String, token: String): MeInfo {
         val base = serverUrl.trim().trimEnd('/')
-        val res = client.get("$base/api/auth/me") {
-            header("Authorization", "Bearer $token")
+        val (status, text) = retrying {
+            val res = client.get("$base/api/auth/me") {
+                header("Authorization", "Bearer $token")
+            }
+            res.status.value to res.bodyAsText()
         }
-        val text = res.bodyAsText()
-        if (res.status.value == 401) throw PremiumAuthException(parseError(text))
-        check(res.status.value == 200) { parseError(text) }
+        if (status == 401) throw PremiumAuthException(parseError(text))
+        check(status == 200) { parseError(text) }
         val root = Json.parseToJsonElement(text).jsonObject
         val email = root["email"]?.jsonPrimitive?.content.orEmpty()
         val verified = root["verified"]?.jsonPrimitive?.booleanOrNull == true
@@ -118,7 +150,8 @@ class PremiumApi(
 
     suspend fun fetchShop(serverUrl: String): ShopInfo {
         val base = serverUrl.trim().trimEnd('/')
-        val root = Json.parseToJsonElement(client.get("$base/api/plans").bodyAsText()).jsonObject
+        val text = retrying { client.get("$base/api/plans").bodyAsText() }
+        val root = Json.parseToJsonElement(text).jsonObject
         val plans = root["plans"]?.jsonArray?.map { e ->
             val o = e.jsonObject
             Plan(o["id"]!!.jsonPrimitive.content, o["title"]!!.jsonPrimitive.content, o["price"]!!.jsonPrimitive.int, o["days"]!!.jsonPrimitive.int)
@@ -160,14 +193,16 @@ class PremiumApi(
             "{\"email\":\"${esc(normalized)}\",\"plan_id\":\"${esc(planId)}\"," +
                 "\"customer_name\":\"${esc(customerName.ifBlank { normalized.substringBefore('@') })}\"}"
         }
-        val res = client.post("$base/api/orders/create") {
-            contentType(ContentType.Application.Json)
-            if (authed) header("Authorization", "Bearer $token")
-            setBody(payload)
+        val (status, text) = retrying(onlyIfNotSent = true) {
+            val res = client.post("$base/api/orders/create") {
+                contentType(ContentType.Application.Json)
+                if (authed) header("Authorization", "Bearer $token")
+                setBody(payload)
+            }
+            res.status.value to res.bodyAsText()
         }
-        val text = res.bodyAsText()
-        if (res.status.value == 401) throw PremiumAuthException(parseError(text))
-        check(res.status.value == 200) { "Gagal buat order: ${text.take(200)}" }
+        if (status == 401) throw PremiumAuthException(parseError(text))
+        check(status == 200) { "Gagal buat order: ${text.take(200)}" }
         return parseOrder(Json.parseToJsonElement(text).jsonObject["order"]!!.jsonObject)
     }
 
@@ -176,9 +211,11 @@ class PremiumApi(
         merchantRef: String,
     ): OrderStatus {
         val base = serverUrl.trim().trimEnd('/')
-        val res = client.get("$base/api/orders/status?merchant_ref=${java.net.URLEncoder.encode(merchantRef, "UTF-8")}")
-        val text = res.bodyAsText()
-        check(res.status.value == 200) { "Order tidak ditemukan" }
+        val (status, text) = retrying {
+            val res = client.get("$base/api/orders/status?merchant_ref=${java.net.URLEncoder.encode(merchantRef, "UTF-8")}")
+            res.status.value to res.bodyAsText()
+        }
+        check(status == 200) { "Order tidak ditemukan" }
         val root = Json.parseToJsonElement(text).jsonObject
         val order = parseOrder(root["order"]!!.jsonObject)
         val premium = root["premium"]?.jsonPrimitive?.booleanOrNull == true

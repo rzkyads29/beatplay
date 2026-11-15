@@ -71,6 +71,7 @@ import com.metrolist.music.constants.SongsSinceAdKey
 import com.metrolist.music.premium.PremiumApi
 import com.metrolist.music.premium.PremiumAuthException
 import com.metrolist.music.premium.isValidPremiumEmail
+import com.metrolist.music.premium.networkErrorMessage
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.safeDataStoreEdit
 import kotlinx.coroutines.launch
@@ -145,7 +146,7 @@ fun BeatPlayAuthScreen(navController: NavController) {
                     applyEntitlement(false, null, "")
                 } else {
                     isError = true
-                    message = context.getString(R.string.premium_check_failed, it.message ?: it.javaClass.simpleName)
+                    message = context.getString(R.string.premium_check_failed, networkErrorMessage(it, serverPref))
                 }
             }
         checking = false
@@ -341,7 +342,7 @@ fun BeatPlayAuthScreen(navController: NavController) {
                                             message = context.getString(
                                                 if (mode == AuthMode.LOGIN) R.string.premium_login_failed
                                                 else R.string.premium_register_failed,
-                                                it.message ?: it.javaClass.simpleName,
+                                                networkErrorMessage(it, serverPref),
                                             )
                                         }
                                     loading = false

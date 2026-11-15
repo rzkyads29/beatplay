@@ -72,6 +72,7 @@ import com.metrolist.music.premium.Plan
 import com.metrolist.music.premium.PremiumApi
 import com.metrolist.music.premium.PremiumAuthException
 import com.metrolist.music.premium.isLegacyPremiumServerUrl
+import com.metrolist.music.premium.networkErrorMessage
 import com.metrolist.music.premium.photoMimeFor
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.safeDataStoreEdit
@@ -157,7 +158,7 @@ fun PremiumSettingsScreen(
                 manual = shop.manual
                 if (selected == null) selected = shop.plans.firstOrNull()?.id
             }
-            .onFailure { plansErr = context.getString(R.string.premium_plans_failed, it.message ?: "?") }
+            .onFailure { plansErr = context.getString(R.string.premium_plans_failed, networkErrorMessage(it, serverPref)) }
     }
 
     LaunchedEffect(polling, order?.merchantRef) {
@@ -307,7 +308,7 @@ fun PremiumSettingsScreen(
                                                 authMsgIsError = true
                                                 authMsg = context.getString(
                                                     R.string.premium_check_failed,
-                                                    it.message ?: it.javaClass.simpleName,
+                                                    networkErrorMessage(it, serverPref),
                                                 )
                                             }
                                         authLoading = false
@@ -446,7 +447,7 @@ fun PremiumSettingsScreen(
                                 statusMsg = if (it is PremiumAuthException) {
                                     context.getString(R.string.premium_session_expired)
                                 } else {
-                                    context.getString(R.string.premium_create_failed, it.message ?: "?")
+                                    context.getString(R.string.premium_create_failed, networkErrorMessage(it, serverPref))
                                 }
                             }
                         busy = false
@@ -490,7 +491,7 @@ fun PremiumSettingsScreen(
                                     photoMime = null
                                     statusMsg = context.getString(R.string.premium_proof_sent)
                                 }
-                                .onFailure { statusMsg = context.getString(R.string.premium_create_failed, it.message ?: "?") }
+                                .onFailure { statusMsg = context.getString(R.string.premium_create_failed, networkErrorMessage(it, serverPref)) }
                             busy = false
                         }
                     }, enabled = !busy && sender.isNotBlank() && photoBytes != null) {
