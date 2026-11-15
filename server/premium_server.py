@@ -294,6 +294,7 @@ footer{color:var(--mut);font-size:12px;text-align:center;margin-top:28px}
 <button class="btn-green" onclick="activate()">Aktifkan</button></div>
 <p class="mut">Cek mutasi DANA dulu, lalu aktifkan. Email langsung premium + expiry.</p></div>
 </div>
+<div class="card" id="usersCard"><h2>Akun BeatPlay</h2><div id="users"></div></div>
 <div class="card"><h2>Paket</h2><div id="plans"></div></div>
 <div class="card"><h2>Order 20 terakhir</h2><div id="orders"></div></div>
 <div class="card" id="manualQrisCard"><h2>QRIS manual</h2><div id="manualbox"></div></div>
@@ -332,6 +333,20 @@ async function refreshAll(){
     b.onclick=async()=>{await api("/api/admin/revoke",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:e})});refreshAll();};
     li.append(sp,b); ul.appendChild(li);
   });
+  const users = t.users || [];
+  document.getElementById("users").innerHTML = users.length
+    ? '<table class="tbl"><tr><th>Email</th><th>Verifikasi</th><th>Premium</th><th>Dibuat</th><th>Aksi</th></tr>'+
+      users.map(u=>{
+        const prem = u.premium_manual ? "lifetime" : (u.premium_expiry ? fmtExp(u.premium_expiry) : "—");
+        const vb = u.verified
+          ? '<span class="pill st-PAID">terverifikasi</span>'
+          : `<button class="btn-mini btn-green" onclick="verifyUser('${esc(u.email)}')">Verifikasi</button>`;
+        const act = (u.premium_manual||u.premium_expiry)
+          ? `<button class="btn-mini danger" onclick="revokeUser('${esc(u.email)}')">Cabut</button>`
+          : "";
+        return `<tr><td>${esc(u.email)}</td><td>${vb}</td><td>${esc(String(prem))}</td><td class="mut">${u.created_at ? new Date(u.created_at*1000).toLocaleString("id-ID") : "—"}</td><td>${act}</td></tr>`;
+      }).join("")+"</table>"
+    : '<p class="mut">Belum ada akun BeatPlay. Akun muncul setelah pengguna mendaftar dari aplikasi.</p>';
   const p = await api("/api/plans");
   document.getElementById("plans").innerHTML = '<table class="tbl"><tr><th>ID</th><th>Paket</th><th>Harga</th><th>Hari</th></tr>'+
     p.plans.map(x=>`<tr><td><code>${esc(x.id)}</code></td><td>${esc(x.title)}</td><td>Rp${x.price.toLocaleString("id-ID")}</td><td>${x.days}</td></tr>`).join("")+"</table>";
@@ -391,6 +406,15 @@ async function activateOrder(email, planId){
 async function xsimulate(ref){
   await api("/api/admin/xendit/simulate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({merchant_ref:ref})});
   alert("Simulasi dikirim (test mode). Tunggu webhook, lalu Refresh.");
+  refreshAll();
+}
+async function verifyUser(email){
+  await api("/api/admin/verify",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email})});
+  refreshAll();
+}
+async function revokeUser(email){
+  if (!confirm(`Cabut premium untuk ${email}?`)) return;
+  await api("/api/admin/revoke",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email})});
   refreshAll();
 }
 document.getElementById("token").value="admin123";

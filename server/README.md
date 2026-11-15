@@ -140,7 +140,7 @@ status API mengonfirmasi `success`, ID transaksi cocok, dan `amount` serta
 - `POST /api/auth/resend` `{"email"}` -> kirim ulang email verifikasi (SMTP wajib)
 - `GET /api/auth/verify?token=...` -> aktifkan akun + link premium lama berbasis Gmail (kalau ada)
 
-Password disimpan dengan scrypt (salt acak per user). Session token acak 256-bit, TTL 30 hari, disimpan di `sessions.json`. Status premium lama berbasis Gmail di `premium_emails.json` otomatis di-link ke akun BeatPlay saat user dengan email itu mendaftar/verifikasi.
+Password disimpan dengan scrypt (salt acak per user). Session token acak 256-bit, TTL 30 hari, disimpan di `sessions.json`. Status premium lama berbasis Gmail di `premium_emails.json` otomatis di-link ke akun BeatPlay saat user dengan email itu mendaftar/verifikasi. Dashboard admin di `/` menampilkan daftar akun BeatPlay beserta tombol **Verifikasi** dan **Cabut**.
 
 File runtime (`orders.json`, `premium_expiry.json`, `users.json`, `sessions.json`, `tripay_config.json`, `smtp_config.json`) di-gitignore.
 Kredensial BuatQris disimpan di `/etc/beatplay-premium.env`, bukan di file aplikasi.
