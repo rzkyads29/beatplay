@@ -73,7 +73,7 @@ const PLATFORMS = {
     // tanpa lewat api.github.com, jadi tidak kena rate limit 60 req/jam per IP.
     // Resolve via download-desktop.php (server-side) supaya tidak kena rate limit
     // api.github.com di sisi klien. Fallback ke URL tag eksplisit bila PHP gagal.
-    files: [{ name: "beatplay-1.5.16.msi", size: 145810972, url: "https://github.com/" + REPO + "/releases/download/v1.5.16/beatplay-1.5.16.msi" }],
+    files: [{ name: "beatplay-1.5.17.msi", size: 145876508, url: "https://github.com/" + REPO + "/releases/download/v1.5.17/beatplay-1.5.17.msi" }],
     resolve: "download-desktop.php?kind=windows",
     steps: [["Download installer MSI.", "Pilih file Windows dari rilis terbaru."],
             ["Buka dan ikuti instalasi.", "Java runtime dan libVLC sudah disertakan."],
@@ -82,10 +82,10 @@ const PLATFORMS = {
   },
   linux: {
     title: "Halo, Linux.",
-    // Rilis 1.5.16 hanya menyertakan installer Windows; paket Linux menyusul.
-    // Daftar di bawah dikosongkan supaya halaman tidak menampilkan tautan mati.
-    files: [],
-    unavailable: "Paket Linux (.deb / .rpm) belum tersedia di rilis baru. Installer yang bisa diunduh saat ini adalah versi Windows (.msi). Cek halaman ini lagi setelah paket Linux diunggah.",
+    files: [
+      { name: "beatplay_1.5.17_amd64.deb", size: 95622892, url: "https://github.com/" + REPO + "/releases/download/v1.5.17/beatplay_1.5.17_amd64.deb" },
+      { name: "beatplay-1.5.17-1.x86_64.rpm", size: 95693633, url: "https://github.com/" + REPO + "/releases/download/v1.5.17/beatplay-1.5.17-1.x86_64.rpm" },
+    ],
     resolve: "download-desktop.php?kind=linux",
     steps: [["Download paketnya.", "Pilih .deb (Debian/Ubuntu) atau .rpm (Fedora)."],
             ["Install paketnya.", "Debian/Ubuntu: <code>sudo apt install ./beatplay_*.deb</code>. Butuh VLC dari package manager."],
