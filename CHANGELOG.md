@@ -1,5 +1,11 @@
 # Changelog
 
+## [v1.5.18] - 2026-11-15
+
+* feat(premium): show QRIS inside the app instead of opening the gateway page (81dbef9)
+* docs(promo): complete promo pack for BeatPlay (354c46e)
+* docs(web): desktop download points at v1.5.17 (msi, deb, rpm) (099f356)
+
 ## [v1.5.17] - 2026-11-15
 
 * feat(premium): desktop uses BeatPlay account (email+password) instead of Gmail detection (1a04ed0)
