@@ -34,10 +34,12 @@ import json
 import os
 import re
 import secrets
+import smtplib
 import time
 import threading
 import urllib.parse
 import urllib.request
+from email.message import EmailMessage
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -396,6 +398,31 @@ refreshAll();
 </script></body></html>"""
 
 
+def send_email_verification(smtp_cfg, to_email, verify_url):
+    """Kirim link verifikasi. Return (ok, error). Jika SMTP tidak dikonfigurasi, anggap terkirim (dev mode)."""
+    if not smtp_cfg or not smtp_cfg.get("host"):
+        return True, None
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = "Verifikasi akun BeatPlay"
+        msg["From"] = smtp_cfg.get("from", "BeatPlay <no-reply@beatplay>")
+        msg["To"] = to_email
+        msg.set_content(
+            "Klik link berikut untuk mengaktifkan akun BeatPlay kamu:\n\n"
+            + verify_url
+            + "\n\nAbaikan email ini jika kamu tidak mendaftar."
+        )
+        with smtplib.SMTP(smtp_cfg["host"], int(smtp_cfg.get("port", 587)), timeout=15) as s:
+            if smtp_cfg.get("use_tls", True):
+                s.starttls()
+            if smtp_cfg.get("username"):
+                s.login(smtp_cfg["username"], smtp_cfg.get("password", ""))
+            s.send_message(msg)
+        return True, None
+    except Exception as exc:  # noqa: BLE001
+        return False, str(exc)
+
+
 class PremiumStore:
     """Gmail manual (lifetime) + expiry berbayar (epoch detik)."""
 
@@ -443,6 +470,172 @@ class OrderStore:
 
     def save(self):
         save_json(self.path, self.orders)
+
+
+class UserStore:
+    """Akun BeatPlay (email + password) untuk Premium tanpa ketergantungan YouTube."""
+
+    SCRYPT_N = 2 ** 14
+    SCRYPT_R = 8
+    SCRYPT_P = 1
+    SESSION_TTL = 60 * 60 * 24 * 30  # 30 hari
+
+    def __init__(self, users_path, sessions_path):
+        self.users_path = users_path
+        self.sessions_path = sessions_path
+        self.users = {}
+        self.sessions = {}
+        self.lock = threading.RLock()
+        self.load()
+
+    def load(self):
+        self.users = load_json(self.users_path, {})
+        self.sessions = load_json(self.sessions_path, {})
+
+    def save(self):
+        save_json(self.users_path, self.users)
+        save_json(self.sessions_path, self.sessions)
+
+    def get(self, email):
+        return self.users.get(email.strip().lower())
+
+    def _hash(self, password, salt_hex):
+        return hashlib.scrypt(
+            password.encode("utf-8"),
+            salt=bytes.fromhex(salt_hex),
+            n=self.SCRYPT_N,
+            r=self.SCRYPT_R,
+            p=self.SCRYPT_P,
+        ).hex()
+
+    def create(self, email, password):
+        """Return (user, error). error is None on success."""
+        email = email.strip().lower()
+        if not EMAIL_RE.match(email):
+            return None, "email tidak valid"
+        if len(password) < 8:
+            return None, "kata sandi minimal 8 karakter"
+        with self.lock:
+            if email in self.users:
+                return None, "email sudah terdaftar"
+            salt = secrets.token_hex(16)
+            user = {
+                "email": email,
+                "salt": salt,
+                "password_hash": self._hash(password, salt),
+                "verified": False,
+                "verify_token": secrets.token_hex(32),
+                "created_at": int(time.time()),
+                "premium_manual": False,
+                "premium_expiry": 0,
+            }
+            self.users[email] = user
+            self.save()
+            return user, None
+
+    def verify(self, token):
+        with self.lock:
+            for user in self.users.values():
+                if user.get("verify_token") == token:
+                    user["verified"] = True
+                    user.pop("verify_token", None)
+                    self.save()
+                    return user
+        return None
+
+    def check_password(self, email, password):
+        user = self.get(email)
+        if not user:
+            # burn a constant amount of time so timing does not reveal email existence
+            self._hash(password or "", secrets.token_hex(16))
+            return None
+        if not user.get("verified"):
+            return None
+        computed = self._hash(password or "", user.get("salt", ""))
+        if not hmac.compare_digest(computed, user.get("password_hash", "")):
+            return None
+        return user
+
+    def create_session(self, email):
+        email = email.strip().lower()
+        token = secrets.token_hex(32)
+        with self.lock:
+            self.sessions[token] = {
+                "email": email,
+                "created_at": int(time.time()),
+                "expires_at": int(time.time()) + self.SESSION_TTL,
+            }
+            self.save()
+        return token
+
+    def resolve_session(self, token):
+        if not token:
+            return None
+        with self.lock:
+            session = self.sessions.get(token)
+            if not session:
+                return None
+            if int(session.get("expires_at", 0)) < time.time():
+                self.sessions.pop(token, None)
+                self.save()
+                return None
+            return self.users.get(session["email"])
+
+    def revoke_session(self, token):
+        with self.lock:
+            if token in self.sessions:
+                self.sessions.pop(token, None)
+                self.save()
+
+    def set_verified_and_link_manual(self, email, premium_store):
+        """Saat user terverifikasi, link status premium Gmail lama bila ada."""
+        email = email.strip().lower()
+        with self.lock:
+            user = self.users.get(email)
+            if not user:
+                return
+            user["verified"] = True
+            user.pop("verify_token", None)
+            # migrasi premium lama berbasis Gmail ke akun BeatPlay
+            ok, exp = premium_store.status(email)
+            if ok:
+                if exp:
+                    user["premium_expiry"] = int(exp)
+                else:
+                    user["premium_manual"] = True
+            self.save()
+
+    def premium_status(self, email):
+        user = self.get(email)
+        if not user:
+            return False, None
+        if user.get("premium_manual"):
+            return True, None
+        exp = int(user.get("premium_expiry", 0) or 0)
+        if exp > time.time():
+            return True, exp
+        return False, None
+
+    def extend(self, email, days):
+        email = email.strip().lower()
+        with self.lock:
+            user = self.users.get(email)
+            if not user:
+                return None
+            base = max(time.time(), int(user.get("premium_expiry", 0) or 0))
+            user["premium_expiry"] = int(base + days * 86400)
+            self.save()
+            return user["premium_expiry"]
+
+    def set_manual(self, email, active):
+        email = email.strip().lower()
+        with self.lock:
+            user = self.users.get(email)
+            if not user:
+                return False
+            user["premium_manual"] = bool(active)
+            self.save()
+            return True
 
 
 class TripayClient:
@@ -668,6 +861,10 @@ class Handler(BaseHTTPRequestHandler):
     provider = "mock"
     admin_token = "admin123"
     public_base = ""
+    users = None
+    sessions = None
+    smtp_cfg = None
+    auth_require_verify = False
 
     def log_message(self, *a):
         pass
@@ -677,7 +874,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", ctype + "; charset=utf-8")
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Admin-Token, X-Callback-Signature, X-Callback-Event, x-callback-token, X-BuatQris-Signature")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Admin-Token, X-Callback-Signature, X-Callback-Event, x-callback-token, X-BuatQris-Signature, Authorization")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -695,6 +892,18 @@ class Handler(BaseHTTPRequestHandler):
             self._send(401, {"error": "unauthorized"})
             return False
         return True
+
+    def _bearer_token(self):
+        header = self.headers.get("Authorization", "")
+        if header.startswith("Bearer "):
+            return header[7:].strip()
+        return ""
+
+    def _auth_user(self):
+        token = self._bearer_token()
+        if not token:
+            return None
+        return self.users.resolve_session(token)
 
     def _provider_configured(self):
         if self.provider == "buatqris":
@@ -735,11 +944,31 @@ class Handler(BaseHTTPRequestHandler):
         qs = urllib.parse.parse_qs(url.query)
         if url.path == "/":
             return self._send(200, ADMIN_HTML, ctype="text/html")
+        if url.path == "/api/auth/me":
+            user = self._auth_user()
+            if not user:
+                return self._send(401, {"error": "unauthorized"})
+            ok, exp = self.users.premium_status(user["email"])
+            out = {"email": user["email"], "verified": bool(user.get("verified")), "premium": ok}
+            if exp:
+                out["expiry"] = exp
+            return self._send(200, out)
+        if url.path == "/api/auth/verify":
+            token = (qs.get("token", [""])[0] or "").strip()
+            user = self.users.verify(token) if token else None
+            if not user:
+                return self._send(400, {"error": "token verifikasi tidak valid"})
+            self.users.set_verified_and_link_manual(user["email"], self.premium)
+            return self._send(200, {"ok": True, "email": user["email"], "verified": True})
         if url.path == "/api/premium":
             email = (qs.get("email", [""])[0] or "").strip().lower()
             if not EMAIL_RE.match(email):
                 return self._send(400, {"error": "email tidak valid"})
-            ok, exp = self.premium.status(email)
+            user = self.users.get(email)
+            if user:
+                ok, exp = self.users.premium_status(email)
+            else:
+                ok, exp = self.premium.status(email)
             out = {"email": email, "premium": ok}
             if exp:
                 out["expiry"] = exp
@@ -785,6 +1014,13 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {
                 "manual": sorted(self.premium.manual),
                 "expiry": self.premium.expiry,
+                "users": [
+                    {"email": u["email"], "verified": bool(u.get("verified")),
+                     "premium_manual": bool(u.get("premium_manual")),
+                     "premium_expiry": int(u.get("premium_expiry", 0) or 0),
+                     "created_at": int(u.get("created_at", 0))}
+                    for u in sorted(self.users.users.values(), key=lambda x: x.get("created_at", 0), reverse=True)[:50]
+                ],
                 "provider": self.provider,
                 "provider_configured": self._provider_configured(),
                 "notify_configured": bool(self._notify_cfg().get("telegram_bot_token") and self._notify_cfg().get("telegram_chat_id")),
@@ -832,12 +1068,66 @@ class Handler(BaseHTTPRequestHandler):
             return self._buatqris_callback()
         if url.path not in ("/api/admin/add", "/api/admin/remove", "/api/admin/revoke",
                             "/api/admin/activate", "/api/admin/orders", "/api/admin/xendit/simulate",
-                            "/api/admin/notify/test",
-                            "/api/orders/mock-pay", "/api/orders/create", "/api/orders/proof"):
+                            "/api/admin/notify/test", "/api/admin/verify",
+                            "/api/orders/mock-pay", "/api/orders/create", "/api/orders/proof",
+                            "/api/auth/register", "/api/auth/login", "/api/auth/logout",
+                            "/api/auth/resend"):
             return self._send(404, {"error": "not found"})
+        needs_body = url.path not in ("/api/orders/mock-pay", "/api/auth/logout")
         raw, data = self._body_json()
-        if data is None:
+        if data is None and needs_body:
             return self._send(400, {"error": "body harus JSON"})
+        if data is None:
+            data = {}
+
+        if url.path == "/api/auth/register":
+            email = str(data.get("email", "")).strip().lower()
+            password = str(data.get("password", ""))
+            user, err = self.users.create(email, password)
+            if err:
+                return self._send(400, {"error": err})
+            if self.smtp_cfg and self.smtp_cfg.get("host"):
+                verify_url = self.public_base.rstrip("/") + "/api/auth/verify?token=" + user["verify_token"]
+                sent, send_err = send_email_verification(self.smtp_cfg, email, verify_url)
+                if not sent:
+                    return self._send(500, {"error": "gagal mengirim email verifikasi: " + str(send_err)})
+                return self._send(200, {"ok": True, "email": email, "requires_verification": True})
+            # Dev/self-host mode: no SMTP configured, auto-activate + link Gmail-based premium.
+            self.users.set_verified_and_link_manual(email, self.premium)
+            token = self.users.create_session(email)
+            return self._send(200, {"ok": True, "email": email, "token": token,
+                                    "requires_verification": False})
+
+        if url.path == "/api/auth/login":
+            email = str(data.get("email", "")).strip().lower()
+            password = str(data.get("password", ""))
+            user = self.users.check_password(email, password)
+            if not user:
+                return self._send(401, {"error": "email atau kata sandi salah"})
+            token = self.users.create_session(user["email"])
+            return self._send(200, {"ok": True, "email": user["email"], "token": token})
+
+        if url.path == "/api/auth/logout":
+            token = self._bearer_token()
+            if token:
+                self.users.revoke_session(token)
+            return self._send(200, {"ok": True})
+
+        if url.path == "/api/auth/resend":
+            email = str(data.get("email", "")).strip().lower()
+            user = self.users.get(email)
+            if not user or user.get("verified"):
+                # Do not reveal whether the account exists or is already verified.
+                return self._send(200, {"ok": True})
+            if not self.smtp_cfg or not self.smtp_cfg.get("host"):
+                return self._send(400, {"error": "SMTP belum dikonfigurasi"})
+            user["verify_token"] = secrets.token_hex(32)
+            self.users.save()
+            verify_url = self.public_base.rstrip("/") + "/api/auth/verify?token=" + user["verify_token"]
+            sent, send_err = send_email_verification(self.smtp_cfg, email, verify_url)
+            if not sent:
+                return self._send(500, {"error": "gagal mengirim email: " + str(send_err)})
+            return self._send(200, {"ok": True})
 
         if url.path == "/api/orders/create":
             return self._create_order(data)
@@ -886,16 +1176,31 @@ class Handler(BaseHTTPRequestHandler):
             email = str(data.get("email", "")).strip().lower()
             if not EMAIL_RE.match(email):
                 return self._send(400, {"error": "email tidak valid"})
-            self.premium.manual.add(email)
-            self.premium.save()
+            user = self.users.get(email)
+            if user:
+                self.users.set_manual(email, True)
+            else:
+                self.premium.manual.add(email)
+                self.premium.save()
             return self._send(200, {"ok": True})
         if url.path == "/api/admin/remove":
-            self.premium.manual.discard(str(data.get("email", "")).strip().lower())
+            email = str(data.get("email", "")).strip().lower()
+            user = self.users.get(email)
+            if user:
+                self.users.set_manual(email, False)
+            self.premium.manual.discard(email)
             self.premium.save()
             return self._send(200, {"ok": True})
         if url.path == "/api/admin/revoke":
-            self.premium.expiry.pop(str(data.get("email", "")).strip().lower(), None)
-            self.premium.manual.discard(str(data.get("email", "")).strip().lower())
+            email = str(data.get("email", "")).strip().lower()
+            user = self.users.get(email)
+            if user:
+                self.users.set_manual(email, False)
+                with self.users.lock:
+                    user["premium_expiry"] = 0
+                    self.users.save()
+            self.premium.expiry.pop(email, None)
+            self.premium.manual.discard(email)
             self.premium.save()
             return self._send(200, {"ok": True})
         if url.path == "/api/admin/activate":
@@ -906,8 +1211,19 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(400, {"error": "days harus angka"})
             if not EMAIL_RE.match(email) or not (1 <= days <= 730):
                 return self._send(400, {"error": "email/days tidak valid"})
-            exp = self.premium.extend(email, days)
+            user = self.users.get(email)
+            if user:
+                exp = self.users.extend(email, days)
+            else:
+                exp = self.premium.extend(email, days)
             return self._send(200, {"ok": True, "email": email, "expiry": exp})
+        if url.path == "/api/admin/verify":
+            email = str(data.get("email", "")).strip().lower()
+            user = self.users.get(email)
+            if not user:
+                return self._send(404, {"error": "user tidak ditemukan"})
+            self.users.set_verified_and_link_manual(email, self.premium)
+            return self._send(200, {"ok": True, "email": email})
         if url.path == "/api/orders/mock-pay":
             if self.provider != "mock":
                 return self._send(400, {"error": "hanya tersedia di mode mock"})
@@ -948,7 +1264,12 @@ class Handler(BaseHTTPRequestHandler):
     def _activate(self, order):
         plan = self._plan(order.get("plan_id", "")) or {}
         days = int(plan.get("days", 30))
-        exp = self.premium.extend(order["email"], days)
+        email = order["email"].strip().lower()
+        user = self.users.get(email)
+        if user:
+            exp = self.users.extend(email, days)
+        else:
+            exp = self.premium.extend(email, days)
         order["expiry"] = exp
         self.orders.save()
         return exp
@@ -1068,6 +1389,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def _create_order(self, data):
         email = str(data.get("email", "")).strip().lower()
+        if not email:
+            user = self._auth_user()
+            if not user:
+                return self._send(401, {"error": "login diperlukan atau sertakan email di body"})
+            email = user["email"].strip().lower()
         plan_id = str(data.get("plan_id", "")).strip()
         name = str(data.get("customer_name", "")).strip() or email.split("@")[0]
         if not EMAIL_RE.match(email):
@@ -1314,9 +1640,13 @@ def main():
     ap.add_argument("--plans", default=os.path.join(HERE, "plans.json"))
     ap.add_argument("--tripay-config", default=os.path.join(HERE, "tripay_config.json"))
     ap.add_argument("--public-base", default="", help="cth https://pay.domain-anda (untuk callback provider)")
+    ap.add_argument("--users-store", default=os.path.join(HERE, "users.json"))
+    ap.add_argument("--sessions-store", default=os.path.join(HERE, "sessions.json"))
     args = ap.parse_args()
     Handler.premium = PremiumStore(args.store, args.expiry_store)
     Handler.orders = OrderStore(args.orders_store)
+    Handler.users = UserStore(args.users_store, args.sessions_store)
+    Handler.smtp_cfg = load_json(os.path.join(HERE, "smtp_config.json"), {})
     Handler.plans = load_json(args.plans, {"plans": [], "tripay_method": "QRIS2"})
     Handler.pay_cfg = load_json(args.tripay_config, {"mode": "mock"})
     provider_env = os.getenv("PAYMENT_PROVIDER", "").strip().lower()

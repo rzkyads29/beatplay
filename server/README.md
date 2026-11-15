@@ -118,7 +118,7 @@ status API mengonfirmasi `success`, ID transaksi cocok, dan `amount` serta
 ## API
 
 - `GET /api/plans` -> `{plans, tripay_method, provider}`; objek `manual` hanya ada bila provider `manual` aktif.
-- `POST /api/orders/create` `{"email","plan_id","customer_name"?}` -> `{order}`
+- `POST /api/orders/create` `{"email","plan_id","customer_name"?}` -> `{order}` (email opsional jika ada header `Authorization`)
 - `POST /api/orders/proof` `{"merchant_ref","sender_name","note"?}` -> order `PENDING` (QRIS manual)
 - Provider `manual` saja: `GET /api/manual-qris` -> info QRIS statis; `GET /manual-qris.png` -> gambar.
 - `POST /api/orders/create` `{"email","plan_id","customer_name"?}` -> `{order:{merchant_ref,reference,amount,status,checkout_url,qr_string,qr_url,expired_at}}`
@@ -127,9 +127,22 @@ status API mengonfirmasi `success`, ID transaksi cocok, dan `amount` serta
 - `POST /api/payments/xendit/callback` (dari Xendit, header `x-callback-token`) -> `{success:true}`
 - `POST /api/payments/buatqris/callback` (BuatQris, header `X-BuatQris-Signature`) -> `{success:true}`
 - `GET /api/premium?email=` -> `{email, premium, expiry?}` (`expiry` epoch detik; absen = lifetime manual)
-- Admin (`X-Admin-Token`): `GET /api/admin/list`, `GET /api/admin/orders`, `POST /api/admin/add|remove|revoke|activate`, `POST /api/orders/mock-pay` (mock saja), `POST /api/admin/notify/test` (kirim pesan tes ke Telegram)
+- Admin (`X-Admin-Token`): `GET /api/admin/list`, `GET /api/admin/orders`, `POST /api/admin/add|remove|revoke|activate|verify`, `POST /api/orders/mock-pay` (mock saja), `POST /api/orders/mock-pay` (mock saja), `POST /api/admin/notify/test` (kirim pesan tes ke Telegram)
 
-File runtime (`orders.json`, `premium_expiry.json`, `tripay_config.json`) di-gitignore.
+### Auth akun BeatPlay (tanpa Google)
+
+- `POST /api/auth/register` `{"email","password"}` -> `{ok, email, token?, requires_verification}`
+  - Tanpa SMTP (`smtp_config.json` kosong): langsung verified + token session (dev/self-host mode)
+  - Dengan SMTP: token belum ada; user cek email dan klik link verifikasi `GET /api/auth/verify?token=...`
+- `POST /api/auth/login` `{"email","password"}` -> `{ok, email, token}`
+- `GET /api/auth/me` (header `Authorization: Bearer <token>`) -> `{email, verified, premium, expiry?}`
+- `POST /api/auth/logout` (header `Authorization: Bearer <token>`) -> `{ok}`
+- `POST /api/auth/resend` `{"email"}` -> kirim ulang email verifikasi (SMTP wajib)
+- `GET /api/auth/verify?token=...` -> aktifkan akun + link premium lama berbasis Gmail (kalau ada)
+
+Password disimpan dengan scrypt (salt acak per user). Session token acak 256-bit, TTL 30 hari, disimpan di `sessions.json`. Status premium lama berbasis Gmail di `premium_emails.json` otomatis di-link ke akun BeatPlay saat user dengan email itu mendaftar/verifikasi.
+
+File runtime (`orders.json`, `premium_expiry.json`, `users.json`, `sessions.json`, `tripay_config.json`, `smtp_config.json`) di-gitignore.
 Kredensial BuatQris disimpan di `/etc/beatplay-premium.env`, bukan di file aplikasi.
 Tes logika: `python3 test_tripay.py`.
 
