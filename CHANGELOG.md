@@ -1,5 +1,11 @@
 # Changelog
 
+## [v1.5.17] - 2026-11-15
+
+* feat(premium): desktop uses BeatPlay account (email+password) instead of Gmail detection (1a04ed0)
+* docs(web): point Android download at android-v1.5.1 (d0c82a9)
+* fix(web): desktop resolver accepts Windows-only releases; mark Linux packages as unavailable (3bb79ca)
+
 ## [v1.5.16] - 2026-11-14
 
 * fix(playback): stop sudden volume jumping by turning off volume normalization by default (schema 5 migration)
