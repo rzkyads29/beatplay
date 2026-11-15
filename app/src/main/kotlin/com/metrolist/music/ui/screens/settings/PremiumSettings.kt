@@ -166,16 +166,15 @@ fun PremiumSettingsScreen(
             runCatching { api.orderStatus(serverPref, ref) }
                 .onSuccess { st ->
                     order = st.order
-                    if (st.premium) {
-                        applyPremiumResult(true, st.expiry, authEmail)
-                        polling = false
-                        statusMsg = context.getString(R.string.premium_paid)
-                    } else if (st.order.status == "PENDING") {
-                        statusMsg = context.getString(R.string.premium_pending_verify)
-                    } else if (st.order.status != "UNPAID") {
-                        polling = false
-                        statusMsg = context.getString(R.string.premium_order_status, st.order.status)
+                    if (st.premium) applyPremiumResult(true, st.expiry, authEmail)
+                    statusMsg = when {
+                        st.order.status == "PAID" -> context.getString(R.string.premium_paid)
+                        st.order.status == "PENDING" -> context.getString(R.string.premium_pending_verify)
+                        st.premium -> context.getString(R.string.premium_order_unpaid_already_premium)
+                        st.order.status != "UNPAID" -> context.getString(R.string.premium_order_status, st.order.status)
+                        else -> statusMsg
                     }
+                    if (st.premium || st.order.status !in listOf("UNPAID", "PENDING")) polling = false
                 }
         }
     }
@@ -449,24 +448,16 @@ fun PremiumSettingsScreen(
                     Text(stringResource(if (busy) R.string.premium_creating else R.string.premium_create_order))
                 }
             }
-            if (provider == "manual") {
-                manual?.let { m ->
-                    Text(context.getString(R.string.premium_pay_to, m.accountName), style = MaterialTheme.typography.titleSmall)
-                    Text(m.instructions, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (m.hasImage) {
-                        OutlinedButton({ uriHandler.openUri("$serverPref/manual-qris.png") }) {
-                            Text(stringResource(R.string.premium_open_qris_image))
-                        }
-                    }
-                }
-            }
+            // QRIS ditampilkan langsung di aplikasi: tidak perlu membuka halaman web gateway.
+            PremiumQrisPanel(
+                order = order,
+                provider = provider,
+                manual = manual,
+                serverUrl = serverPref,
+                onOpenBrowser = { uriHandler.openUri(it) },
+                onMessage = { statusMsg = it },
+            )
             order?.let { o ->
-                Text("Ref: ${o.merchantRef} • ${rupiah(o.amount)} • ${o.status}", style = MaterialTheme.typography.bodySmall)
-                o.qrString?.let { Text("QR: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    o.checkoutUrl?.let { url -> OutlinedButton({ uriHandler.openUri(url) }) { Text(url.take(24)) } }
-                    o.qrUrl?.let { url -> OutlinedButton({ uriHandler.openUri(url) }) { Text("QR") } }
-                }
                 if (provider == "manual" && o.status != "PAID") {
                     OutlinedTextField(sender, { sender = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.premium_sender_label)) }, singleLine = true)
                     OutlinedTextField(note, { note = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.premium_note_label)) }, singleLine = true)
@@ -507,16 +498,14 @@ fun PremiumSettingsScreen(
                             runCatching { api.orderStatus(serverPref, o.merchantRef) }
                                 .onSuccess {
                                     order = it.order
-                                    if (it.premium) {
-                                        applyPremiumResult(true, it.expiry, authEmail)
-                                        polling = false
-                                        statusMsg = context.getString(R.string.premium_paid)
-                                    } else if (it.order.status == "PENDING") {
-                                        statusMsg = context.getString(R.string.premium_pending_verify)
-                                    } else {
-                                        statusMsg = context.getString(R.string.premium_order_status, it.order.status)
-                                        if (it.order.status !in listOf("UNPAID", "PENDING")) polling = false
+                                    if (it.premium) applyPremiumResult(true, it.expiry, authEmail)
+                                    statusMsg = when {
+                                        it.order.status == "PAID" -> context.getString(R.string.premium_paid)
+                                        it.order.status == "PENDING" -> context.getString(R.string.premium_pending_verify)
+                                        it.premium -> context.getString(R.string.premium_order_unpaid_already_premium)
+                                        else -> context.getString(R.string.premium_order_status, it.order.status)
                                     }
+                                    if (it.premium || it.order.status !in listOf("UNPAID", "PENDING")) polling = false
                                 }
                         }
                     }) { Text(stringResource(R.string.premium_check_status)) }
