@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>BeatPlay — Carousel 1/3 (hook)</title>
+<!-- Instagram / Facebook carousel, slide 1 dari 3. Render: python render_all.py carousel-1 -->
+<link rel="stylesheet" href="promo.css">
+<style>
+  .hero { margin-top: 34px; }
+  .visual { height: 600px; margin-top: 22px; }
+  .swipe {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 18px;
+    color: #6b7180;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .swipe .r { display: flex; align-items: center; gap: 8px; color: var(--indigo-dark); }
+  .swipe svg { width: 21px; height: 21px; }
+</style>
+</head>
+<body class="size-feed">
+<div class="canvas">
+
+  <header class="top">
+    <div class="brand"><img src="assets/logo.png" alt="BeatPlay logo">BeatPlay</div>
+    <div class="badge"><i></i>1 / 3</div>
+  </header>
+
+  <section class="hero">
+    <div class="eyebrow">Pemutar YouTube Music</div>
+    <h1>Musik favoritmu.<br><span class="grad">Dengan caramu.</span></h1>
+    <p class="lead">Lirik sinkron, offline, dan dengar bareng teman.<br>Untuk <b>Windows, Linux &amp; Android.</b></p>
+    <div class="features">
+      <div class="feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>Lirik sinkron</div>
+      <div class="feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>Offline</div>
+      <div class="feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.4"/><path d="M15 14.6a4.4 4.4 0 0 1 5.5 4.4"/></svg>Listen Together</div>
+      <div class="feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h3l2-5 3 10 2-5h5"/></svg>Automix</div>
+    </div>
+  </section>
+
+  <div class="visual">
+    <div class="shot-frame"><img src="assets/player.webp" alt="Tampilan pemutar BeatPlay dengan lirik sinkron"></div>
+    <div class="now-card">
+      <span class="eq"><i></i><i></i><i></i><i></i></span>
+      <div><b>Gratis, tanpa akun</b><span>Langsung putar saat dibuka</span></div>
+    </div>
+  </div>
+
+  <div class="swipe">
+    <span>Geser untuk lihat fiturnya</span>
+    <span class="r">Fitur
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+    </span>
+  </div>
+
+  <footer class="foot">
+    <span><b>BeatPlay</b> · Musik tanpa jeda</span>
+    <span>Proyek independen · Tidak berafiliasi dengan Google/YouTube</span>
+  </footer>
+
+</div>
+</body>
+</html>

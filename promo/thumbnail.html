@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>BeatPlay — Thumbnail 1280×720</title>
+<!-- Thumbnail YouTube / sampul video / header artikel.
+     Render: python render_all.py thumbnail -->
+<link rel="stylesheet" href="promo.css">
+<style>
+  .canvas {
+    padding: 44px 56px 30px;
+    display: grid;
+    grid-template-columns: 1fr 560px;
+    grid-template-rows: auto 1fr auto;
+    gap: 0 40px;
+  }
+  .top { grid-column: 1 / -1; }
+  .col { grid-column: 1; align-self: center; }
+  h1 { font-size: 58px; line-height: 1.02; }
+  .lead { font-size: 19px; margin-top: 12px; max-width: 560px; }
+  .platforms { margin-top: 16px; }
+  .platform { border-color: rgba(255,255,255,.16); background: rgba(255,255,255,.08); color: rgba(255,255,255,.8); }
+  .shot-col { grid-column: 2; grid-row: 2; align-self: center; }
+  .shot-col .shot-frame { width: 100%; transform: rotate(1.4deg); }
+  .visual::before { width: 556px; height: 372px; border-radius: 26px; }
+  .bottom {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,.14);
+  }
+  .bottom .domain { font-size: 22px; }
+  .bottom .right { display: flex; align-items: center; gap: 14px; }
+  .bottom .qr { width: 78px; height: 78px; padding: 6px; border-radius: 10px; background: #fff; }
+  .bottom .qr img { display: block; width: 100%; height: 100%; }
+  .bottom .hint { text-align: right; color: rgba(255,255,255,.66); font-size: 12px; font-weight: 600; line-height: 1.35; }
+  .bottom .hint b { display: block; color: #fff; font-size: 14px; }
+</style>
+</head>
+<body class="size-thumbnail">
+<div class="canvas dark">
+
+  <header class="top">
+    <div class="brand"><img src="assets/logo.png" alt="BeatPlay logo">BeatPlay</div>
+    <div class="badge"><i></i>Gratis · Tanpa akun</div>
+  </header>
+
+  <div class="col">
+    <div class="eyebrow">Pemutar YouTube Music</div>
+    <h1>Musik favoritmu.<br><span class="grad">Dengan caramu.</span></h1>
+    <p class="lead">Lirik sinkron, offline, dan dengar bareng teman.</p>
+    <div class="platforms">
+      <span class="platform"><i></i>Windows</span>
+      <span class="platform"><i></i>Linux</span>
+      <span class="platform"><i></i>Android</span>
+    </div>
+  </div>
+
+  <div class="shot-col visual">
+    <div class="shot-frame"><img src="assets/player.webp" alt="Tampilan pemutar BeatPlay"></div>
+  </div>
+
+  <div class="bottom">
+    <div>
+      <div class="domain">beatplay.wuaze.com</div>
+      <div class="muted" style="font-size:13px;font-weight:600;margin-top:3px">BeatPlay · Musik tanpa jeda</div>
+    </div>
+    <div class="right">
+      <div class="hint"><b>Scan untuk download</b>Windows · Linux · Android</div>
+      <div class="qr"><img src="assets/qr-beatplay.svg" alt="QR code menuju beatplay.wuaze.com"></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

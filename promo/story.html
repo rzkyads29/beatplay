@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>BeatPlay — Story 1080×1920</title>
+<!-- Instagram / Facebook Story, WhatsApp Status, TikTok & Reels cover.
+     Render: python render_all.py story
+     Konten utama dijaga di area tengah: ~260px atas dan ~320px bawah dibiarkan
+     cukup longgar untuk tombol/link bawaan aplikasi. -->
+<link rel="stylesheet" href="promo.css">
+<style>
+  .canvas { padding: 190px 78px 40px; }
+  h1 { font-size: 92px; }
+  .lead { font-size: 27px; max-width: 100%; }
+  .hero { margin-top: 34px; }
+  .visual { height: 700px; margin-top: 30px; }
+  .visual::before { width: 900px; height: 640px; }
+  .shot-frame { width: 900px; }
+  .cta { height: 264px; margin-top: 30px; padding: 30px 34px; flex-direction: column; text-align: center; gap: 18px; align-items: center; }
+  .cta h2 { font-size: 46px; }
+  .cta .domain { font-size: 30px; }
+  .qr { width: 200px; height: 200px; }
+  .qr-wrap span { font-size: 13px; }
+  .premium { font-size: 13px; padding: 8px 14px; }
+  .foot { left: 78px; right: 78px; bottom: 46px; font-size: 13px; }
+  .swipe { margin-top: 26px; display: flex; align-items: center; justify-content: center; gap: 10px; color: #6b7180; font-size: 18px; font-weight: 700; }
+  .swipe svg { width: 26px; height: 26px; color: var(--indigo); }
+</style>
+</head>
+<body class="size-story">
+<div class="canvas">
+
+  <header class="top">
+    <div class="brand"><img src="assets/logo.png" alt="BeatPlay logo">BeatPlay</div>
+    <div class="badge"><i></i>Gratis · Tanpa akun</div>
+  </header>
+
+  <section class="hero">
+    <div class="eyebrow">Pemutar YouTube Music</div>
+    <h1>Musik favoritmu.<br><span class="grad">Dengan caramu.</span></h1>
+    <p class="lead">Lirik sinkron · offline · dengar bareng teman.<br>Windows, Linux &amp; Android.</p>
+  </section>
+
+  <div class="visual">
+    <div class="shot-frame"><img src="assets/player.webp" alt="Tampilan pemutar BeatPlay dengan lirik sinkron"></div>
+    <div class="now-card">
+      <span class="eq"><i></i><i></i><i></i><i></i></span>
+      <div><b>Automix</b><span>Pindah lagu tanpa jeda</span></div>
+    </div>
+  </div>
+
+  <section class="cta">
+    <div class="premium"><i></i>Premium tanpa iklan · mulai Rp20rb</div>
+    <h2>Download gratis sekarang</h2>
+    <div class="qr-wrap">
+      <div class="qr"><img src="assets/qr-beatplay.svg" alt="QR code menuju beatplay.wuaze.com"></div>
+      <span>Scan atau buka link di bio</span>
+    </div>
+    <div class="domain">beatplay.wuaze.com</div>
+  </section>
+
+  <div class="swipe">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+    Geser ke atas untuk download
+  </div>
+
+  <footer class="foot">
+    <span><b>BeatPlay</b> · Musik tanpa jeda</span>
+    <span>Tidak berafiliasi dengan Google/YouTube</span>
+  </footer>
+
+</div>
+</body>
+</html>

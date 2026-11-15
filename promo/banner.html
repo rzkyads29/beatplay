@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>BeatPlay — Banner 1600×900</title>
+<!-- X/Twitter post, Facebook link preview, header blog, banner komunitas.
+     Render: python render_all.py banner -->
+<link rel="stylesheet" href="promo.css">
+<style>
+  .canvas { padding: 54px 64px 30px; display: grid; grid-template-columns: 1fr 660px; grid-template-rows: auto 1fr auto; gap: 0 48px; }
+  .top { grid-column: 1 / -1; }
+  .col { grid-column: 1; align-self: center; padding-right: 8px; }
+  h1 { font-size: 74px; }
+  .lead { font-size: 21px; max-width: 640px; }
+  .features { grid-template-columns: repeat(2, 1fr); max-width: 640px; margin-top: 22px; }
+  .shot-col { grid-column: 2; grid-row: 2; align-self: center; }
+  .shot-frame { width: 100%; }
+  .visual::before { width: 660px; height: 400px; }
+  .bottom { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; padding-top: 16px; border-top: 1px solid rgba(20, 21, 29, .1); }
+  .bottom .domain { font-size: 24px; color: var(--ink); }
+  .bottom .right { display: flex; align-items: center; gap: 14px; }
+  .bottom .qr { width: 84px; height: 84px; padding: 6px; border-radius: 10px; background: #fff; border: 1px solid rgba(20, 21, 29, .1); }
+  .bottom .qr img { display: block; width: 100%; height: 100%; }
+  .bottom .hint { text-align: right; color: var(--muted); font-size: 12px; font-weight: 600; line-height: 1.35; }
+  .bottom .hint b { display: block; color: var(--ink); font-size: 14px; }
+</style>
+</head>
+<body class="size-banner">
+<div class="canvas">
+
+  <header class="top">
+    <div class="brand"><img src="assets/logo.png" alt="BeatPlay logo">BeatPlay</div>
+    <div class="badge"><i></i>Premium tanpa iklan · mulai Rp20rb</div>
+  </header>
+
+  <div class="col">
+    <div class="eyebrow">Pemutar YouTube Music</div>
+    <h1>Musik favoritmu.<br><span class="grad">Dengan caramu.</span></h1>
+    <p class="lead">Lirik sinkron, offline, dan dengar bareng teman.<br><b>Gratis, tanpa akun.</b></p>
+    <div class="features">
+      <div class="feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>Lirik sinkron</div>
+      <div class="feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>Offline</div>
+      <div class="feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.4"/><path d="M15 14.6a4.4 4.4 0 0 1 5.5 4.4"/></svg>Listen Together</div>
+      <div class="feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="6" r="2.4"/><circle cx="5" cy="18" r="2.4"/><path d="M7 7.5v9l10-4.5-10-4.5Z"/></svg>Playback offline</div>
+    </div>
+  </div>
+
+  <div class="shot-col visual">
+    <div class="shot-frame"><img src="assets/player.webp" alt="Tampilan pemutar BeatPlay"></div>
+  </div>
+
+  <div class="bottom">
+    <div>
+      <div class="domain">beatplay.wuaze.com</div>
+      <div class="muted" style="font-size:13px;font-weight:600;margin-top:4px">Windows · Linux · Android 8.0+</div>
+    </div>
+    <div class="right">
+      <div class="hint"><b>Scan untuk download</b>Gratis · tanpa akun</div>
+      <div class="qr"><img src="assets/qr-beatplay.svg" alt="QR code menuju beatplay.wuaze.com"></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
