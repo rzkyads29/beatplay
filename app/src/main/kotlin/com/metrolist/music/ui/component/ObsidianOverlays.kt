@@ -232,16 +232,11 @@ fun ObsidianProfileDrawer(
                     }
                 }
 
-                DrawerRow("Kode BeatPlay", R.drawable.share, accent = true) { go("beatplay_code") }
-                DrawerRow("Edit Profil", R.drawable.edit) {
-                    onDismiss()
-                    onEditProfile()
-                }
-                DrawerRow("Rekap Tahun Ini", R.drawable.crown) { go("wrapped") }
-                DrawerRow("Statistik Mendengarkan", R.drawable.stats) { go("stats") }
+                DrawerRow("Profil", R.drawable.account) { go("profile") }
+                DrawerRow("Statistik Pendengaran", R.drawable.stats) { go("stats") }
                 DrawerRow("Baru Diputar", R.drawable.history) { go("history") }
-                DrawerRow("Dengarkan Bersama", R.drawable.group_outlined) { go("listen_together") }
-                DrawerRow("Pengaturan", R.drawable.settings) { go("settings") }
+                DrawerRow("Info Terkini", R.drawable.library_music_outlined) { go("library") }
+                DrawerRow("Pengaturan & Privasi", R.drawable.settings) { go("settings") }
                 DrawerRow("Keluar", R.drawable.logout) {
                     // Stop any active playback so audio doesn't keep playing post-logout.
                     playerConnection?.let { pc ->

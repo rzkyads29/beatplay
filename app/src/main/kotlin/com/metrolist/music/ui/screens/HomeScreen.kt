@@ -153,6 +153,7 @@ import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.ObsidianQuickTile
+import com.metrolist.music.ui.component.ObsidianUiState
 import com.metrolist.music.ui.component.RandomizeGridItem
 import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongListItem
@@ -1298,11 +1299,9 @@ fun HomeScreen(
                         accountImageUrl = url,
                         accountName = beatPlayName.ifBlank { accountName },
                         onOpenProfile = {
-                            if (isBeatPlayLoggedIn) {
-                                navController.navigate("profile") { launchSingleTop = true }
-                            } else {
-                                navController.navigate("beatplay_auth") { launchSingleTop = true }
-                            }
+                            // Avatar opens the Spotify-style slide-in drawer; never navigate
+                            // straight to the account screen from here.
+                            ObsidianUiState.profileOpen = true
                         },
                         onNavigate = { route -> navController.navigate(route) { launchSingleTop = true } },
                         chips = homePage?.chips?.map { it.title }
