@@ -924,6 +924,22 @@ fun BottomSheetPlayer(
                         PlayerBackgroundStyle.DEFAULT
                     }
                 }
+
+                // iOS-style top fade — darker gradient from status bar area fading to transparent.
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(240.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to Color.Black.copy(alpha = 0.55f),
+                                    0.5f to Color.Black.copy(alpha = 0.20f),
+                                    1.0f to Color.Transparent,
+                                ),
+                            ),
+                        ),
+                )
             }
         },
         onDismiss =

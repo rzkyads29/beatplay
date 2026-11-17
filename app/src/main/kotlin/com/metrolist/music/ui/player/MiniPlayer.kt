@@ -287,10 +287,10 @@ private fun NewMiniPlayer(
     }
     // Memoize colors
     val backgroundColor = when (miniPlayerBackground) {
-        MiniPlayerBackgroundStyle.DEFAULT    -> ObsidianColors.surfaceHigh
+        MiniPlayerBackgroundStyle.DEFAULT    -> MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.94f)
         MiniPlayerBackgroundStyle.TRANSPARENT -> Color.Black.copy(alpha = 0.25f)
-        MiniPlayerBackgroundStyle.BLUR       -> ObsidianColors.surfaceHigh
-        MiniPlayerBackgroundStyle.GRADIENT   -> ObsidianColors.surfaceHigh
+        MiniPlayerBackgroundStyle.BLUR       -> MaterialTheme.colorScheme.surfaceContainer
+        MiniPlayerBackgroundStyle.GRADIENT   -> MaterialTheme.colorScheme.surfaceContainer
         MiniPlayerBackgroundStyle.PURE_BLACK -> Color.Black
     }
     val forceLightColors = !useDarkTheme && (miniPlayerBackground == MiniPlayerBackgroundStyle.PURE_BLACK ||
@@ -414,10 +414,18 @@ private fun NewMiniPlayer(
                     }
                 }
                 MiniPlayerBackgroundStyle.GRADIENT -> {
+                    val colors = if (gradientColors.isNotEmpty()) gradientColors
+                    else listOf(
+                        MaterialTheme.colorScheme.surfaceContainer,
+                        MaterialTheme.colorScheme.surfaceContainer,
+                    )
                     Box(
                         Modifier
                             .fillMaxSize()
-                            .background(ObsidianColors.surfaceHigh),
+                            .background(
+                                Brush.horizontalGradient(colors)
+                            )
+                            .background(Color.Black.copy(alpha = 0.15f)),
                     )
                 }
                 else -> {}
@@ -430,7 +438,7 @@ private fun NewMiniPlayer(
                 Box(
                     Modifier
                         .size(44.dp)
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(CircleShape)
                         .background(ObsidianColors.surfaceHighest),
                 ) {
                     mediaMetadata?.let { metadata ->
@@ -442,7 +450,7 @@ private fun NewMiniPlayer(
                             model = thumbnailUrl,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(6.dp)),
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
                         )
                     }
                 }

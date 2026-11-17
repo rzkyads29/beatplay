@@ -24,14 +24,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -105,6 +111,8 @@ fun BeatPlayAuthScreen(navController: NavController) {
 
     var mode by remember { mutableStateOf(AuthMode.LOGIN) }
     var step by remember { mutableStateOf(AuthStep.ACCOUNT) }
+    var showEmailForm by remember { mutableStateOf(authEmail.isNotBlank() && authToken.isNotBlank()) }
+    var emailSubmitted by remember { mutableStateOf(false) }
     var emailInput by remember { mutableStateOf(authEmail) }
     var passwordInput by remember { mutableStateOf("") }
     var confirmInput by remember { mutableStateOf("") }
@@ -190,6 +198,7 @@ fun BeatPlayAuthScreen(navController: NavController) {
     suspend fun persistSession(email: String, token: String) {
         authEmail = email
         authToken = token
+        showEmailForm = false
         context.safeDataStoreEdit { prefs ->
             prefs[BeatPlayAccountEmailKey] = email
             prefs[BeatPlayAuthTokenKey] = token
@@ -352,12 +361,9 @@ fun BeatPlayAuthScreen(navController: NavController) {
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 18.dp)
+                .padding(horizontal = 22.dp)
                 .padding(bottom = 36.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            AuthHero()
-
             if (loggedIn) {
                 SignedInCard(
                     email = authEmail,
@@ -377,65 +383,70 @@ fun BeatPlayAuthScreen(navController: NavController) {
                         color = if (isError) ObsidianColors.danger else ObsidianColors.cyan,
                     )
                 }
+            } else if (step == AuthStep.VERIFY) {
+                VerifyPanel(
+                    email = pendingEmail,
+                    code = otp,
+                    onCode = { next -> otp = next },
+                    countdown = otpCountdown,
+                    devCode = devCode,
+                    loading = loading,
+                    message = message,
+                    isError = isError,
+                    onResend = { resendCode() },
+                    onEdit = {
+                        step = AuthStep.ACCOUNT
+                        emailSubmitted = false
+                        message = null
+                    },
+                    onSubmit = { submitCode() },
+                )
+            } else if (!emailSubmitted) {
+                AuthSplash(
+                    onContinueEmail = {
+                        mode = AuthMode.LOGIN
+                        emailSubmitted = true
+                        message = null
+                        isError = false
+                    },
+                    onSwitchToRegister = {
+                        mode = AuthMode.REGISTER
+                        emailSubmitted = true
+                        message = null
+                        isError = false
+                    },
+                )
             } else {
-                when (step) {
-                    AuthStep.ACCOUNT -> AccountPanel(
-                        mode = mode,
-                        onModeChange = {
-                            mode = it
-                            message = null
-                        },
-                        email = emailInput,
-                        onEmail = {
-                            emailInput = it
-                            message = null
-                        },
-                        password = passwordInput,
-                        onPassword = {
-                            passwordInput = it
-                            message = null
-                        },
-                        confirm = confirmInput,
-                        onConfirm = {
-                            confirmInput = it
-                            message = null
-                        },
-                        showPassword = showPassword,
-                        onTogglePassword = { showPassword = !showPassword },
-                        loading = loading,
-                        message = message,
-                        isError = isError,
-                        onSubmit = { submitEmail() },
-                    )
-
-                    AuthStep.VERIFY -> VerifyPanel(
-                        email = pendingEmail,
-                        code = otp,
-                        onCode = { next -> otp = next },
-                        countdown = otpCountdown,
-                        devCode = devCode,
-                        loading = loading,
-                        message = message,
-                        isError = isError,
-                        onResend = { resendCode() },
-                        onEdit = {
-                            step = AuthStep.ACCOUNT
-                            message = null
-                        },
-                        onSubmit = { submitCode() },
-                    )
-                }
-
-                Text(
-                    "Kode verifikasi dikirim ke email yang kamu daftarkan.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ObsidianColors.slate400,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
+                AccountPanel(
+                    mode = mode,
+                    onModeChange = {
+                        mode = it
+                        message = null
+                    },
+                    email = emailInput,
+                    onEmail = {
+                        emailInput = it
+                        message = null
+                    },
+                    password = passwordInput,
+                    onPassword = {
+                        passwordInput = it
+                        message = null
+                    },
+                    confirm = confirmInput,
+                    onConfirm = {
+                        confirmInput = it
+                        message = null
+                    },
+                    showPassword = showPassword,
+                    onTogglePassword = { showPassword = !showPassword },
+                    loading = loading,
+                    message = message,
+                    isError = isError,
+                    onSubmit = { submitEmail() },
+                    onBack = { emailSubmitted = false; message = null; isError = false },
                 )
             }
-
-            BenefitsCard()
         }
     }
 
@@ -458,6 +469,7 @@ fun BeatPlayAuthScreen(navController: NavController) {
                         }
                         authToken = ""
                         authEmail = ""
+                        showEmailForm = false
                         premium = false
                         expiry = null
                         mode = AuthMode.LOGIN
@@ -482,38 +494,58 @@ fun BeatPlayAuthScreen(navController: NavController) {
 }
 
 @Composable
-private fun AuthHero() {
-    Box(
-        Modifier
+private fun AuthSplash(
+    onContinueEmail: () -> Unit,
+    onSwitchToRegister: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
             .fillMaxWidth()
-            .height(196.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(ObsidianColors.elegantWhite),
+            .padding(top = 48.dp, bottom = 36.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Column(
-            Modifier.fillMaxSize().padding(20.dp),
-            verticalArrangement = Arrangement.Bottom,
+        Text(
+            "Masuk ke BeatPlay",
+            color = ObsidianColors.textPrimary,
+            fontSize = 34.sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 40.sp,
+        )
+
+        Button(
+            onClick = onContinueEmail,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(26.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF1ED760),
+                contentColor = Color(0xFF0C0908),
+            ),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                AsyncImage(
-                    model = R.mipmap.ic_launcher_round,
-                    contentDescription = null,
-                    modifier = Modifier.size(58.dp).clip(CircleShape),
-                )
-                Column {
-                    Text("BeatPlay", color = ObsidianColors.coal, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-                    Text(
-                        "Musikmu, di dimensi lain.",
-                        color = ObsidianColors.coal.copy(alpha = 0.7f),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
-            Spacer(Modifier.height(12.dp))
             Text(
-                "Satu akun untuk Premium di semua perangkat.",
-                color = ObsidianColors.coal.copy(alpha = 0.8f),
-                style = MaterialTheme.typography.bodySmall,
+                "Lanjutkan dengan email",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+
+        Spacer(Modifier.height(180.dp))
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                "Belum punya akun?",
+                color = ObsidianColors.slate400,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                "Daftar",
+                color = ObsidianColors.textPrimary,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.clickable { onSwitchToRegister() },
             )
         }
     }
@@ -535,76 +567,135 @@ private fun AccountPanel(
     message: String?,
     isError: Boolean,
     onSubmit: () -> Unit,
+    onBack: () -> Unit,
 ) {
-    GlassCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
-        Column(
-            Modifier.fillMaxWidth().padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                AuthTab(
-                    text = stringResource(R.string.bp_auth_tab_login),
-                    selected = mode == AuthMode.LOGIN,
-                    modifier = Modifier.weight(1f),
-                ) { onModeChange(AuthMode.LOGIN) }
-                AuthTab(
-                    text = stringResource(R.string.bp_auth_tab_register),
-                    selected = mode == AuthMode.REGISTER,
-                    modifier = Modifier.weight(1f),
-                ) { onModeChange(AuthMode.REGISTER) }
-            }
+    var emailPhase by remember { mutableStateOf(true) }
+    val emailOk = isValidPremiumEmail(email)
 
-            OutlinedTextField(
-                value = email,
-                onValueChange = onEmail,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.premium_email_label)) },
-                leadingIcon = { Icon(painterResource(R.drawable.account), contentDescription = null) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-                shape = RoundedCornerShape(14.dp),
-            )
+    Column(
+        Modifier.fillMaxWidth().padding(top = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = if (emailPhase) {
+                if (mode == AuthMode.REGISTER) "Daftar dengan email" else "Masukkan email"
+            } else "Masukkan kata sandi",
+            color = ObsidianColors.textPrimary,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+        )
 
-            OutlinedTextField(
-                value = password,
-                onValueChange = onPassword,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.premium_account_password)) },
-                leadingIcon = { Icon(painterResource(R.drawable.lock), contentDescription = null) },
-                trailingIcon = {
-                    TextButton(onClick = onTogglePassword) {
-                        Text(
-                            stringResource(if (showPassword) R.string.bp_auth_hide else R.string.bp_auth_show),
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    }
-                },
-                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = if (mode == AuthMode.REGISTER) ImeAction.Next else ImeAction.Done,
-                ),
-                shape = RoundedCornerShape(14.dp),
-            )
-
-            if (mode == AuthMode.REGISTER) {
+        if (emailPhase) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    "Email",
+                    color = ObsidianColors.textPrimary,
+                    style = MaterialTheme.typography.labelLarge,
+                )
                 OutlinedTextField(
-                    value = confirm,
-                    onValueChange = onConfirm,
+                    value = email,
+                    onValueChange = onEmail,
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.bp_auth_confirm)) },
-                    leadingIcon = { Icon(painterResource(R.drawable.lock), contentDescription = null) },
-                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                    shape = RoundedCornerShape(14.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                    shape = RoundedCornerShape(6.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = ObsidianColors.surfaceHigh,
+                        unfocusedContainerColor = ObsidianColors.surfaceHigh,
+                        focusedBorderColor = ObsidianColors.textPrimary,
+                        unfocusedBorderColor = ObsidianColors.slate500,
+                        focusedTextColor = ObsidianColors.textPrimary,
+                        unfocusedTextColor = ObsidianColors.textPrimary,
+                        cursorColor = ObsidianColors.textPrimary,
+                    ),
                 )
             }
 
-            val emailOk = isValidPremiumEmail(email)
-            val passwordOk = password.length >= 8
-            val confirmOk = mode == AuthMode.LOGIN || password == confirm
+            Button(
+                onClick = { if (emailOk) emailPhase = false },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                enabled = emailOk && !loading,
+                shape = RoundedCornerShape(26.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF1ED760),
+                    contentColor = Color(0xFF0C0908),
+                    disabledContainerColor = ObsidianColors.surfaceHigh,
+                    disabledContentColor = ObsidianColors.slate400,
+                ),
+            ) {
+                Text(
+                    "Lanjutkan",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    "Kata sandi",
+                    color = ObsidianColors.textPrimary,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = onPassword,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    trailingIcon = {
+                        Text(
+                            stringResource(if (showPassword) R.string.bp_auth_hide else R.string.bp_auth_show),
+                            color = ObsidianColors.slate400,
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier
+                                .padding(end = 4.dp)
+                                .clickable { onTogglePassword() },
+                        )
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = if (mode == AuthMode.REGISTER) ImeAction.Next else ImeAction.Done,
+                    ),
+                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    shape = RoundedCornerShape(6.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = ObsidianColors.surfaceHigh,
+                        unfocusedContainerColor = ObsidianColors.surfaceHigh,
+                        focusedBorderColor = ObsidianColors.textPrimary,
+                        unfocusedBorderColor = ObsidianColors.slate500,
+                        focusedTextColor = ObsidianColors.textPrimary,
+                        unfocusedTextColor = ObsidianColors.textPrimary,
+                        cursorColor = ObsidianColors.textPrimary,
+                    ),
+                )
+            }
+
+            if (mode == AuthMode.REGISTER) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "Konfirmasi kata sandi",
+                        color = ObsidianColors.textPrimary,
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                    OutlinedTextField(
+                        value = confirm,
+                        onValueChange = onConfirm,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                        shape = RoundedCornerShape(6.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = ObsidianColors.surfaceHigh,
+                            unfocusedContainerColor = ObsidianColors.surfaceHigh,
+                            focusedBorderColor = ObsidianColors.textPrimary,
+                            unfocusedBorderColor = ObsidianColors.slate500,
+                            focusedTextColor = ObsidianColors.textPrimary,
+                            unfocusedTextColor = ObsidianColors.textPrimary,
+                            cursorColor = ObsidianColors.textPrimary,
+                        ),
+                    )
+                }
+            }
 
             GradientButton(
                 text = stringResource(
@@ -614,47 +705,62 @@ private fun AccountPanel(
                 ),
                 onClick = onSubmit,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
-                enabled = !loading && emailOk && passwordOk && confirmOk,
+                enabled = !loading && emailOk && password.length >= 8 && (mode == AuthMode.LOGIN || password == confirm),
                 loading = loading,
             )
 
-            if (mode == AuthMode.REGISTER) {
-                Text(
-                    "Setelah mendaftar, kode verifikasi 6 digit dikirim ke email kamu.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ObsidianColors.slate400,
-                )
-            }
+            Text(
+                "Gunakan setidaknya 8 karakter.",
+                color = ObsidianColors.slate400,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
 
-            message?.let {
-                Text(
-                    it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isError) ObsidianColors.danger else ObsidianColors.cyan,
-                )
-            }
+        if (mode == AuthMode.REGISTER && emailPhase) {
+            Text(
+                "Setelah mendaftar, kode verifikasi 6 digit dikirim ke email kamu.",
+                color = ObsidianColors.slate400,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
 
-            Row(
+        message?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isError) ObsidianColors.danger else ObsidianColors.cyan,
+            )
+        }
+
+        if (emailPhase) {
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
                     if (mode == AuthMode.REGISTER) "Sudah punya akun?" else "Belum punya akun?",
                     color = ObsidianColors.slate400,
                     style = MaterialTheme.typography.bodySmall,
                 )
-                Spacer(Modifier.width(6.dp))
                 Text(
                     if (mode == AuthMode.REGISTER) "Masuk" else "Daftar",
-                    color = ObsidianColors.cyan,
-                    fontWeight = FontWeight.SemiBold,
+                    color = ObsidianColors.textPrimary,
+                    fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.clickable {
                         onModeChange(if (mode == AuthMode.REGISTER) AuthMode.LOGIN else AuthMode.REGISTER)
                     },
                 )
             }
+        } else {
+            Text(
+                "Kembali",
+                color = ObsidianColors.textPrimary,
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.clickable { onBack() },
+            )
         }
     }
 }
@@ -821,25 +927,6 @@ private fun SignedInCard(
             TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.bp_auth_logout), color = ObsidianColors.danger)
             }
-        }
-    }
-}
-
-@Composable
-private fun BenefitsCard() {
-    GlassCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
-        Column(
-            Modifier.fillMaxWidth().padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text(
-                stringResource(R.string.bp_auth_benefits_title),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            BenefitRow(stringResource(R.string.bp_auth_benefit_1))
-            BenefitRow(stringResource(R.string.bp_auth_benefit_2))
-            BenefitRow(stringResource(R.string.bp_auth_benefit_3))
         }
     }
 }
