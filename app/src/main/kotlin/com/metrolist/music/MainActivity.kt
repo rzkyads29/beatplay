@@ -88,6 +88,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
@@ -1117,6 +1118,24 @@ class MainActivity : FragmentActivity() {
 
                             if (!showRail && currentRoute != "wrapped") {
                                 Box {
+                                    // Spotify-style bottom scrim — content fades into a
+                                    // transparent→dark gradient behind the mini player + nav.
+                                    Box(
+                                        Modifier
+                                            .align(Alignment.BottomCenter)
+                                            .fillMaxWidth()
+                                            .height(bottomInset + navPadding + 80.dp)
+                                            .background(
+                                                Brush.verticalGradient(
+                                                    colorStops = arrayOf(
+                                                        0.0f to Color.Transparent,
+                                                        0.45f to Color.Black.copy(alpha = 0.75f),
+                                                        1.0f to Color.Black.copy(alpha = 0.96f),
+                                                    ),
+                                                ),
+                                            ),
+                                    )
+
                                     if (activePlayerConnection != null) {
                                         BottomSheetPlayer(
                                             state = playerBottomSheetState,

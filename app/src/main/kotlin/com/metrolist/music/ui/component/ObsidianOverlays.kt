@@ -6,6 +6,7 @@
 package com.metrolist.music.ui.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -148,50 +149,80 @@ fun ObsidianProfileDrawer(
             ) {
                 Text("Profil", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
 
-                GlassCard(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            onDismiss()
-                            navController.navigate("profile") { launchSingleTop = true }
-                        },
-                    fill = ObsidianColors.glassFillStrong,
+                Column(
+                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Box(
-                                Modifier.size(54.dp).clip(CircleShape).background(obsidianGradient()),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                if (displayImage != null) {
-                                    AsyncImage(
-                                        model = displayImage,
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize(),
-                                    )
-                                } else {
-                                    Icon(painterResource(R.drawable.account), null, tint = ObsidianColors.onAccent)
-                                }
-                            }
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    displayName,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                    Box(contentAlignment = Alignment.BottomEnd) {
+                        Box(
+                            Modifier
+                                .size(96.dp)
+                                .clip(CircleShape)
+                                .background(obsidianGradient()),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (displayImage != null) {
+                                AsyncImage(
+                                    model = displayImage,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize(),
                                 )
-                                Text(
-                                    when {
-                                        bpCode.isNotBlank() -> "Kode " + bpCode.chunked(4).joinToString("-")
-                                        isPremium -> "Premium aktif"
-                                        else -> "Akun gratis"
-                                    },
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (isPremium) ObsidianColors.cyan else ObsidianColors.slate400,
+                            } else {
+                                Icon(
+                                    painterResource(R.drawable.account),
+                                    null,
+                                    tint = ObsidianColors.onAccent,
+                                    modifier = Modifier.size(44.dp),
                                 )
                             }
                         }
+                        Box(
+                            Modifier
+                                .size(30.dp)
+                                .clip(CircleShape)
+                                .background(ObsidianColors.elegantWhite)
+                                .clickable {
+                                    onDismiss()
+                                    onEditProfile()
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painterResource(R.drawable.edit),
+                                contentDescription = "Edit profil",
+                                tint = ObsidianColors.coal,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    }
+                    Text(
+                        displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        when {
+                            bpCode.isNotBlank() -> "Kode " + bpCode.chunked(4).joinToString("-")
+                            isPremium -> "Premium aktif"
+                            else -> "Akun gratis"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isPremium) ObsidianColors.cyan else ObsidianColors.slate400,
+                    )
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .border(1.dp, ObsidianColors.glassBorderStrong, RoundedCornerShape(20.dp))
+                            .clickable {
+                                onDismiss()
+                                navController.navigate("profile") { launchSingleTop = true }
+                            }
+                            .padding(horizontal = 22.dp, vertical = 8.dp),
+                    ) {
                         Text(
                             "Lihat profil",
                             style = MaterialTheme.typography.labelMedium,
