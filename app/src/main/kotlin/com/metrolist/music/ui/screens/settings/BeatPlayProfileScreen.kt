@@ -42,6 +42,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -137,6 +139,21 @@ fun BeatPlayProfileScreen(navController: NavController) {
     }
 
     Box(Modifier.fillMaxSize().background(ObsidianColors.bg)) {
+        // Ambient top gradient behind the back button + avatar header.
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(280.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to ObsidianColors.violet.copy(alpha = 0.26f),
+                            0.55f to ObsidianColors.bg.copy(alpha = 0.6f),
+                            1.0f to Color.Transparent,
+                        ),
+                    ),
+                ),
+        )
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),

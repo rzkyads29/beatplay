@@ -1250,6 +1250,24 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.TopStart,
         ) {
+            // Ambient top gradient — dark accent tint at the very top fading
+            // smoothly into the page background.
+            Box(
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .height(320.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.0f to ObsidianColors.violet.copy(alpha = 0.28f),
+                                0.5f to ObsidianColors.bg.copy(alpha = 0.55f),
+                                1.0f to Color.Transparent,
+                            ),
+                        ),
+                    ),
+            )
+
             val horizontalLazyGridItemWidthFactor = if (maxWidth * 0.475f >= 320.dp) 0.475f else 0.9f
             val horizontalLazyGridItemWidth = maxWidth * horizontalLazyGridItemWidthFactor
             val quickPicksSnapLayoutInfoProvider =
