@@ -90,12 +90,9 @@ object Obsidian {
     )
 }
 
-/** Horizontal (default) or diagonal accent gradient. */
-fun accentBrush(diagonal: Boolean = false): Brush = Brush.linearGradient(
-    colors = Obsidian.accent,
-    start = androidx.compose.ui.geometry.Offset.Zero,
-    end = if (diagonal) androidx.compose.ui.geometry.Offset(900f, 900f) else androidx.compose.ui.geometry.Offset(1400f, 0f),
-)
+/** Horizontal (default) or diagonal accent gradient, spanning the element it paints. */
+fun accentBrush(diagonal: Boolean = false): Brush =
+    if (diagonal) Brush.linearGradient(Obsidian.accent) else Brush.horizontalGradient(Obsidian.accent)
 
 fun meshBrush(index: Int): Brush {
     val (a, b) = Obsidian.meshStops[index.mod(Obsidian.meshStops.size)]

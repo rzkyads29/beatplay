@@ -1,5 +1,6 @@
 package com.utaloom.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -8,8 +9,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.utaloom.data.Stores
 import com.utaloom.platform.Updates
@@ -29,8 +34,49 @@ import java.util.Locale
 @Composable
 fun PremiumScreen() {
     VScrollColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        item { PremiumHero() }
         item { PremiumSection() }
         item { BuyPremiumSection() }
+    }
+}
+
+@Composable
+private fun PremiumHero() {
+    val s by Stores.settings.state.collectAsState()
+    Box(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp).height(196.dp)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(24.dp)),
+    ) {
+        Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Obsidian.violet, Obsidian.cyan))))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0x33000000), androidx.compose.ui.graphics.Color(0xD9090A0F)))))
+        Column(Modifier.fillMaxSize().padding(22.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    "BEATPLAY PREMIUM",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),
+                    letterSpacing = 3.sp,
+                )
+                Text(
+                    if (s.isPremium) "Kamu sudah Premium" else "Dengar tanpa batas",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = androidx.compose.ui.graphics.Color.White,
+                )
+                Text(
+                    "Tanpa iklan audio • Kualitas tinggi • Aktif di semua perangkat",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),
+                )
+            }
+            Box(
+                Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                    .background(androidx.compose.ui.graphics.Color(0x33FFFFFF))
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            ) {
+                Text("Mulai dari Rp20.000 / 30 hari", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.labelMedium)
+            }
+        }
     }
 }
 
