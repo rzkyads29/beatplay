@@ -32,6 +32,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,7 +52,15 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.metrolist.music.R
+import com.metrolist.music.constants.BeatPlayAccountEmailKey
+import com.metrolist.music.constants.BeatPlayAccountNameKey
+import com.metrolist.music.constants.BeatPlayAuthTokenKey
+import com.metrolist.music.constants.BeatPlayAvatarUrlKey
+import com.metrolist.music.constants.BeatPlayFollowCodeKey
+import com.metrolist.music.constants.DEFAULT_PREMIUM_SERVER_URL
 import com.metrolist.music.constants.IsPremiumKey
+import com.metrolist.music.constants.PremiumServerUrlKey
+import com.metrolist.music.premium.PremiumApi
 import com.metrolist.music.ui.theme.ObsidianColors
 import com.metrolist.music.ui.theme.obsidianGradient
 import com.metrolist.music.utils.rememberPreference
@@ -67,9 +77,33 @@ fun ObsidianProfileDrawer(
     accountImageUrl: String?,
     accountName: String?,
     onOpenAccount: () -> Unit,
+    onEditProfile: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val (isPremium) = rememberPreference(IsPremiumKey, false)
+    var bpName by rememberPreference(BeatPlayAccountNameKey, "")
+    var bpAvatar by rememberPreference(BeatPlayAvatarUrlKey, "")
+    var bpCode by rememberPreference(BeatPlayFollowCodeKey, "")
+    var bpToken by rememberPreference(BeatPlayAuthTokenKey, "")
+    var bpEmail by rememberPreference(BeatPlayAccountEmailKey, "")
+    val serverPref by rememberPreference(PremiumServerUrlKey, DEFAULT_PREMIUM_SERVER_URL)
+    val api = remember { PremiumApi() }
+    DisposableEffect(api) { onDispose { api.close() } }
+    val loggedIn = bpToken.isNotBlank() && bpEmail.isNotBlank()
+
+    LaunchedEffect(loggedIn) {
+        if (loggedIn && (bpCode.isBlank() || bpName.isBlank())) {
+            runCatching { api.me(serverPref.trim().trimEnd('/'), bpToken) }
+                .onSuccess {
+                    bpName = it.name ?: bpName
+                    bpCode = it.followCode ?: bpCode
+                    bpAvatar = it.avatarUrl ?: ""
+                }
+        }
+    }
+
+    val displayName = bpName.ifBlank { accountName?.takeIf { it.isNotBlank() } ?: "Tamu" }
+    val displayImage = bpAvatar.ifBlank { accountImageUrl }
 
     fun go(route: String) {
         onDismiss()
@@ -107,28 +141,32 @@ fun ObsidianProfileDrawer(
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Box(
-                                Modifier.size(50.dp).clip(CircleShape).background(obsidianGradient()),
+                                Modifier.size(54.dp).clip(CircleShape).background(obsidianGradient()),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                if (accountImageUrl != null) {
+                                if (displayImage != null) {
                                     AsyncImage(
-                                        model = accountImageUrl,
+                                        model = displayImage,
                                         contentDescription = null,
                                         modifier = Modifier.fillMaxSize(),
                                     )
                                 } else {
-                                    Icon(painterResource(R.drawable.account), null, tint = Color.White)
+                                    Icon(painterResource(R.drawable.account), null, tint = ObsidianColors.onAccent)
                                 }
                             }
                             Column(Modifier.weight(1f)) {
                                 Text(
-                                    accountName ?: "Tamu",
+                                    displayName,
                                     fontWeight = FontWeight.SemiBold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
                                 Text(
-                                    if (isPremium) "Premium aktif" else "Akun gratis",
+                                    when {
+                                        bpCode.isNotBlank() -> "Kode " + bpCode.chunked(4).joinToString("-")
+                                        isPremium -> "Premium aktif"
+                                        else -> "Akun gratis"
+                                    },
                                     style = MaterialTheme.typography.labelSmall,
                                     color = if (isPremium) ObsidianColors.cyan else ObsidianColors.slate400,
                                 )
@@ -152,7 +190,12 @@ fun ObsidianProfileDrawer(
                     }
                 }
 
-                DrawerRow("Rekap Tahun Ini", R.drawable.crown, accent = true) { go("wrapped") }
+                DrawerRow("Kode BeatPlay", R.drawable.share, accent = true) { go("beatplay_code") }
+                DrawerRow("Edit Profil", R.drawable.edit) {
+                    onDismiss()
+                    onEditProfile()
+                }
+                DrawerRow("Rekap Tahun Ini", R.drawable.crown) { go("wrapped") }
                 DrawerRow("Statistik Mendengarkan", R.drawable.stats) { go("stats") }
                 DrawerRow("Baru Diputar", R.drawable.history) { go("history") }
                 DrawerRow("Dengarkan Bersama", R.drawable.group_outlined) { go("listen_together") }
@@ -271,7 +314,7 @@ private fun CreateOption(
             Modifier.size(42.dp).clip(CircleShape).background(obsidianGradient()),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(painterResource(iconRes), contentDescription = null, tint = Color.White)
+            Icon(painterResource(iconRes), contentDescription = null, tint = ObsidianColors.onAccent)
         }
         Column(Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)

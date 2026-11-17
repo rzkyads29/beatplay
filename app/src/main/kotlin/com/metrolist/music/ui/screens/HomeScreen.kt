@@ -116,6 +116,8 @@ import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.InnerTubeCookieKey
+import com.metrolist.music.constants.BeatPlayAccountNameKey
+import com.metrolist.music.constants.BeatPlayAvatarUrlKey
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.constants.RandomizeHomeOrderKey
@@ -708,7 +710,10 @@ fun HomeScreen(
         remember(innerTubeCookie) {
             "SAPISID" in parseCookieString(innerTubeCookie)
         }
-    val url = if (isLoggedIn) accountImageUrl else null
+    // BeatPlay accounts (email/password) can have a profile picture even without YouTube login.
+    val beatPlayAvatar by rememberPreference(BeatPlayAvatarUrlKey, "")
+    val beatPlayName by rememberPreference(BeatPlayAccountNameKey, "")
+    val url = beatPlayAvatar.ifBlank { if (isLoggedIn) accountImageUrl else null }
 
     // Extract unique podcasts from episodes for "Podcast Channels" row
     // Cache the podcasts to prevent them from disappearing during refresh
@@ -1195,7 +1200,7 @@ fun HomeScreen(
                 item(key = "obsidian_header") {
                     HomeObsidianHeader(
                         accountImageUrl = url,
-                        accountName = accountName,
+                        accountName = beatPlayName.ifBlank { accountName },
                         onOpenProfile = { ObsidianUiState.profileOpen = true },
                         onNavigate = { route -> navController.navigate(route) { launchSingleTop = true } },
                     )

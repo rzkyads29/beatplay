@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
+import com.metrolist.music.ui.theme.ObsidianColors
 import com.metrolist.music.ui.theme.obsidianGradient
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
@@ -133,7 +134,7 @@ fun AppNavigationRail(
                     Icon(
                         painter = painterResource(R.drawable.add),
                         contentDescription = stringResource(screen.titleId),
-                        tint = Color.White,
+                        tint = ObsidianColors.onAccent,
                     )
                 }
             } else {
@@ -247,7 +248,7 @@ fun AppNavigationBar(
                         Icon(
                             painter = painterResource(R.drawable.add),
                             contentDescription = stringResource(screen.titleId),
-                            tint = Color.White,
+                            tint = ObsidianColors.onAccent,
                         )
                     }
                     Text(

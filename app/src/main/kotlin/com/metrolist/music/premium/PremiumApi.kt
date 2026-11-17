@@ -153,8 +153,74 @@ class PremiumApi(
         val verified = root["verified"]?.jsonPrimitive?.booleanOrNull == true
         val premium = root["premium"]?.jsonPrimitive?.booleanOrNull == true
         val expiry = root["expiry"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.longOrNull
-        return MeInfo(email, verified, premium, expiry)
+        return MeInfo(
+            email = email,
+            verified = verified,
+            premium = premium,
+            expiry = expiry,
+            name = root["name"]?.jsonPrimitive?.content,
+            followCode = root["follow_code"]?.jsonPrimitive?.content,
+            avatarUrl = root["avatar_url"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content,
+        )
     }
+
+    /**
+     * Update the BeatPlay profile display name and/or avatar.
+     * Pass [avatarBytes] + [avatarMime] to set a new picture, or [removeAvatar] to clear it.
+     */
+    suspend fun updateProfile(
+        serverUrl: String,
+        token: String,
+        name: String? = null,
+        avatarBytes: ByteArray? = null,
+        avatarMime: String? = null,
+        removeAvatar: Boolean = false,
+    ): ProfileInfo {
+        val base = serverUrl.trim().trimEnd('/')
+        val payload = StringBuilder("{")
+        val parts = mutableListOf<String>()
+        if (name != null) parts.add("\"name\":\"${esc(name.take(32))}\"")
+        if (avatarBytes != null && avatarMime != null) {
+            parts.add("\"avatar_base64\":\"${android.util.Base64.encodeToString(avatarBytes, android.util.Base64.NO_WRAP)}\"")
+            parts.add("\"avatar_mime\":\"${esc(avatarMime)}\"")
+        }
+        if (removeAvatar) parts.add("\"remove_avatar\":true")
+        payload.append(parts.joinToString(",")).append("}")
+        val (status, text) = retrying(onlyIfNotSent = true) {
+            val res = client.post("$base/api/auth/profile") {
+                contentType(ContentType.Application.Json)
+                header("Authorization", "Bearer $token")
+                setBody(payload.toString())
+            }
+            res.status.value to res.bodyAsText()
+        }
+        if (status == 401) throw PremiumAuthException(parseError(text))
+        check(status == 200) { parseError(text) }
+        val prof = Json.parseToJsonElement(text).jsonObject["profile"]!!.jsonObject
+        return parseProfile(prof)
+    }
+
+    /** Look up a public profile by its BeatPlay follow code. Throws when the code is unknown. */
+    suspend fun lookupUser(serverUrl: String, code: String): ProfileInfo {
+        val base = serverUrl.trim().trimEnd('/')
+        val clean = code.trim().uppercase().filter { it.isLetterOrDigit() }
+        val (status, text) = retrying {
+            val res = client.get("$base/api/user/${java.net.URLEncoder.encode(clean, "UTF-8")}")
+            res.status.value to res.bodyAsText()
+        }
+        if (status == 404) throw IllegalArgumentException("Kode tidak ditemukan")
+        check(status == 200) { parseError(text) }
+        return parseProfile(Json.parseToJsonElement(text).jsonObject["profile"]!!.jsonObject)
+    }
+
+    private fun parseProfile(o: JsonObject): ProfileInfo =
+        ProfileInfo(
+            name = o["name"]?.jsonPrimitive?.content.orEmpty(),
+            followCode = o["follow_code"]?.jsonPrimitive?.content.orEmpty(),
+            avatarUrl = o["avatar_url"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content,
+            premium = o["premium"]?.jsonPrimitive?.booleanOrNull == true,
+            email = o["email"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content.orEmpty(),
+        )
 
     suspend fun logout(serverUrl: String, token: String) {
         val base = serverUrl.trim().trimEnd('/')
@@ -318,4 +384,16 @@ data class MeInfo(
     val verified: Boolean,
     val premium: Boolean,
     val expiry: Long?,
+    val name: String? = null,
+    val followCode: String? = null,
+    val avatarUrl: String? = null,
+)
+
+/** Public BeatPlay profile returned by /api/auth/me and /api/user/<code>. */
+data class ProfileInfo(
+    val name: String,
+    val followCode: String,
+    val avatarUrl: String?,
+    val premium: Boolean,
+    val email: String = "",
 )

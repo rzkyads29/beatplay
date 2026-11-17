@@ -126,7 +126,7 @@ private fun ObsidianPill(label: String, selected: Boolean, onClick: () -> Unit) 
     ) {
         Text(
             label,
-            color = if (selected) Color.White else ObsidianColors.slate400,
+            color = if (selected) ObsidianColors.onAccent else ObsidianColors.slate400,
             fontSize = 13.sp,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
             maxLines = 1,

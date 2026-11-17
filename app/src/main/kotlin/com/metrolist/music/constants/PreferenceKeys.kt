@@ -556,6 +556,10 @@ val PremiumServerUrlMigratedKey = booleanPreferencesKey("premiumServerUrlMigrate
 // not to the Google account, so YouTube login is only needed for library sync.
 val BeatPlayAuthTokenKey = stringPreferencesKey("beatPlayAuthToken")
 val BeatPlayAccountEmailKey = stringPreferencesKey("beatPlayAccountEmail")
+val BeatPlayAccountNameKey = stringPreferencesKey("beatPlayAccountName")
+val BeatPlayAvatarUrlKey = stringPreferencesKey("beatPlayAvatarUrl")
+val BeatPlayFollowCodeKey = stringPreferencesKey("beatPlayFollowCode")
+val BeatPlayFollowingKey = stringPreferencesKey("beatPlayFollowing")
 
 const val DEFAULT_PREMIUM_SERVER_URL = "https://premium.adminbeat.my.id"
 const val DEFAULT_AD_EVERY_N_SONGS = 3

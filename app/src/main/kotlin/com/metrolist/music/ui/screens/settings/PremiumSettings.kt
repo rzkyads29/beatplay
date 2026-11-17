@@ -8,7 +8,11 @@ package com.metrolist.music.ui.screens.settings
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,6 +48,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -74,6 +81,10 @@ import com.metrolist.music.premium.PremiumAuthException
 import com.metrolist.music.premium.isLegacyPremiumServerUrl
 import com.metrolist.music.premium.networkErrorMessage
 import com.metrolist.music.premium.photoMimeFor
+import com.metrolist.music.ui.component.GlassCard
+import com.metrolist.music.ui.component.GradientButton
+import com.metrolist.music.ui.theme.ObsidianColors
+import com.metrolist.music.ui.theme.obsidianGradient
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.safeDataStoreEdit
 import kotlinx.coroutines.Dispatchers
@@ -221,14 +232,21 @@ fun PremiumSettingsScreen(
     }
 
     Column(Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text(stringResource(R.string.premium)) },
-            navigationIcon = {
-                androidx.compose.material3.IconButton(onClick = navController::navigateUp) {
-                    Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
-                }
-            },
-        )
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            androidx.compose.material3.IconButton(onClick = navController::navigateUp) {
+                Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
+            }
+            Text(
+                stringResource(R.string.premium),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            )
+        }
         Column(
             Modifier
                 .fillMaxSize()
@@ -237,32 +255,7 @@ fun PremiumSettingsScreen(
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            ElevatedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
-                Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        painterResource(if (isPremiumPref) R.drawable.check else R.drawable.account),
-                        null, Modifier.size(36.dp), tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            stringResource(if (isPremiumPref) R.string.premium_status_active else R.string.premium_status_free),
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Text(
-                            if (isPremiumPref) {
-                                stringResource(R.string.premium_active_desc) +
-                                    if (expiryPref > 0) " " + context.getString(R.string.premium_valid_until, Date(expiryPref * 1000).toString()) else ""
-                            } else {
-                                stringResource(R.string.premium_free_desc) +
-                                    (if (nextAdInMs > 0) " " + context.getString(R.string.premium_next_ad, ((nextAdInMs + 59_999) / 60_000).toInt()) else "")
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
+            PremiumHero(isPremiumPref, expiryPref, nextAdInMs, context)
 
             // Premium follows the BeatPlay account: register/login with email+password,
             // then fetch /api/auth/me(token) for premium status. YouTube login stays
@@ -413,16 +406,43 @@ fun PremiumSettingsScreen(
 
             if (plans == null && plansErr == null) Text(stringResource(R.string.premium_plans_loading), style = MaterialTheme.typography.bodySmall)
             plansErr?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
-            plans?.forEach { p ->
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.RadioButton(selected == p.id, { selected = p.id })
-                    Column(Modifier.weight(1f)) {
-                        Text(p.title, style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            "${rupiah(p.price)} / ${p.days} hari",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+            plans?.let { list ->
+                GlassCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp)) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text("Pilih paket", style = MaterialTheme.typography.titleSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                        list.forEach { p ->
+                            val isSel = selected == p.id
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(if (isSel) ObsidianColors.elegantWhite.copy(alpha = 0.12f) else Color.Transparent)
+                                    .border(
+                                        1.dp,
+                                        if (isSel) ObsidianColors.elegantWhite.copy(alpha = 0.55f) else ObsidianColors.glassBorder,
+                                        RoundedCornerShape(14.dp),
+                                    )
+                                    .clickable { selected = p.id }
+                                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                androidx.compose.material3.RadioButton(selected = isSel, onClick = { selected = p.id })
+                                Column(Modifier.weight(1f)) {
+                                    Text(p.title, style = MaterialTheme.typography.titleSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                                    Text(
+                                        "${rupiah(p.price)} / ${p.days} hari",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = ObsidianColors.slate400,
+                                    )
+                                }
+                                if (isSel) {
+                                    Icon(painterResource(R.drawable.check), null, tint = ObsidianColors.elegantWhite, modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -520,6 +540,86 @@ fun PremiumSettingsScreen(
                 }
             }
             if (statusMsg.isNotBlank()) Text(statusMsg, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
+private fun PremiumHero(
+    isPremium: Boolean,
+    expiryPref: Long,
+    nextAdInMs: Long,
+    context: android.content.Context,
+) {
+    val shape = RoundedCornerShape(24.dp)
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .then(
+                if (isPremium) {
+                    Modifier.background(obsidianGradient(diagonal = true))
+                } else {
+                    Modifier.background(
+                        Brush.linearGradient(listOf(ObsidianColors.surfaceHigh, ObsidianColors.surfaceLow)),
+                    )
+                },
+            )
+            .border(1.dp, ObsidianColors.glassBorderStrong, shape)
+            .padding(20.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(
+                    Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (isPremium) ObsidianColors.onAccent.copy(alpha = 0.14f)
+                            else ObsidianColors.glassFillStrong,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painterResource(R.drawable.crown),
+                        contentDescription = null,
+                        tint = if (isPremium) ObsidianColors.onAccent else ObsidianColors.elegantWhite,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "BeatPlay Premium",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        color = if (isPremium) ObsidianColors.onAccent else ObsidianColors.elegantWhite,
+                    )
+                    Text(
+                        stringResource(if (isPremium) R.string.premium_status_active else R.string.premium_status_free),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (isPremium) ObsidianColors.onAccent.copy(alpha = 0.75f) else ObsidianColors.slate400,
+                    )
+                }
+            }
+            Text(
+                if (isPremium) {
+                    stringResource(R.string.premium_active_desc) +
+                        if (expiryPref > 0) {
+                            " " + context.getString(R.string.premium_valid_until, Date(expiryPref * 1000).toString())
+                        } else {
+                            ""
+                        }
+                } else {
+                    stringResource(R.string.premium_free_desc) +
+                        if (nextAdInMs > 0) {
+                            " " + context.getString(R.string.premium_next_ad, ((nextAdInMs + 59_999) / 60_000).toInt())
+                        } else {
+                            ""
+                        }
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isPremium) ObsidianColors.onAccent.copy(alpha = 0.85f) else ObsidianColors.slate400,
+            )
         }
     }
 }

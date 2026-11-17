@@ -370,7 +370,7 @@ private fun SettingsHero(navController: NavController, youtubeAccountName: Strin
                     Modifier.size(52.dp).clip(CircleShape).background(obsidianGradient()),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(painterResource(R.drawable.account), null, tint = Color.White)
+                    Icon(painterResource(R.drawable.account), null, tint = ObsidianColors.onAccent)
                 }
                 Column(Modifier.weight(1f)) {
                     Text(

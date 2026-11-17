@@ -63,7 +63,10 @@ import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.metrolist.music.R
 import com.metrolist.music.constants.BeatPlayAccountEmailKey
+import com.metrolist.music.constants.BeatPlayAccountNameKey
 import com.metrolist.music.constants.BeatPlayAuthTokenKey
+import com.metrolist.music.constants.BeatPlayAvatarUrlKey
+import com.metrolist.music.constants.BeatPlayFollowCodeKey
 import com.metrolist.music.constants.DEFAULT_PREMIUM_SERVER_URL
 import com.metrolist.music.constants.IsPremiumKey
 import com.metrolist.music.constants.PremiumEmailKey
@@ -144,11 +147,16 @@ fun BeatPlayAuthScreen(navController: NavController) {
         if (!loggedIn) return
         checking = true
         runCatching { api.me(serverPref.trim().trimEnd('/'), authToken) }
-            .onSuccess {
-                premium = it.premium
-                expiry = it.expiry
-                verified = it.verified
-                applyEntitlement(it.premium, it.expiry, it.email)
+            .onSuccess { info ->
+                premium = info.premium
+                expiry = info.expiry
+                verified = info.verified
+                applyEntitlement(info.premium, info.expiry, info.email)
+                context.safeDataStoreEdit { prefs ->
+                    info.name?.let { prefs[BeatPlayAccountNameKey] = it }
+                    info.followCode?.let { prefs[BeatPlayFollowCodeKey] = it }
+                    prefs[BeatPlayAvatarUrlKey] = info.avatarUrl ?: ""
+                }
             }
             .onFailure {
                 if (it is PremiumAuthException) {
@@ -341,6 +349,7 @@ fun BeatPlayAuthScreen(navController: NavController) {
                     checking = checking,
                     onRefresh = { scope.launch { refreshStatus() } },
                     onManage = { navController.navigate("settings/premium") },
+                    onCode = { navController.navigate("beatplay_code") { launchSingleTop = true } },
                     onLogout = { showLogoutDialog = true },
                 )
                 message?.let {
@@ -465,7 +474,7 @@ private fun AuthHero() {
         Box(Modifier.fillMaxSize().background(obsidianGradient(diagonal = true)))
         Box(
             Modifier.fillMaxSize().background(
-                Brush.verticalGradient(listOf(Color(0x22000000), Color(0xE6090A0F))),
+                Brush.verticalGradient(listOf(Color(0x55000000), Color(0xF50C0908))),
             ),
         )
         Column(
@@ -720,7 +729,7 @@ private fun AuthTab(
     ) {
         Text(
             text,
-            color = if (selected) Color.White else ObsidianColors.slate400,
+            color = if (selected) ObsidianColors.onAccent else ObsidianColors.slate400,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
         )
@@ -736,6 +745,7 @@ private fun SignedInCard(
     checking: Boolean,
     onRefresh: () -> Unit,
     onManage: () -> Unit,
+    onCode: () -> Unit,
     onLogout: () -> Unit,
 ) {
     GlassCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
@@ -754,7 +764,7 @@ private fun SignedInCard(
                     Icon(
                         painterResource(if (premium) R.drawable.crown else R.drawable.account),
                         contentDescription = null,
-                        tint = if (premium) Color.White else ObsidianColors.slate400,
+                        tint = if (premium) ObsidianColors.onAccent else ObsidianColors.slate400,
                     )
                 }
                 Spacer(Modifier.width(14.dp))
@@ -788,6 +798,12 @@ private fun SignedInCard(
                     modifier = Modifier.weight(1f),
                 )
             }
+
+            GlassButton(
+                text = "Kode BeatPlay",
+                onClick = onCode,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.bp_auth_logout), color = ObsidianColors.danger)

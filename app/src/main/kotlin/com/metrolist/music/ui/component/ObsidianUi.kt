@@ -88,13 +88,13 @@ fun GradientButton(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (loading) {
-                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White)
+                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = ObsidianColors.onAccent)
             } else if (icon != null) {
-                Icon(icon, null, Modifier.size(18.dp), tint = Color.White)
+                Icon(icon, null, Modifier.size(18.dp), tint = ObsidianColors.onAccent)
             }
             Text(
                 text,
-                color = if (enabled) Color.White else ObsidianColors.slate500,
+                color = if (enabled) ObsidianColors.onAccent else ObsidianColors.slate500,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 15.sp,
             )
