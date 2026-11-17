@@ -1,5 +1,5 @@
 /**
- * Deep Obsidian Home header and quick-access bento grid.
+ * Deep Obsidian Home header and quick-access grid.
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
@@ -13,10 +13,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -32,7 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,8 +43,6 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.metrolist.music.R
 import com.metrolist.music.ui.theme.ObsidianColors
-import com.metrolist.music.ui.theme.obsidianGradient
-import java.time.LocalTime
 
 private val homePills = listOf(
     "Semua" to null,
@@ -52,59 +52,85 @@ private val homePills = listOf(
     "Mengikuti" to "account",
 )
 
+/** One tile in the Spotify-style two-column quick-access grid. */
+data class ObsidianQuickTile(
+    val id: String,
+    val title: String,
+    val thumbnail: String? = null,
+    val iconRes: Int? = null,
+    val onClick: () -> Unit,
+)
+
+/**
+ * Home header: avatar on the left, then the filter pills. No greeting and no
+ * extra taskbar, so the status bar sits directly above this row.
+ */
 @Composable
 fun HomeObsidianHeader(
     accountImageUrl: String?,
     accountName: String?,
     onOpenProfile: () -> Unit,
     onNavigate: (String) -> Unit,
+    chips: List<String> = emptyList(),
+    selectedChipTitle: String? = null,
+    onSelectChip: (String) -> Unit = {},
 ) {
-    var selected by remember { mutableStateOf("Semua") }
-    val hour = remember { LocalTime.now().hour }
-    val greeting = when {
-        hour < 12 -> "Selamat pagi"
-        hour < 18 -> "Selamat siang"
-        else -> "Selamat malam"
-    }
+    var selectedFallback by remember { mutableStateOf("Semua") }
 
-    Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    greeting,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            Modifier
+                .size(46.dp)
+                .clip(CircleShape)
+                .background(ObsidianColors.surfaceHigh)
+                .border(1.dp, ObsidianColors.glassBorderStrong, CircleShape)
+                .clickable { onOpenProfile() },
+            contentAlignment = Alignment.Center,
+        ) {
+            if (!accountImageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = accountImageUrl,
+                    contentDescription = accountName ?: "Profil",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().clip(CircleShape),
                 )
-                Text(
-                    accountName?.let { "Kembali, $it" } ?: "Temukan suara berikutnya",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ObsidianColors.slate400,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+            } else {
+                Icon(
+                    painterResource(R.drawable.account),
+                    contentDescription = accountName ?: "Profil",
+                    tint = ObsidianColors.slate400,
+                    modifier = Modifier.size(24.dp),
                 )
-            }
-            Box(
-                Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(ObsidianColors.glassFillStrong)
-                    .border(2.dp, ObsidianColors.violet, CircleShape)
-                    .clickable { onOpenProfile() },
-                contentAlignment = Alignment.Center,
-            ) {
-                if (accountImageUrl != null) {
-                    AsyncImage(model = accountImageUrl, contentDescription = "Profil", modifier = Modifier.size(46.dp).clip(CircleShape))
-                } else {
-                    Icon(painterResource(R.drawable.account), "Profil", tint = ObsidianColors.slate400)
-                }
             }
         }
-        Spacer(Modifier.height(12.dp))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(homePills) { (label, route) ->
-                ObsidianPill(label, selected == label) {
-                    selected = label
-                    route?.let(onNavigate)
+
+        LazyRow(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (chips.isNotEmpty()) {
+                item(key = "chip_all") {
+                    ObsidianPill("Semua", selectedChipTitle == null) {
+                        if (selectedChipTitle != null) onSelectChip("")
+                    }
+                }
+                items(chips.distinct(), key = { "chip_$it" }) { title ->
+                    ObsidianPill(title, selectedChipTitle == title) {
+                        onSelectChip(title)
+                    }
+                }
+            } else {
+                items(homePills, key = { "pill_${it.first}" }) { (label, route) ->
+                    ObsidianPill(label, selectedFallback == label) {
+                        selectedFallback = label
+                        route?.let(onNavigate)
+                    }
                 }
             }
         }
@@ -117,58 +143,83 @@ private fun ObsidianPill(label: String, selected: Boolean, onClick: () -> Unit) 
         Modifier
             .clip(CircleShape)
             .then(
-                if (selected) Modifier.background(obsidianGradient())
+                if (selected) Modifier.background(ObsidianColors.elegantWhite)
                 else Modifier.background(ObsidianColors.glassFill)
                     .border(1.dp, ObsidianColors.glassBorder, CircleShape),
             )
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 18.dp, vertical = 10.dp),
     ) {
         Text(
             label,
             color = if (selected) ObsidianColors.onAccent else ObsidianColors.slate400,
-            fontSize = 13.sp,
+            fontSize = 14.sp,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
             maxLines = 1,
         )
     }
 }
 
+/** Two-column quick-access grid, like the reference Home screen. */
 @Composable
-fun HomeObsidianBento(onNavigate: (String) -> Unit) {
-    val items = listOf(
-        Triple("Disukai", R.drawable.favorite, "auto_playlist/liked"),
-        Triple("Unduhan", R.drawable.download, "auto_playlist/downloaded"),
-        Triple("Riwayat", R.drawable.history, "history"),
-        Triple("Statistik", R.drawable.stats, "stats"),
-        Triple("Rekap", R.drawable.crown, "wrapped"),
-        Triple("Playlist", R.drawable.playlist_play, "library"),
-    )
+fun HomeObsidianQuickGrid(
+    tiles: List<ObsidianQuickTile>,
+    modifier: Modifier = Modifier,
+) {
+    if (tiles.isEmpty()) return
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items.chunked(3).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                row.forEach { (label, icon, route) ->
-                    GlassCard(
-                        Modifier.weight(1f).height(82.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        onClick = { onNavigate(route) },
-                    ) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Icon(
-                                painterResource(icon),
-                                contentDescription = null,
-                                tint = ObsidianColors.cyan,
-                                modifier = Modifier.size(22.dp),
-                            )
-                            Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
-                        }
-                    }
+        tiles.take(8).chunked(2).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { tile ->
+                    QuickTile(tile, Modifier.weight(1f))
                 }
-                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
+    }
+}
+
+@Composable
+private fun QuickTile(tile: ObsidianQuickTile, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .height(56.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(ObsidianColors.surfaceHigh)
+            .clickable { tile.onClick() },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(56.dp).background(ObsidianColors.surfaceHighest),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (!tile.thumbnail.isNullOrBlank()) {
+                AsyncImage(
+                    model = tile.thumbnail,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Icon(
+                    painterResource(tile.iconRes ?: R.drawable.music_note),
+                    contentDescription = null,
+                    tint = ObsidianColors.elegantWhite,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
+        Text(
+            tile.title,
+            modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = ObsidianColors.textPrimary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

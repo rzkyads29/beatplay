@@ -10,6 +10,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 
 /**
  * Coal (#0C0908) background with an Elegant White (#F5F0E1) accent and warm glass
@@ -30,12 +31,12 @@ object ObsidianColors {
     val coal = Color(0xFF0C0908)
 
     val violet = elegantWhite
-    val pink = champagne
+    val pink = elegantWhite
     // Kept as an alias so existing call sites keep a second accent; it is elegant white now.
     val cyan = elegantWhite
-    val accent = listOf(elegantWhite, champagne)
+    val accent = listOf(elegantWhite, elegantWhite)
 
-    /** Text/icons painted on top of the (light) accent gradient. */
+    /** Text/icons painted on top of the flat Elegant White accent. */
     val onAccent = coal
 
     val textPrimary = Color(0xFFF5F0E1)
@@ -63,27 +64,23 @@ object ObsidianColors {
     )
 }
 
-/** Accent gradient that spans the element it paints. */
-fun obsidianGradient(diagonal: Boolean = false): Brush =
-    if (diagonal) Brush.linearGradient(ObsidianColors.accent) else Brush.horizontalGradient(ObsidianColors.accent)
+/** Flat Elegant White accent. No gradients: one calm, premium colour. */
+fun obsidianGradient(diagonal: Boolean = false): Brush = SolidColor(ObsidianColors.elegantWhite)
 
-fun meshGradient(index: Int): Brush {
-    val (a, b) = ObsidianColors.meshStops[index.mod(ObsidianColors.meshStops.size)]
-    return Brush.linearGradient(listOf(a, b))
-}
+fun meshGradient(index: Int): Brush = SolidColor(ObsidianColors.surfaceHigh)
 
 fun obsidianColorScheme(dark: Boolean): ColorScheme = if (dark) darkColorScheme(
     primary = ObsidianColors.elegantWhite,
     onPrimary = ObsidianColors.onAccent,
     primaryContainer = ObsidianColors.elegantWhite.copy(alpha = 0.18f),
     onPrimaryContainer = ObsidianColors.elegantWhite,
-    secondary = ObsidianColors.champagne,
+    secondary = ObsidianColors.elegantWhite,
     onSecondary = ObsidianColors.onAccent,
-    secondaryContainer = ObsidianColors.champagne.copy(alpha = 0.18f),
+    secondaryContainer = ObsidianColors.elegantWhite.copy(alpha = 0.18f),
     onSecondaryContainer = ObsidianColors.elegantWhite,
-    tertiary = ObsidianColors.champagne,
+    tertiary = ObsidianColors.elegantWhite,
     onTertiary = ObsidianColors.onAccent,
-    tertiaryContainer = ObsidianColors.champagne.copy(alpha = 0.20f),
+    tertiaryContainer = ObsidianColors.elegantWhite.copy(alpha = 0.20f),
     onTertiaryContainer = ObsidianColors.elegantWhite,
     background = ObsidianColors.bg,
     onBackground = ObsidianColors.textPrimary,

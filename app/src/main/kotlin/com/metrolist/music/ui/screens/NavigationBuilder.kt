@@ -51,6 +51,7 @@ import com.metrolist.music.ui.screens.settings.AppearanceSettings
 import com.metrolist.music.ui.screens.settings.BackupAndRestore
 import com.metrolist.music.ui.screens.settings.BeatPlayAuthScreen
 import com.metrolist.music.ui.screens.settings.BeatPlayCodeScreen
+import com.metrolist.music.ui.screens.settings.BeatPlayProfileScreen
 import com.metrolist.music.ui.screens.settings.ContentSettings
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.screens.settings.LyricsProviderSettings
@@ -376,6 +377,10 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable("beatplay_auth") {
         BeatPlayAuthScreen(navController)
+    }
+
+    composable("profile") {
+        BeatPlayProfileScreen(navController)
     }
 
     composable("beatplay_code") {

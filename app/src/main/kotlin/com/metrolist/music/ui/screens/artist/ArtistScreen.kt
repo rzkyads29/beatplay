@@ -92,7 +92,6 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
-import com.metrolist.music.constants.AppBarHeight
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.ShowArtistDescriptionKey
 import com.metrolist.music.constants.ShowArtistSubscriberCountKey
@@ -170,11 +169,11 @@ fun ArtistScreen(
     var showLocal by rememberSaveable { mutableStateOf(false) }
     val density = LocalDensity.current
 
-    // Calculate the offset value outside of the offset lambda
+    // The global app bar is gone, so only the status bar needs compensating.
     val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
     val headerOffset =
         with(density) {
-            -(systemBarsTopPadding + AppBarHeight).roundToPx()
+            -(systemBarsTopPadding).roundToPx()
         }
 
     val transparentAppBar by remember {
@@ -224,7 +223,7 @@ fun ArtistScreen(
                                         .shimmer()
                                         .background(MaterialTheme.colorScheme.onSurface)
                                         .fadingEdge(
-                                            top = systemBarsTopPadding + AppBarHeight,
+                                            top = systemBarsTopPadding,
                                             bottom = 200.dp,
                                         ),
                             )

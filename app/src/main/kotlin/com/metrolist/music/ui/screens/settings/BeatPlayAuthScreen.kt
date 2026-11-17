@@ -32,7 +32,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -46,7 +46,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -318,11 +317,30 @@ fun BeatPlayAuthScreen(navController: NavController) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.bp_auth_title), fontWeight = FontWeight.Bold) },
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        stringResource(R.string.bp_auth_title),
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
+                    Box(
+                        Modifier
+                            .padding(start = 8.dp)
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(ObsidianColors.surfaceHigh)
+                            .clickable { navController.navigateUp() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.arrow_back),
+                            contentDescription = null,
+                            tint = ObsidianColors.textPrimary,
+                            modifier = Modifier.size(20.dp),
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
@@ -469,14 +487,9 @@ private fun AuthHero() {
         Modifier
             .fillMaxWidth()
             .height(196.dp)
-            .clip(RoundedCornerShape(24.dp)),
+            .clip(RoundedCornerShape(24.dp))
+            .background(ObsidianColors.elegantWhite),
     ) {
-        Box(Modifier.fillMaxSize().background(obsidianGradient(diagonal = true)))
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.verticalGradient(listOf(Color(0x55000000), Color(0xF50C0908))),
-            ),
-        )
         Column(
             Modifier.fillMaxSize().padding(20.dp),
             verticalArrangement = Arrangement.Bottom,
@@ -488,10 +501,10 @@ private fun AuthHero() {
                     modifier = Modifier.size(58.dp).clip(CircleShape),
                 )
                 Column {
-                    Text("BeatPlay", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                    Text("BeatPlay", color = ObsidianColors.coal, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                     Text(
                         "Musikmu, di dimensi lain.",
-                        color = Color.White.copy(alpha = 0.85f),
+                        color = ObsidianColors.coal.copy(alpha = 0.7f),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
@@ -499,7 +512,7 @@ private fun AuthHero() {
             Spacer(Modifier.height(12.dp))
             Text(
                 "Satu akun untuk Premium di semua perangkat.",
-                color = Color.White.copy(alpha = 0.9f),
+                color = ObsidianColors.coal.copy(alpha = 0.8f),
                 style = MaterialTheme.typography.bodySmall,
             )
         }
@@ -758,7 +771,7 @@ private fun SignedInCard(
                     modifier = Modifier
                         .size(52.dp)
                         .clip(CircleShape)
-                        .background(if (premium) obsidianGradient() else Brush.linearGradient(listOf(ObsidianColors.glassFillStrong, ObsidianColors.glassFillStrong))),
+                        .background(if (premium) ObsidianColors.elegantWhite else ObsidianColors.glassFillStrong),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(

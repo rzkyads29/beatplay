@@ -5,6 +5,9 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -36,11 +39,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
 import com.metrolist.music.R
 import com.metrolist.music.constants.BeatPlayAccountNameKey
@@ -51,18 +56,35 @@ import com.metrolist.music.constants.DEFAULT_PREMIUM_SERVER_URL
 import com.metrolist.music.constants.PremiumServerUrlKey
 import com.metrolist.music.premium.PremiumApi
 import com.metrolist.music.premium.networkErrorMessage
-import com.metrolist.music.premium.photoMimeFor
 import com.metrolist.music.ui.component.GlassButton
 import com.metrolist.music.ui.component.GlassCard
 import com.metrolist.music.ui.component.GradientButton
 import com.metrolist.music.ui.theme.ObsidianColors
 import com.metrolist.music.ui.theme.obsidianGradient
 import com.metrolist.music.utils.rememberPreference
+import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private const val AVATAR_MAX_BYTES = 4 * 1024 * 1024
+
+private fun readBytes(context: Context, uri: Uri, maxBytes: Int): ByteArray? =
+    runCatching {
+        context.contentResolver.openInputStream(uri)?.use { stream ->
+            val out = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(8192)
+            var total = 0
+            while (true) {
+                val read = stream.read(buffer)
+                if (read <= 0) break
+                total += read
+                if (total > maxBytes) break
+                out.write(buffer, 0, read)
+            }
+            out.toByteArray()
+        }
+    }.getOrNull()
 
 @Composable
 fun EditProfileDialog(
@@ -97,45 +119,61 @@ fun EditProfileDialog(
         else -> initialAvatarUrl.ifBlank { null }
     }
 
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        scope.launch {
-            var bytes: ByteArray? = null
-            var mime: String? = null
-            withContext(Dispatchers.IO) {
-                val data = runCatching {
-                    val resolver = context.contentResolver
-                    resolver.openInputStream(uri)?.use { stream ->
-                        val out = java.io.ByteArrayOutputStream()
-                        val tmp = ByteArray(8192)
-                        var total = 0
-                        while (true) {
-                            val n = stream.read(tmp)
-                            if (n <= 0) break
-                            total += n
-                            if (total > AVATAR_MAX_BYTES) return@use out.toByteArray()
-                            out.write(tmp, 0, n)
-                        }
-                        out.toByteArray()
-                    } ?: ByteArray(0)
-                }.getOrNull() ?: ByteArray(0)
-                if (data.isNotEmpty()) {
-                    bytes = data
-                    mime = photoMimeFor("x.jpg", data) ?: photoMimeFor("x.png", data)
+    var pendingCropDestUri by remember { mutableStateOf<Uri?>(null) }
+
+    val cropLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode != Activity.RESULT_OK) return@rememberLauncherForActivityResult
+            val output = result.data?.let { UCrop.getOutput(it) } ?: pendingCropDestUri ?: return@rememberLauncherForActivityResult
+            scope.launch {
+                val data = withContext(Dispatchers.IO) { readBytes(context, output, AVATAR_MAX_BYTES) }
+                if (data == null || data.isEmpty()) {
+                    isError = true
+                    message = "Gagal memotong foto. Coba pilih gambar lain."
+                } else {
+                    avatarUri = output
+                    avatarBytes = data
+                    avatarMime = "image/jpeg"
+                    removeAvatar = false
+                    message = null
                 }
             }
-            if (mime == null) {
-                isError = true
-                message = "Pilih gambar JPG atau PNG maks 4 MB."
-            } else {
-                avatarUri = uri
-                avatarBytes = bytes
-                avatarMime = mime
-                removeAvatar = false
-                message = null
-            }
         }
+
+    fun launchCrop(source: Uri) {
+        val destFile = java.io.File(context.cacheDir, "avatar_crop_${System.currentTimeMillis()}.jpg")
+        val destUri = FileProvider.getUriForFile(context, "${context.packageName}.FileProvider", destFile)
+        pendingCropDestUri = destUri
+        val options =
+            UCrop.Options().apply {
+                setCompressionFormat(android.graphics.Bitmap.CompressFormat.JPEG)
+                setCompressionQuality(92)
+                setHideBottomControls(true)
+                setCircleDimmedLayer(true)
+                setShowCropGrid(false)
+                setToolbarTitle("Potong foto profil")
+                setStatusBarLight(false)
+                setToolbarColor(ObsidianColors.surfaceLow.toArgb())
+                setToolbarWidgetColor(ObsidianColors.textPrimary.toArgb())
+                setRootViewBackgroundColor(ObsidianColors.bg.toArgb())
+                setLogoColor(ObsidianColors.bg.toArgb())
+            }
+        val intent =
+            UCrop
+                .of(source, destUri)
+                .withAspectRatio(1f, 1f)
+                .withMaxResultSize(1024, 1024)
+                .withOptions(options)
+                .getIntent(context)
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        cropLauncher.launch(intent)
     }
+
+    val picker =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) launchCrop(uri)
+        }
 
     fun save() {
         val clean = nameInput.trim()
@@ -208,7 +246,7 @@ fun EditProfileDialog(
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Foto profil", fontWeight = FontWeight.SemiBold)
                         Text(
-                            "Ketuk lingkaran untuk memilih foto (JPG/PNG).",
+                            "Ketuk lingkaran untuk memilih foto, lalu atur potongannya.",
                             style = MaterialTheme.typography.bodySmall,
                             color = ObsidianColors.slate400,
                         )

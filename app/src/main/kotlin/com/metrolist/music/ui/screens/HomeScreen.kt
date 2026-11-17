@@ -138,14 +138,13 @@ import com.metrolist.music.playback.queues.YouTubeAlbumRadio
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AlbumGridItem
 import com.metrolist.music.ui.component.ArtistGridItem
-import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.HideOnScrollFAB
+import com.metrolist.music.ui.component.HomeObsidianHeader
+import com.metrolist.music.ui.component.HomeObsidianQuickGrid
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
-import com.metrolist.music.ui.component.HomeObsidianBento
-import com.metrolist.music.ui.component.HomeObsidianHeader
 import com.metrolist.music.ui.component.NavigationTitle
-import com.metrolist.music.ui.component.ObsidianUiState
+import com.metrolist.music.ui.component.ObsidianQuickTile
 import com.metrolist.music.ui.component.RandomizeGridItem
 import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongListItem
@@ -696,6 +695,8 @@ fun HomeScreen(
 
     val accountName by viewModel.accountName.collectAsStateWithLifecycle()
     val accountImageUrl by viewModel.accountImageUrl.collectAsStateWithLifecycle()
+    val localPlaylists by remember(database) { database.playlistsByCreateDateAsc() }
+        .collectAsStateWithLifecycle(initialValue = emptyList())
     val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
     val (randomizeHomeOrder) = rememberPreference(RandomizeHomeOrderKey, true)
     val autoRadioQueue by rememberPreference(AutoRadioQueueKey, defaultValue = true)
@@ -1153,6 +1154,65 @@ fun HomeScreen(
         forgottenFavoritesLazyGridState.scrollToItem(0)
     }
 
+    val quickTiles =
+        remember(accountPlaylists, localPlaylists) {
+            val tiles = mutableListOf<ObsidianQuickTile>()
+            accountPlaylists.orEmpty().forEach { playlist ->
+                tiles +=
+                    ObsidianQuickTile(
+                        id = "yt_${playlist.id}",
+                        title = playlist.title,
+                        thumbnail = playlist.thumbnail,
+                        onClick = {
+                            navController.navigate("online_playlist/${playlist.id}") {
+                                launchSingleTop = true
+                            }
+                        },
+                    )
+            }
+            localPlaylists.forEach { playlist ->
+                tiles +=
+                    ObsidianQuickTile(
+                        id = "local_${playlist.id}",
+                        title = playlist.playlist.name,
+                        thumbnail = playlist.thumbnails.firstOrNull(),
+                        onClick = {
+                            navController.navigate("local_playlist/${playlist.id}") {
+                                launchSingleTop = true
+                            }
+                        },
+                    )
+            }
+            val shortcuts =
+                listOf(
+                    ObsidianQuickTile("shortcut_liked", "Disukai", iconRes = R.drawable.favorite) {
+                        navController.navigate("auto_playlist/liked") { launchSingleTop = true }
+                    },
+                    ObsidianQuickTile("shortcut_downloaded", "Unduhan", iconRes = R.drawable.download) {
+                        navController.navigate("auto_playlist/downloaded") { launchSingleTop = true }
+                    },
+                    ObsidianQuickTile("shortcut_history", "Riwayat", iconRes = R.drawable.history) {
+                        navController.navigate("history") { launchSingleTop = true }
+                    },
+                    ObsidianQuickTile("shortcut_stats", "Statistik", iconRes = R.drawable.stats) {
+                        navController.navigate("stats") { launchSingleTop = true }
+                    },
+                    ObsidianQuickTile("shortcut_wrapped", "Rekap", iconRes = R.drawable.crown) {
+                        navController.navigate("wrapped") { launchSingleTop = true }
+                    },
+                    ObsidianQuickTile("shortcut_library", "Playlist", iconRes = R.drawable.playlist_play) {
+                        navController.navigate("library") { launchSingleTop = true }
+                    },
+                    ObsidianQuickTile("shortcut_together", "Dengarkan Bersama", iconRes = R.drawable.group_outlined) {
+                        navController.navigate("listen_together") { launchSingleTop = true }
+                    },
+                    ObsidianQuickTile("shortcut_premium", "Premium", iconRes = R.drawable.crown) {
+                        navController.navigate("settings/premium") { launchSingleTop = true }
+                    },
+                )
+            (tiles + shortcuts).distinctBy { it.id }.take(8)
+        }
+
     PullToRefreshBox(
         state = pullRefreshState,
         isRefreshing = isRefreshing,
@@ -1201,45 +1261,29 @@ fun HomeScreen(
                     HomeObsidianHeader(
                         accountImageUrl = url,
                         accountName = beatPlayName.ifBlank { accountName },
-                        onOpenProfile = { ObsidianUiState.profileOpen = true },
+                        onOpenProfile = {
+                            navController.navigate("profile") { launchSingleTop = true }
+                        },
                         onNavigate = { route -> navController.navigate(route) { launchSingleTop = true } },
-                    )
-                }
-                item(key = "obsidian_bento") {
-                    HomeObsidianBento { route -> navController.navigate(route) { launchSingleTop = true } }
-                }
-                item {
-                    ChipsRow(
-                        chips = homePage?.chips?.map { it to it.title } ?: emptyList(),
-                        currentValue = selectedChip,
-                        onValueUpdate = {
-                            viewModel.toggleChip(it)
+                        chips = homePage?.chips?.map { it.title }
+                            ?.filter { it.isNotBlank() && !it.equals("Semua", ignoreCase = true) }
+                            ?.distinct()
+                            .orEmpty(),
+                        selectedChipTitle = selectedChip?.title,
+                        onSelectChip = { title ->
+                            if (title.isBlank()) {
+                                selectedChip?.let(viewModel::toggleChip)
+                            } else {
+                                homePage?.chips?.firstOrNull { it.title == title }?.let(viewModel::toggleChip)
+                            }
                         },
                     )
                 }
-
-                if (isLoading && homePage?.chips.isNullOrEmpty()) {
-                    item(key = "chips_shimmer") {
-                        ShimmerHost(showGradient = false) {
-                            LazyRow(
-                                contentPadding =
-                                    WindowInsets.systemBars
-                                        .only(WindowInsetsSides.Horizontal)
-                                        .asPaddingValues(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            ) {
-                                items(5) {
-                                    TextPlaceholder(
-                                        height = 30.dp,
-                                        shape = RoundedCornerShape(16.dp),
-                                        modifier = Modifier.width(72.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
+                item(key = "obsidian_quick") {
+                    HomeObsidianQuickGrid(quickTiles)
                 }
+
+                // The header already shows the fallback pills while chips load.
 
                 // Show podcast sections FIRST when podcast chip is selected (fixed at top)
                 if (selectedChip?.title?.contains("Podcast", ignoreCase = true) == true) {

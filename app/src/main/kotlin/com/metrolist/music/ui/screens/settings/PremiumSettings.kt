@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -60,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdSecondsKey
 import com.metrolist.music.constants.BeatPlayAccountEmailKey
@@ -231,7 +233,11 @@ fun PremiumSettingsScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current),
+    ) {
         Row(
             Modifier
                 .fillMaxWidth()
@@ -560,9 +566,7 @@ private fun PremiumHero(
                 if (isPremium) {
                     Modifier.background(obsidianGradient(diagonal = true))
                 } else {
-                    Modifier.background(
-                        Brush.linearGradient(listOf(ObsidianColors.surfaceHigh, ObsidianColors.surfaceLow)),
-                    )
+                    Modifier.background(ObsidianColors.surfaceHigh)
                 },
             )
             .border(1.dp, ObsidianColors.glassBorderStrong, shape)
