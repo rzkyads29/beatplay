@@ -3,6 +3,7 @@ package com.utaloom.ui
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -272,7 +273,12 @@ fun PlayerBar(
     val s by Player.state.collectAsState()
     val guest = isGuest()
     val song = s.current
-    Surface(color = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 3.dp) {
+    Box(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Obsidian.glassFillStrong)
+            .border(1.dp, Obsidian.glassBorderStrong, RoundedCornerShape(20.dp)),
+    ) {
         Column(Modifier.fillMaxWidth()) {
             s.error?.let { err ->
                 Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer).padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {

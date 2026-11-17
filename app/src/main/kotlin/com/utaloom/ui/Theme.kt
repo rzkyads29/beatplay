@@ -121,8 +121,10 @@ private val AppTypography = Typography().let { t ->
 }
 
 @Composable
-fun BeatPlayTheme(seed: Color, dark: Boolean, content: @Composable () -> Unit) {
-    val target = schemeFromSeed(seed, dark)
+fun BeatPlayTheme(seed: Color, dark: Boolean, dynamic: Boolean = false, content: @Composable () -> Unit) {
+    // Deep Obsidian base always applies; the shot-from-artwork seed only tints the accent when the
+    // user asked for dynamic color, so the identity never drifts into a generic dark theme.
+    val target = obsidianScheme(seed = if (dynamic) seed else null, dark = dark)
     @Composable
     fun anim(c: Color) = animateColorAsState(c, tween(600)).value
     val scheme = target.copy(

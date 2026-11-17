@@ -1,6 +1,7 @@
 package com.utaloom.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
@@ -10,11 +11,15 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -23,8 +28,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,37 +59,189 @@ private fun <T> load(key: Any?, loader: suspend () -> Result<T>): State<Result<T
 }
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(filter: String = "Semua") {
     val settings by Stores.settings.state.collectAsState()
     var refresh by remember { mutableIntStateOf(0) }
     val result by load(settings.cookie to refresh) { YouTube.home() }
     val lib by Stores.library.state.collectAsState()
     val page = result?.getOrNull()
-    when {
-        result == null -> Loading()
-        page == null -> ErrorBox(result?.exceptionOrNull()?.message ?: "Couldn't load home") { refresh++ }
-        else -> VScrollColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
-            item {
-                Row(Modifier.fillMaxWidth().padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        val hour = LocalTime.now().hour
-                        Text(when { hour < 12 -> "Good morning"; hour < 18 -> "Good afternoon"; else -> "Good evening" }, style = MaterialTheme.typography.headlineLarge)
-                        Text(settings.accountName?.let { "Welcome back, $it" } ?: "Discover your next favorite", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    IconButton({ refresh++ }) { Icon(Icons.Default.Refresh, "Refresh") }
+    if (result == null) { Loading(); return }
+    if (page == null) { ErrorBox(result?.exceptionOrNull()?.message ?: "Gagal memuat beranda") { refresh++ }; return }
+
+    val sections = page.sections
+    fun visible(items: List<YTItem>): List<YTItem> = items.filterExplicit(settings.hideExplicit)
+    val podcastSections = sections.filter { sec -> visible(sec.items).any { it is PodcastItem || it is EpisodeItem } }
+    val bookSections = sections.filter { sec ->
+        val t = sec.title.orEmpty().lowercase()
+        t.contains("buku") || t.contains("audio") || visible(sec.items).all { it is PlaylistItem }
+    }
+    val musicSections = sections.filter { sec -> visible(sec.items).any { it !is PodcastItem && it !is EpisodeItem } }
+
+    VScrollColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 40.dp)) {
+        item {
+            Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    val hour = LocalTime.now().hour
+                    Text(
+                        when { hour < 12 -> "Selamat pagi"; hour < 18 -> "Selamat siang"; else -> "Selamat malam" },
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(settings.accountName?.let { "Kembali, $it" } ?: "Temukan suara berikutnya", color = Obsidian.slate400)
+                }
+                IconButton({ refresh++ }) { Icon(Icons.Default.Refresh, "Muat ulang", tint = Obsidian.slate400) }
+            }
+        }
+
+        when (filter) {
+            "Mengikuti" -> {
+                if (lib.savedArtists.isEmpty() && lib.savedAlbums.isEmpty()) {
+                    item { EmptyHint("Belum ada yang kamu ikuti", "Simpan artis atau album agar muncul di sini.", Icons.Default.Person) }
+                }
+                if (lib.savedArtists.isNotEmpty()) {
+                    item { SectionTitle("Artis yang kamu ikuti") }
+                    items(lib.savedArtists, key = { "fu-a-${it.id}" }) { ref -> FollowRow(ref.title, ref.subtitle, ref.thumbnail, Icons.Default.Person) { Nav.go(Screen.Artist(ref.id)) } }
+                }
+                if (lib.savedAlbums.isNotEmpty()) {
+                    item { SectionTitle("Album yang kamu ikuti") }
+                    items(lib.savedAlbums, key = { "fu-b-${it.id}" }) { ref -> FollowRow(ref.title, ref.subtitle, ref.thumbnail, Icons.Default.Album) { Nav.go(Screen.Album(ref.id)) } }
                 }
             }
-            if (!page.chips.isNullOrEmpty()) item {
-                HScrollRow(PaddingValues(horizontal = 24.dp), Arrangement.spacedBy(8.dp)) {
-                    items(page.chips!!) { chip ->
-                        AssistChip(onClick = { chip.endpoint?.let { Nav.go(Screen.Browse(chip.title, it)) } }, label = { Text(chip.title) })
+            "Podcast" -> {
+                if (podcastSections.isEmpty()) {
+                    item { PodcastEmptyState() }
+                } else {
+                    podcastSections.forEach { s ->
+                        carousel(s.title ?: "Podcast", visible(s.items), s.endpoint?.let { ep -> { Nav.go(Screen.Browse(s.title ?: "Podcast", ep)) } })
                     }
                 }
             }
-            if (lib.history.isNotEmpty()) carousel("Listen again", lib.history.take(16).map { it.toSongItem() }, { Nav.go(Screen.SongList("History", "history")) })
-            page.sections.forEach { s ->
-                carousel(s.title, s.items.filterExplicit(settings.hideExplicit), s.endpoint?.let { ep -> { Nav.go(Screen.Browse(s.title, ep)) } })
+            "Buku Audio" -> {
+                if (bookSections.isEmpty()) {
+                    item { AudioBookTeaser() }
+                } else {
+                    bookSections.forEach { s ->
+                        carousel(s.title ?: "Buku audio", visible(s.items), s.endpoint?.let { ep -> { Nav.go(Screen.Browse(s.title ?: "Buku audio", ep)) } })
+                    }
+                }
             }
+            else -> {
+                val featuredTitle = if (lib.history.isNotEmpty()) "Lanjutkan mendengarkan" else "Untuk kamu"
+                val featured: YTItem? = lib.history.firstOrNull()?.toSongItem() ?: musicSections.firstOrNull()?.items?.firstOrNull()
+                val compact = sections.flatMap { visible(it.items) }.distinctBy { it.id }.take(6)
+                item { BentoHome(featuredTitle, featured, compact) }
+
+                if (lib.history.isNotEmpty()) carousel("Baru Saja Didengar", lib.history.take(16).map { it.toSongItem() }, { Nav.go(Screen.SongList("Riwayat", "history")) })
+
+                val albums = (musicSections.flatMap { visible(it.items) }.filterIsInstance<AlbumItem>()).distinctBy { it.id }.take(18)
+                if (albums.isNotEmpty()) carousel("Album dari Lagu yang Kamu Suka", albums)
+
+                val shown = if (filter == "Musik") musicSections else sections
+                shown.forEach { s ->
+                    carousel(s.title ?: "Untuk kamu", visible(s.items), s.endpoint?.let { ep -> { Nav.go(Screen.Browse(s.title ?: "Untuk kamu", ep)) } })
+                }
+                if (bookSections.isNotEmpty()) {
+                    item { SectionTitle("Buku audio") }
+                    bookSections.take(1).forEach { s ->
+                        item { HScrollRow(PaddingValues(horizontal = 20.dp), Arrangement.spacedBy(12.dp)) { items(visible(s.items), key = { "ab-${it.id}" }) { ItemCard(it, 140.dp) } } }
+                    }
+                }
+                item { AudioBookTeaser() }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BentoHome(featuredTitle: String, featured: YTItem?, compact: List<YTItem>) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (featured != null) {
+            GlassCard(Modifier.fillMaxWidth().height(148.dp), shape = RoundedCornerShape(20.dp), onClick = { openItem(featured) }) {
+                Box(Modifier.fillMaxSize()) {
+                    Box(Modifier.matchParentSize().background(Brush.linearGradient(listOf(Obsidian.violet.copy(alpha = 0.18f), Obsidian.cyan.copy(alpha = 0.12f)))))
+                    Row(Modifier.fillMaxSize().padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Thumb(featured.thumbnail, 96.dp, RoundedCornerShape(16.dp))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(featuredTitle, style = MaterialTheme.typography.labelMedium, color = Obsidian.cyan)
+                            Text(featured.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(featured.subtitle(), color = Obsidian.slate400, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        EqualizerBars(maxHeight = 56.dp)
+                    }
+                }
+            }
+        }
+        compact.chunked(3).forEach { rowItems ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                rowItems.forEach { item ->
+                    GlassCard(Modifier.weight(1f).height(84.dp), onClick = { openItem(item) }) {
+                        Row(Modifier.fillMaxSize().padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Thumb(item.thumbnail, 52.dp, RoundedCornerShape(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(item.title, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                                Text(item.subtitle(), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall, color = Obsidian.slate400)
+                            }
+                        }
+                    }
+                }
+                repeat(3 - rowItems.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FollowRow(title: String, subtitle: String?, thumbnail: String?, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp).clip(RoundedCornerShape(14.dp)).clickable { onClick() }.padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Thumb(thumbnail, 52.dp)
+        Column(Modifier.weight(1f)) {
+            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium)
+            subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Obsidian.slate400, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        }
+        Icon(icon, null, tint = Obsidian.slate500)
+    }
+}
+
+@Composable
+private fun EmptyHint(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Icon(icon, null, Modifier.size(46.dp), tint = Obsidian.slate500)
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Obsidian.slate400, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+    }
+}
+
+@Composable
+private fun PodcastEmptyState() {
+    GlassCard(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(200.dp), shape = RoundedCornerShape(20.dp)) {
+        Column(Modifier.fillMaxSize().padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Box(Modifier.height(72.dp)) {
+                listOf(24.dp to 0, 12.dp to 14, 0.dp to 28).forEach { (x, i) ->
+                    Thumb(null, 72.dp, RoundedCornerShape(14.dp), Modifier.offset(x = x).alpha(1f - i * 0.18f))
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Text("Belum ada podcast di sini", fontWeight = FontWeight.SemiBold)
+            Text("Temukan cerita, berita, dan obrolan favoritmu.", style = MaterialTheme.typography.bodySmall, color = Obsidian.slate400)
+            Spacer(Modifier.height(12.dp))
+            GradientButton("Jelajahi podcast", { Nav.go(Screen.Search("podcast")) }, icon = Icons.Default.Podcasts)
+        }
+    }
+}
+
+@Composable
+private fun AudioBookTeaser() {
+    GlassCard(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(120.dp), shape = RoundedCornerShape(20.dp)) {
+        Row(Modifier.fillMaxSize().padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Icon(Icons.Default.MenuBook, null, Modifier.size(44.dp), tint = Obsidian.cyan)
+            Column(Modifier.weight(1f)) {
+                Text("Buku audio", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                Text("Dengarkan buku favoritmu sambil berkendara atau bersantai.", style = MaterialTheme.typography.bodySmall, color = Obsidian.slate400, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            GradientButton("Jelajahi", { Nav.go(Screen.Search("buku audio")) })
         }
     }
 }
@@ -92,29 +252,50 @@ fun ExploreScreen() {
     val charts by load("charts") { YouTube.getChartsPage() }
     val page = result?.getOrNull()
     if (result == null) return Loading()
-    if (page == null) return ErrorBox(result?.exceptionOrNull()?.message ?: "Explore unavailable")
-    VScrollColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
-        item { Text("Explore", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(24.dp)) }
-        carousel("New releases", page.newReleaseAlbums)
+    if (page == null) { ErrorBox(result?.exceptionOrNull()?.message ?: "Cari tidak tersedia"); return }
+    VScrollColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 40.dp)) {
+        item { Text("Cari", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(20.dp)) }
         if (page.moodAndGenres.isNotEmpty()) {
-            item { SectionTitle("Moods & genres") }
+            item { SectionTitle("Jelajahi kategori") }
             item {
-                BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
-                    val tileWidth = if (maxWidth < 410.dp * LocalDensity.current.fontScale) maxWidth else 200.dp
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        page.moodAndGenres.forEach { m ->
-                            Surface(onClick = { Nav.go(Screen.Browse(m.title, m.endpoint)) }, shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-                                Row(Modifier.width(tileWidth).heightIn(min = 52.dp).height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
-                                    Box(Modifier.width(6.dp).fillMaxHeight().background(Color(m.stripeColor)))
-                                    Text(m.title, Modifier.padding(16.dp), fontWeight = FontWeight.Medium)
-                                }
+                Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    page.moodAndGenres.chunked(2).forEachIndexed { rowIdx, row ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            row.forEachIndexed { i, m ->
+                                MeshTile(index = rowIdx * 2 + i, label = m.title, Modifier.weight(1f).height(96.dp)) { Nav.go(Screen.Browse(m.title, m.endpoint)) }
                             }
+                            if (row.size == 1) Spacer(Modifier.weight(1f))
                         }
                     }
                 }
             }
         }
+        val vertical = page.newReleaseAlbums.take(12)
+        if (vertical.isNotEmpty()) {
+            item { SectionTitle("#Tren") }
+            item {
+                HScrollRow(PaddingValues(horizontal = 20.dp), Arrangement.spacedBy(12.dp)) {
+                    items(vertical, key = { "v-${it.id}" }) { VerticalCard(it) }
+                }
+            }
+        }
+        carousel("Rilis baru", page.newReleaseAlbums)
         charts?.getOrNull()?.sections?.forEach { s -> carousel(s.title, s.items) }
+    }
+}
+
+@Composable
+private fun VerticalCard(item: YTItem) {
+    Box(
+        Modifier.width(164.dp).height(292.dp).clip(RoundedCornerShape(18.dp)).background(Obsidian.glassFill)
+            .border(1.dp, Obsidian.glassBorder, RoundedCornerShape(18.dp)).clickable { openItem(item) },
+    ) {
+        coil3.compose.AsyncImage(hiRes(item.thumbnail, 400), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE6090A0F)))))
+        Column(Modifier.align(Alignment.BottomStart).padding(12.dp)) {
+            Text(item.title, color = Color.White, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(item.subtitle(), color = Obsidian.slate400, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 

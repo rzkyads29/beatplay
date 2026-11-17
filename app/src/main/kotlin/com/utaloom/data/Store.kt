@@ -121,6 +121,8 @@ data class Settings(
     val equalizerBands: List<Float> = List(10) { 0f },
     val crossfadeSeconds: Int = DEFAULT_CROSSFADE_SECONDS,
     val gaplessPlayback: Boolean = true,
+    // Keep playing similar songs once the queue runs out. On by default, as users expect.
+    val autoplay: Boolean = true,
     val skipSilence: Boolean = false,
     val playbackSpeed: Float = 1f,
     val playbackPitch: Int = 0,
@@ -165,6 +167,12 @@ data class Settings(
     val adVideoPath: String = "",
     // Current defaults schema. Fresh installs start here and skip legacy migrations.
     val settingsSchema: Int = 5,
+    // First-run onboarding gate. Existing installs decode with the default (not yet seen) so the
+    // new Welcome/Log in flow is shown once; skipping it hides it forever.
+    val onboardingComplete: Boolean = false,
+    // Public profile identity (separate from the YouTube account name).
+    val displayName: String? = null,
+    val profileBio: String = "",
 ) {
     /** Apply the current fresh-install playback defaults in one place. */
     internal fun applyCurrentDefaults(): Settings = copy(

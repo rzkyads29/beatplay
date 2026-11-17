@@ -5,19 +5,28 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Minimize
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import com.utaloom.data.Stores
 import com.utaloom.playback.Automix
 import com.utaloom.playback.Player
 import com.utaloom.playback.TrackTransition
+import com.utaloom.premium.BeatPlayAuth
 import com.utaloom.shared.cookieError
 import com.utaloom.innertube.YouTube
 import com.utaloom.innertube.models.YouTubeLocale
@@ -178,7 +187,7 @@ fun SettingsScreen(isMobile: Boolean = System.getProperty("java.vm.name") == "Da
     var login by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf<String?>(null) }
     VScrollColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        item { SectionTitle("Settings") }
+        item { SettingsHero() }
         item {
             SectionTitle("YouTube Music account")
             @Composable
@@ -298,6 +307,7 @@ fun SettingsScreen(isMobile: Boolean = System.getProperty("java.vm.name") == "Da
         item { SettingsToggle("Automatically approve joins", "Allow incoming requests into rooms you host without asking.", s.ltAutoApproveJoins) { v -> Stores.settings.update { it.copy(ltAutoApproveJoins = v) } } }
         item { SettingsToggle("Automatically approve suggestions", "Accept guests' song suggestions in rooms you host.", s.ltAutoApproveSuggestions) { v -> Stores.settings.update { it.copy(ltAutoApproveSuggestions = v) } } }
         item { SettingsToggle("Sync room volume", "Share the host's volume with guests and follow room volume updates.", s.ltSyncVolume) { v -> Stores.settings.update { it.copy(ltSyncVolume = v) } } }
+        item { SettingsLogout() }
     }
     if (login) CookieLoginDialog { login = false }
     confirm?.let { action ->
@@ -316,6 +326,85 @@ fun SettingsScreen(isMobile: Boolean = System.getProperty("java.vm.name") == "Da
                 confirm = null
             }) { Text("Confirm", color = MaterialTheme.colorScheme.error) } },
             dismissButton = { TextButton({ confirm = null }) { Text("Cancel") } })
+    }
+}
+
+@Composable
+private fun SettingsHero() {
+    val s by Stores.settings.state.collectAsState()
+    val loggedIn = !s.beatPlayAuthToken.isNullOrBlank()
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            PremiumAvatar(s.accountAvatar ?: s.beatPlayAccountEmail, 58.dp, s.isPremium)
+            Column(Modifier.weight(1f)) {
+                Text(
+                    s.beatPlayAccountEmail ?: s.accountName ?: "Tamu",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    if (loggedIn) "Akun BeatPlay" else "Belum masuk akun BeatPlay",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Obsidian.slate400,
+                )
+            }
+            if (s.isPremium) Icon(Icons.Default.WorkspacePremium, "Premium", tint = Obsidian.cyan)
+        }
+
+        GlassCard(
+            Modifier.fillMaxWidth(),
+            fill = Obsidian.glassFillStrong,
+        ) {
+            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(if (s.isPremium) Icons.Default.WorkspacePremium else Icons.Default.PlayCircle, null, tint = if (s.isPremium) Obsidian.cyan else Obsidian.violet)
+                Column(Modifier.weight(1f)) {
+                    Text(if (s.isPremium) "Premium aktif" else "Akun Free", fontWeight = FontWeight.Bold)
+                    Text(
+                        if (s.isPremium) "Nikmati musik tanpa iklan audio." else "Jelajahi Premium untuk mendengar tanpa iklan.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Obsidian.slate400,
+                    )
+                }
+                if (!s.isPremium) GradientButton("Jelajahi Premium", { Nav.go(Screen.Premium) })
+            }
+        }
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            QuickToggle("Dynamic color", Icons.Default.Palette, s.dynamicColor) { v -> Stores.settings.update { it.copy(dynamicColor = v) } }
+            QuickToggle("Autoplay", Icons.Default.PlayCircle, s.autoplay) { v -> Stores.settings.update { it.copy(autoplay = v) } }
+            QuickToggle("Tray", Icons.Default.Minimize, s.closeOnTray) { v -> Stores.settings.update { it.copy(closeOnTray = v, minimizeToTray = v) } }
+        }
+    }
+}
+
+@Composable
+private fun RowScope.QuickToggle(label: String, icon: ImageVector, checked: Boolean, onChange: (Boolean) -> Unit) {
+    GlassCard(Modifier.weight(1f)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(icon, null, Modifier.size(20.dp), tint = if (checked) Obsidian.cyan else Obsidian.slate500)
+            Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Switch(checked, onChange)
+        }
+    }
+}
+
+@Composable
+private fun SettingsLogout() {
+    val s by Stores.settings.state.collectAsState()
+    val scope = rememberCoroutineScope()
+    val loggedIn = !s.beatPlayAuthToken.isNullOrBlank()
+    Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 24.dp)) {
+        if (loggedIn) {
+            GlassButton("Keluar dari akun", { scope.launch { BeatPlayAuth.clearSession() } }, Modifier.fillMaxWidth(), icon = Icons.Default.Logout)
+        } else {
+            Text(
+                "BeatPlay ${com.utaloom.platform.Updates.current}",
+                style = MaterialTheme.typography.labelSmall,
+                color = Obsidian.slate500,
+            )
+        }
     }
 }
 
@@ -376,7 +465,7 @@ private fun TogetherServerField(url: String) {
 }
 
 @Composable
-private fun CookieLoginDialog(onDismiss: () -> Unit) {
+internal fun CookieLoginDialog(onDismiss: () -> Unit) {
     var cookie by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }

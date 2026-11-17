@@ -203,18 +203,19 @@ fun LibraryScreen() {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             if (!account && maxWidth < 600.dp * LocalDensity.current.fontScale) {
                 Column {
-                    SectionTitle("Your library")
+                    SectionTitle("Koleksi kamu")
                     FlowRow(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { LibraryActions() }
                 }
-            } else SectionTitle("Your library", action = if (account) null else ({ LibraryActions() }))
+            } else SectionTitle("Koleksi kamu", action = if (account) null else ({ LibraryActions() }))
         }
         FlowRow(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            FilterChip(!account, { account = false }, { Text("On this device") })
-            FilterChip(account, { account = true }, { Text("YouTube account") })
+            FilterChip(!account, { account = false }, { Text("Di perangkat ini") })
+            FilterChip(account, { account = true }, { Text("Akun YouTube") })
         }
     }
     if (account) AccountLibrary(Modifier.fillMaxSize(), header = { Header() })
     else VScrollColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
+        item { KoleksiProfileHeader() }
         item { Header() }
         item {
             FlowRow(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

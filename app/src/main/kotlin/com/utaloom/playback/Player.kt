@@ -464,6 +464,19 @@ object Player {
             s.index < s.queue.lastIndex -> _state.update { it.copy(index = it.index + 1) }
             s.repeat == RepeatMode.ALL && s.queue.isNotEmpty() -> _state.update { it.copy(index = 0) }
             else -> {
+                // Autoplay keeps the music going instead of stopping: when the queue runs out,
+                // seed a radio from the last track and extend the queue with similar songs.
+                if (auto && Stores.settings.value.autoplay && s.queue.isNotEmpty()) {
+                    val seed = s.queue.last()
+                    if (radioEndpoint == null) radioEndpoint = RadioSeeds.song(seed.id)
+                    val before = s.queue.size
+                    radioJob = scope.launch {
+                        extendRadio(seed)
+                        if (_state.value.queue.size > before) next(auto = true)
+                        else { pause(fromRemote = true); seekTo(0, fromRemote = true) }
+                    }
+                    return
+                }
                 if (auto) { pause(fromRemote = true); seekTo(0, fromRemote = true) }
                 return
             }

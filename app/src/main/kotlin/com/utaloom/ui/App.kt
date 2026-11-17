@@ -3,6 +3,8 @@ package com.utaloom.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -26,8 +28,11 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
@@ -91,10 +96,16 @@ fun BeatPlayApp(vlcError: String? = null, fullscreen: Boolean, onFullscreenChang
     val showFullPlayer = fullPlayer || fullscreen
     var fullPage by rememberSaveable { mutableStateOf(PlayerPage.NOW_PLAYING) }
     var panel by rememberSaveable { mutableStateOf(Panel.NONE) }
+    var profileOpen by remember { mutableStateOf(false) }
+    var createOpen by remember { mutableStateOf(false) }
+    var netWarning by remember { mutableStateOf<String?>(null) }
     val snackbar = remember { SnackbarHostState() }
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+
+    val loggedIn = !settings.beatPlayAuthToken.isNullOrBlank()
+    val showOnboarding = !settings.onboardingComplete && !loggedIn
 
     LaunchedEffect(player.current, fullscreen) {
         if (player.current == null) {
@@ -122,7 +133,15 @@ fun BeatPlayApp(vlcError: String? = null, fullscreen: Boolean, onFullscreenChang
             }.getOrNull()
         } ?: DefaultSeed
     }
-    LaunchedEffect(player.error) { player.error?.let { snackbar.showSnackbar(it); Player.clearError() } }
+    LaunchedEffect(player.error) {
+        player.error?.let {
+            netWarning = it
+            snackbar.showSnackbar(it)
+            Player.clearError()
+            delay(7000)
+            netWarning = null
+        }
+    }
     LaunchedEffect(lt.message) { lt.message?.let { snackbar.showSnackbar(it); ListenTogether.clearMessage() } }
     LaunchedEffect(downloadErrors) {
         downloadErrors.values.firstOrNull()?.let { Downloads.clearErrors(); snackbar.showSnackbar(it) }
@@ -157,7 +176,7 @@ fun BeatPlayApp(vlcError: String? = null, fullscreen: Boolean, onFullscreenChang
         }
     }
 
-    BeatPlayTheme(seed, dark) {
+    BeatPlayTheme(seed, dark, dynamic = settings.dynamicColor) {
         Surface(color = MaterialTheme.colorScheme.background) {
             BoxWithConstraints(Modifier.fillMaxSize()) {
                 val compact = maxWidth < 840.dp
@@ -169,28 +188,31 @@ fun BeatPlayApp(vlcError: String? = null, fullscreen: Boolean, onFullscreenChang
                         fullPlayer = true
                     }
                 }
+                if (showOnboarding) {
+                    AuthFlow(onDone = { })
+                } else {
                 if (!fullscreen) Column(Modifier.fillMaxSize()) {
                     Row(Modifier.weight(1f)) {
-                        if (!compact) Sidebar()
-                        val contentModifier = if (compact) Modifier else Modifier.padding(top = 8.dp, end = 8.dp).clip(RoundedCornerShape(20.dp))
+                        if (!compact) Sidebar(onAvatar = { profileOpen = true }, onCreate = { createOpen = true })
+                        val contentModifier = if (compact) Modifier else Modifier.padding(top = 8.dp, end = 8.dp).clip(RoundedCornerShape(24.dp))
                         Column(Modifier.weight(1f).fillMaxHeight().then(contentModifier).background(MaterialTheme.colorScheme.surfaceContainerLow)) {
-                            TopBar(compact)
+                            TopBar(compact, onAvatar = { profileOpen = true })
                             importing?.takeIf { it.background }?.let { p ->
                                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                     ImportProgress(p, Modifier.weight(1f))
-                                    TextButton(PlaylistImports::cancel) { Text("Cancel") }
+                                    TextButton(PlaylistImports::cancel) { Text("Batal") }
                                 }
                             }
                             Box(Modifier.weight(1f)) { Content() }
                         }
                         if (!compact) AnimatedVisibility(panel != Panel.NONE) {
-                            Box(Modifier.width(panelWidth).fillMaxHeight().padding(top = 8.dp, end = 8.dp).clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceContainerLow)) {
+                            Box(Modifier.width(panelWidth).fillMaxHeight().padding(top = 8.dp, end = 8.dp).clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surfaceContainerLow)) {
                                 if (panel == Panel.QUEUE) QueuePanel(compact = true) else LyricsPanel()
                             }
                         }
                     }
                     if (player.current != null && (!compact || !keyboardVisible)) {
-                        if (compact) MobilePlayerBar(onOpenFull = {
+                        if (compact) GlassMiniPlayer(onOpenFull = {
                             focus.clearFocus(); keyboard?.hide()
                             fullPage = PlayerPage.NOW_PLAYING; fullPlayer = true
                         })
@@ -202,7 +224,7 @@ fun BeatPlayApp(vlcError: String? = null, fullscreen: Boolean, onFullscreenChang
                             onOpenMini = onOpenMini,
                         )
                     }
-                    if (compact && !keyboardVisible) BottomNavigation()
+                    if (compact && !keyboardVisible) BottomNavigation(onCreate = { createOpen = true })
                 }
                 if (showFullPlayer && player.current != null) {
                     FullPlayer(
@@ -213,65 +235,155 @@ fun BeatPlayApp(vlcError: String? = null, fullscreen: Boolean, onFullscreenChang
                         initialPage = fullPage,
                     )
                 }
+                if (netWarning != null) {
+                    NetworkStatusBar("Koneksi lambat • ${netWarning}", Modifier.align(Alignment.BottomCenter).padding(bottom = if (compact && player.current != null) 156.dp else 16.dp))
+                }
+                }
                 val bottom = if (showFullPlayer || keyboardVisible) 16.dp else if (compact) {
                     if (player.current != null) 152.dp else 88.dp
                 } else if (player.current != null) 96.dp else 16.dp
                 SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = bottom))
                 AdOverlay()
+                if (profileOpen) ProfileDrawer(onClose = { profileOpen = false }, onOpenSettings = { profileOpen = false; Nav.root(Screen.Settings) })
+                if (createOpen) CreateSheet(onClose = { createOpen = false })
             }
         }
     }
 }
 
 @Composable
-private fun Sidebar() {
+private fun Sidebar(onAvatar: () -> Unit, onCreate: () -> Unit) {
     val current = Nav.stack.first()
     val lt by ListenTogether.state.collectAsState()
     val settings by Stores.settings.state.collectAsState()
-    NavigationRail(Modifier.fillMaxHeight().padding(vertical = 8.dp), containerColor = Color.Transparent, windowInsets = WindowInsets(0, 0, 0, 0), header = {
-        Image(painterResource("icon.png"), "BeatPlay", Modifier.size(44.dp).padding(4.dp))
-    }) {
-        Spacer(Modifier.height(12.dp))
+    Column(Modifier.fillMaxHeight().width(232.dp).padding(vertical = 12.dp, horizontal = 8.dp)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Image(painterResource("icon.png"), "BeatPlay", Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)))
+            Text("BeatPlay", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        }
+        Spacer(Modifier.height(8.dp))
         RailItem("Home", Icons.Default.Home, current == Screen.Home) { Nav.root(Screen.Home) }
-        RailItem("Explore", Icons.Default.Explore, current == Screen.Explore) { Nav.root(Screen.Explore) }
-        RailItem("Library", Icons.Default.LibraryMusic, current == Screen.Library) { Nav.root(Screen.Library) }
+        RailItem("Cari", Icons.Default.Explore, current == Screen.Explore) { Nav.root(Screen.Explore) }
+        RailItem("Koleksi", Icons.Default.LibraryMusic, current == Screen.Library) { Nav.root(Screen.Library) }
         RailItem("Together", Icons.Default.Groups, current == Screen.Together, badge = lt.joinRequests.size + lt.suggestions.size) { Nav.root(Screen.Together) }
+        RailItem("Premium", Icons.Default.WorkspacePremium, current == Screen.Premium) { Nav.root(Screen.Premium) }
+        Spacer(Modifier.height(10.dp))
+        Box(
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp).clip(RoundedCornerShape(14.dp))
+                .background(accentBrush()).clickableCompat(onCreate).padding(vertical = 12.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.Add, null, tint = Color.White)
+                Text("Buat", color = Color.White, fontWeight = FontWeight.SemiBold)
+            }
+        }
         Spacer(Modifier.weight(1f))
-        settings.accountAvatar?.let { PremiumAvatar(it, 32.dp, settings.isPremium, Modifier.padding(bottom = 8.dp)) }
-        RailItem("Settings", Icons.Default.Settings, current == Screen.Settings) { Nav.root(Screen.Settings) }
+        Box(Modifier.fillMaxWidth().padding(horizontal = 8.dp).clip(RoundedCornerShape(14.dp)).clickableCompat(onAvatar).padding(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PremiumAvatar(settings.accountAvatar ?: settings.beatPlayAccountEmail, 34.dp, settings.isPremium)
+                Column(Modifier.weight(1f)) {
+                    Text(settings.beatPlayAccountEmail?.substringBefore('@') ?: "Tamu", fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(if (settings.isPremium) "Premium" else "Akun gratis", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        RailItem("Pengaturan", Icons.Default.Settings, current == Screen.Settings) { Nav.root(Screen.Settings) }
+    }
+}
+
+private fun Modifier.clickableCompat(onClick: () -> Unit): Modifier =
+    this.then(Modifier.clickable(onClick = onClick))
+
+@Composable
+private fun RailItem(label: String, icon: ImageVector, selected: Boolean, badge: Int = 0, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 3.dp).clip(RoundedCornerShape(14.dp))
+            .then(if (selected) Modifier.background(Obsidian.glassFillStrong).border(1.dp, Obsidian.glassBorder, RoundedCornerShape(14.dp)) else Modifier)
+            .clickableCompat(onClick).padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        BadgedBox(badge = { if (badge > 0) Badge { Text("$badge") } }) {
+            Icon(icon, label, tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text(label, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal, color = if (selected) Obsidian.textPrimary else Obsidian.slate400)
     }
 }
 
 @Composable
-private fun RailItem(label: String, icon: ImageVector, selected: Boolean, badge: Int = 0, onClick: () -> Unit) {
-    NavigationRailItem(selected, onClick, icon = {
-        BadgedBox(badge = { if (badge > 0) Badge { Text("$badge") } }) { Icon(icon, label) }
-    }, label = { Text(label) })
+private fun BottomNavigation(onCreate: () -> Unit) {
+    val current = Nav.stack.first()
+    Column {
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Obsidian.glassBorder))
+        Row(
+            Modifier.fillMaxWidth().background(Obsidian.surface).padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            NavTab("Home", Icons.Default.Home, current == Screen.Home) { Nav.root(Screen.Home) }
+            NavTab("Cari", Icons.Default.Explore, current == Screen.Explore) { Nav.root(Screen.Explore) }
+            NavTab("Koleksi", Icons.Default.LibraryMusic, current == Screen.Library) { Nav.root(Screen.Library) }
+            NavTab("Premium", Icons.Default.WorkspacePremium, current == Screen.Premium) { Nav.root(Screen.Premium) }
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.size(40.dp).clip(CircleShape).background(accentBrush()).clickableCompat(onCreate), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Add, "Buat", tint = Color.White)
+                }
+                Text("Buat", style = MaterialTheme.typography.labelSmall, color = Obsidian.slate400)
+            }
+        }
+    }
 }
 
 @Composable
-private fun BottomNavigation() {
-    val current = Nav.stack.first()
-    val lt by ListenTogether.state.collectAsState()
-    NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
-        listOf(
-            Triple(Screen.Home, "Home", Icons.Default.Home),
-            Triple(Screen.Explore, "Explore", Icons.Default.Explore),
-            Triple(Screen.Library, "Library", Icons.Default.LibraryMusic),
-            Triple(Screen.Together, "Together", Icons.Default.Groups),
-            Triple(Screen.Settings, "Settings", Icons.Default.Settings),
-        ).forEach { (screen, label, icon) ->
-            NavigationBarItem(current == screen, onClick = { Nav.root(screen) }, icon = {
-                val badge = if (screen == Screen.Together) lt.joinRequests.size + lt.suggestions.size else 0
-                BadgedBox(badge = { if (badge > 0) Badge { Text("$badge") } }) { Icon(icon, label) }
-            }, label = { Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }, alwaysShowLabel = current == screen)
+private fun RowScope.NavTab(label: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
+    Column(
+        Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).clickableCompat(onClick).padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(icon, label, tint = if (selected) MaterialTheme.colorScheme.primary else Obsidian.slate500)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = if (selected) MaterialTheme.colorScheme.primary else Obsidian.slate500, maxLines = 1)
+    }
+}
+
+/** Floating glassmorphism capsule mini-player shown above the bottom navigation on narrow windows. */
+@Composable
+fun GlassMiniPlayer(onOpenFull: () -> Unit) {
+    val s by Player.state.collectAsState()
+    val song = s.current ?: return
+    val guest = Player.remoteControlled
+    Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                .background(Obsidian.glassFillStrong)
+                .border(1.dp, Obsidian.glassBorderStrong, RoundedCornerShape(20.dp))
+                .clickableCompat(onOpenFull)
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Thumb(song.thumbnail, 44.dp, RoundedCornerShape(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
+                Text(song.artistText, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall, color = Obsidian.slate400)
+            }
+            IconButton(Player::playPause, enabled = !guest) {
+                if (s.isBuffering) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                else Icon(if (s.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, if (s.isPlaying) "Jeda" else "Putar")
+            }
+            IconButton({ Player.next() }, enabled = !guest && s.hasNext) { Icon(Icons.Default.SkipNext, "Berikutnya") }
         }
+        GradientProgress(
+            progress = (s.positionMs.toFloat() / s.durationMs.coerceAtLeast(1)).coerceIn(0f, 1f),
+            modifier = Modifier.align(Alignment.BottomStart).padding(horizontal = 14.dp, vertical = 2.dp),
+        )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TopBar(compact: Boolean) {
+private fun TopBar(compact: Boolean, onAvatar: () -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     var suggestions by remember { mutableStateOf<List<String>>(emptyList()) }
     var focused by remember { mutableStateOf(false) }
@@ -279,6 +391,7 @@ private fun TopBar(compact: Boolean) {
     val settings by Stores.settings.state.collectAsState()
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
+    val onHome = Nav.current == Screen.Home
     LaunchedEffect(query) {
         if (query.isBlank()) { suggestions = emptyList(); return@LaunchedEffect }
         kotlinx.coroutines.delay(250)
@@ -293,48 +406,64 @@ private fun TopBar(compact: Boolean) {
         focus.clearFocus()
         Nav.go(Screen.Search(trimmed))
     }
-    Row(Modifier.fillMaxWidth().padding(horizontal = if (compact) 8.dp else 16.dp, vertical = if (compact) 8.dp else 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (!compact || Nav.stack.size > 1) IconButton({ Nav.back() }, enabled = Nav.stack.size > 1) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
-        BoxWithConstraints(Modifier.widthIn(max = 640.dp).weight(1f)) {
-            val searchWidth = maxWidth
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it; focused = true },
-                placeholder = { Text(if (compact) "Search music" else "Search songs, albums, artists, podcasts") },
-                leadingIcon = { Icon(Icons.Default.Search, null) },
-                trailingIcon = { if (query.isNotEmpty()) IconButton({ query = "" }) { Icon(Icons.Default.Close, "Clear") } },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { submit(query) }),
-                shape = RoundedCornerShape(28.dp),
-                modifier = Modifier.fillMaxWidth().onPreviewKeyEvent {
-                    if (it.type == KeyEventType.KeyDown && it.key == Key.Enter) { submit(query); true }
-                    else if (it.type == KeyEventType.KeyDown && it.key == Key.Escape) { focused = false; keyboard?.hide(); focus.clearFocus(); true } else false
-                }.onFocusChanged { focused = it.isFocused },
-            )
-            val shown = if (query.isBlank()) lib.searchHistory.take(8) else suggestions
-            val menuModifier = if (compact) Modifier.width(searchWidth) else Modifier.widthIn(min = 400.dp)
-            DropdownMenu(focused && shown.isNotEmpty(), { focused = false }, properties = PopupProperties(focusable = false), modifier = menuModifier) {
-                shown.forEach { s ->
-                    DropdownMenuItem(
-                        text = { Text(s) },
-                        leadingIcon = { Icon(if (query.isBlank()) Icons.Default.History else Icons.Default.Search, null) },
-                        trailingIcon = if (query.isBlank()) ({ IconButton({ com.utaloom.data.Library.removeSearch(s) }) { Icon(Icons.Default.Close, "Remove") } }) else null,
-                        onClick = { submit(s) },
+    Column(Modifier.fillMaxWidth().background(Obsidian.bg.copy(alpha = 0.92f))) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = if (compact) 10.dp else 20.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if ((!compact && Nav.stack.size > 1) || (compact && Nav.stack.size > 1)) IconButton({ Nav.back() }, enabled = Nav.stack.size > 1) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Kembali") }
+            BoxWithConstraints(Modifier.widthIn(max = 640.dp).weight(1f)) {
+                val searchWidth = maxWidth
+                Box(
+                    Modifier.fillMaxWidth().clip(CircleShape).background(Obsidian.glassFill)
+                        .border(1.dp, Obsidian.glassBorder, CircleShape),
+                ) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it; focused = true },
+                        placeholder = { Text(if (compact) "Cari musik" else "Cari lagu, album, artis, podcast", color = Obsidian.slate500) },
+                        leadingIcon = { Icon(Icons.Default.Search, null, tint = Obsidian.slate400) },
+                        trailingIcon = { if (query.isNotEmpty()) IconButton({ query = "" }) { Icon(Icons.Default.Close, "Bersihkan") } },
+                        singleLine = true,
+                        shape = CircleShape,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                        ),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { submit(query) }),
+                        modifier = Modifier.fillMaxWidth().onPreviewKeyEvent {
+                            if (it.type == KeyEventType.KeyDown && it.key == Key.Enter) { submit(query); true }
+                            else if (it.type == KeyEventType.KeyDown && it.key == Key.Escape) { focused = false; keyboard?.hide(); focus.clearFocus(); true } else false
+                        }.onFocusChanged { focused = it.isFocused },
                     )
                 }
+                val shown = if (query.isBlank()) lib.searchHistory.take(8) else suggestions
+                val menuModifier = if (compact) Modifier.width(searchWidth) else Modifier.widthIn(min = 400.dp)
+                DropdownMenu(focused && shown.isNotEmpty(), { focused = false }, properties = PopupProperties(focusable = false), modifier = menuModifier) {
+                    shown.forEach { s ->
+                        DropdownMenuItem(
+                            text = { Text(s) },
+                            leadingIcon = { Icon(if (query.isBlank()) Icons.Default.History else Icons.Default.Search, null) },
+                            trailingIcon = if (query.isBlank()) ({ IconButton({ com.utaloom.data.Library.removeSearch(s) }) { Icon(Icons.Default.Close, "Hapus") } }) else null,
+                            onClick = { submit(s) },
+                        )
+                    }
+                }
+            }
+            if (!settings.isPremium) {
+                GradientButton("Premium", { Nav.go(Screen.Premium) }, icon = Icons.Default.WorkspacePremium)
+            }
+            if (compact) {
+                IconButton(onAvatar) { PremiumAvatar(settings.accountAvatar ?: settings.beatPlayAccountEmail, 32.dp, settings.isPremium) }
+            } else {
+                IconButton(onAvatar) { PremiumAvatar(settings.accountAvatar ?: settings.beatPlayAccountEmail, 34.dp, settings.isPremium) }
             }
         }
-        if (!settings.isPremium) {
-            Button(
-                { Nav.go(Screen.Premium) },
-                shape = RoundedCornerShape(28.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            ) {
-                Icon(Icons.Default.Star, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(if (compact) "Premium" else "Explore Premium")
+        if (onHome) {
+            Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                HomeFilter.all.forEach { f ->
+                    FilterPill(f, HomeFilter.value.value == f) { HomeFilter.value.value = f }
+                }
             }
         }
     }
@@ -343,7 +472,7 @@ private fun TopBar(compact: Boolean) {
 @Composable
 private fun Content() {
     when (val s = Nav.current) {
-        Screen.Home -> HomeScreen()
+        Screen.Home -> HomeScreen(HomeFilter.value.value)
         Screen.Explore -> ExploreScreen()
         Screen.Library -> LibraryScreen()
         Screen.Together -> TogetherScreen()

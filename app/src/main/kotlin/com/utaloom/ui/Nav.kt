@@ -1,6 +1,7 @@
 package com.utaloom.ui
 
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import com.utaloom.innertube.models.BrowseEndpoint
 
 sealed interface Screen {
@@ -25,7 +26,6 @@ sealed interface Screen {
 object Nav {
     val stack = mutableStateListOf<Screen>(Screen.Home)
     val current get() = stack.last()
-
     fun go(s: Screen) {
         if (stack.last() != s) stack.add(s)
     }
@@ -40,4 +40,10 @@ object Nav {
         stack.removeAt(stack.lastIndex)
         return true
     }
+}
+
+/** Home content filters driven by the sticky top-bar pills. */
+object HomeFilter {
+    val all = listOf("Semua", "Musik", "Podcast", "Buku Audio", "Mengikuti")
+    val value = mutableStateOf("Semua")
 }

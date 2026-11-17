@@ -38,6 +38,14 @@ fun PlaybackSettings() {
     var presetMenuOpen by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Autoplay", style = MaterialTheme.typography.titleMedium)
+                Text("Lanjutkan memutar lagu serupa secara otomatis saat antrean habis.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(s.autoplay, onCheckedChange = { on -> Stores.settings.update { it.copy(autoplay = on) } })
+        }
+
         HorizontalDivider(Modifier.padding(horizontal = 24.dp))
         SectionTitle("Equalizer")
 

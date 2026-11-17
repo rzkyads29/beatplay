@@ -289,8 +289,10 @@ fun PremiumAvatar(url: String?, size: Dp, isPremium: Boolean, modifier: Modifier
 
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier, action: (@Composable () -> Unit)? = null) {
-    Row(modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+    Row(modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        androidx.compose.foundation.layout.Box(Modifier.width(4.dp).height(20.dp).clip(RoundedCornerShape(2.dp)).background(accentBrush()))
+        Spacer(Modifier.width(10.dp))
+        Text(text, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
         action?.invoke()
     }
 }
