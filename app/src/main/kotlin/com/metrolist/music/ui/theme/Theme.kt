@@ -6,52 +6,45 @@
 package com.metrolist.music.ui.theme
 
 import android.graphics.Bitmap
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.SaverScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.palette.graphics.Palette
-import com.materialkolor.PaletteStyle
-import com.materialkolor.dynamiccolor.ColorSpec
-import com.materialkolor.rememberDynamicColorScheme
 import com.materialkolor.score.Score
 
-// Apple system blue. The app intentionally ignores wallpaper and album colors.
-val DefaultThemeColor = Color(0xFF0A84FF)
+// Deep Obsidian identity: Electric Violet accent on a near-black glass surface.
+val DefaultThemeColor = ObsidianColors.violet
 
 @Composable
 fun MetrolistTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     pureBlack: Boolean = false,
-    themeColor: Color = DefaultThemeColor,
+    @Suppress("UNUSED_PARAMETER") themeColor: Color = DefaultThemeColor,
     content: @Composable () -> Unit,
 ) {
-    val baseColorScheme = rememberDynamicColorScheme(
-        seedColor = themeColor,
-        isDark = darkTheme,
-        specVersion = ColorSpec.SpecVersion.SPEC_2025,
-        style = PaletteStyle.Fidelity,
-    )
-
-    // Apply pureBlack modification if needed, similar to original logic
-    val colorScheme = remember(baseColorScheme, pureBlack, darkTheme) {
+    // The redesign fixes the palette (violet -> cyan) so every screen shares one identity.
+    // The themeColor preference is still accepted for call-site compatibility.
+    val colorScheme = remember(darkTheme, pureBlack) {
+        val base = obsidianColorScheme(darkTheme)
         if (darkTheme && pureBlack) {
-            baseColorScheme.pureBlack(true)
+            base.copy(
+                background = Color.Black,
+                surface = Color.Black,
+                surfaceContainerLowest = Color.Black,
+                surfaceContainerLow = Color.Black,
+                surfaceContainer = Color.Black,
+            )
         } else {
-            baseColorScheme
+            base
         }
     }
 
-    // Use standard MaterialTheme instead of MaterialExpressiveTheme
     MaterialTheme(
         colorScheme = colorScheme,
         content = content,
@@ -79,7 +72,7 @@ internal fun Palette.rankedColors(
 fun ColorScheme.pureBlack(apply: Boolean) =
     if (apply) copy(
         surface = Color.Black,
-        background = Color.Black
+        background = Color.Black,
     ) else this
 
 val ColorSaver = object : Saver<Color, Int> {

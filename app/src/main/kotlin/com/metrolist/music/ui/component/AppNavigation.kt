@@ -151,7 +151,7 @@ fun AppNavigationBar(
     val itemColors = NavigationBarItemDefaults.colors(
         selectedIconColor = MaterialTheme.colorScheme.primary,
         selectedTextColor = MaterialTheme.colorScheme.primary,
-        indicatorColor = Color.Transparent,
+        indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
         unselectedIconColor = contentColor,
         unselectedTextColor = contentColor,
     )
