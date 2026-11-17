@@ -307,9 +307,13 @@ fun StatsScreen(
                     .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
                     .asPaddingValues(),
             modifier =
-                Modifier.windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top),
-                ),
+                Modifier
+                    .windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top),
+                    )
+                    // Reserve the small top app bar height so the list starts
+                    // below it instead of sliding underneath.
+                    .padding(top = 64.dp),
         ) {
             val filteredArtists =
                 allArtists

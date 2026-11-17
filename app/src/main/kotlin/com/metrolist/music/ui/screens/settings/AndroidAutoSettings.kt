@@ -7,6 +7,8 @@ package com.metrolist.music.ui.screens.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -53,6 +55,7 @@ import com.metrolist.music.constants.MediaSessionConstants
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.SettingsScaffold
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.flow.map
@@ -151,9 +154,14 @@ fun AndroidAutoSettings(
         }
     }
 
+    SettingsScaffold(
+        title = stringResource(R.string.android_auto),
+        navController = navController,
+    ) { innerPadding ->
     Column(
         modifier = Modifier
-            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
+            .padding(innerPadding)
+            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp)
     ) {
@@ -366,19 +374,5 @@ fun AndroidAutoSettings(
 
         Spacer(Modifier.height(27.dp))
     }
-
-    TopAppBar(
-        title = { Text(stringResource(R.string.android_auto)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        },
-    )
+    }
 }

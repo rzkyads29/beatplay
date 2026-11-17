@@ -226,7 +226,7 @@ fun AboutScreen(
         Spacer(
             Modifier.windowInsetsPadding(
                 windowInsets.only(WindowInsetsSides.Top)
-            )
+            ).height(64.dp)
         )
 
         Spacer(Modifier.height(16.dp))

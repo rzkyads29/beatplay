@@ -171,7 +171,7 @@ fun BackupAndRestore(
                 LocalPlayerAwareWindowInsets.current.only(
                     WindowInsetsSides.Top,
                 ),
-            ),
+            ).height(64.dp),
         )
 
         val appName = stringResource(R.string.app_name)

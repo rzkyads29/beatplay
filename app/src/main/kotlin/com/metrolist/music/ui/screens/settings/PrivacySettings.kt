@@ -42,6 +42,7 @@ import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.SettingsScaffold
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
 
@@ -134,8 +135,13 @@ fun PrivacySettings(
         )
     }
 
+    SettingsScaffold(
+        title = stringResource(R.string.privacy),
+        navController = navController,
+    ) { innerPadding ->
     Column(
         Modifier
+            .padding(innerPadding)
             .windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(
                     WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
@@ -144,14 +150,6 @@ fun PrivacySettings(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp)
     ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Top
-                )
-            )
-        )
-
         Material3SettingsGroup(
             title = stringResource(R.string.listen_history),
             items = listOf(
@@ -246,19 +244,5 @@ fun PrivacySettings(
         )
         Spacer(modifier = Modifier.height(16.dp))
     }
-
-    TopAppBar(
-        title = { Text(stringResource(R.string.privacy)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        }
-    )
+    }
 }

@@ -62,6 +62,7 @@ import com.metrolist.music.ui.component.EnumDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.SettingsScaffold
 import android.text.format.Formatter
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberEnumPreference
@@ -314,8 +315,13 @@ fun StorageSettings(
         )
     }
 
+    SettingsScaffold(
+        title = stringResource(R.string.storage),
+        navController = navController,
+    ) { innerPadding ->
     Column(
         Modifier
+            .padding(innerPadding)
             .windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(
                     WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
@@ -323,13 +329,6 @@ fun StorageSettings(
             ).verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp),
     ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Top,
-                ),
-            ),
-        )
         Material3SettingsGroup(
             title = stringResource(R.string.storage),
             items =
@@ -543,19 +542,5 @@ fun StorageSettings(
                 ),
         )
     }
-
-    TopAppBar(
-        title = { Text(stringResource(R.string.storage)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        },
-    )
+    }
 }

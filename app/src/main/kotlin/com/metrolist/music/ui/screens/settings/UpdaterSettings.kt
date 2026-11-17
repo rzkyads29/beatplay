@@ -44,6 +44,7 @@ import com.metrolist.music.constants.UpdateNotificationsEnabledKey
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.SettingsScaffold
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.rememberPreference
@@ -91,10 +92,15 @@ fun UpdaterScreen(
         }
     }
 
+    SettingsScaffold(
+        title = stringResource(R.string.updater),
+        navController = navController,
+    ) { innerPadding ->
     Column(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .padding(innerPadding)
                 .windowInsetsPadding(
                     LocalPlayerAwareWindowInsets.current.only(
                         WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
@@ -103,14 +109,6 @@ fun UpdaterScreen(
                 .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Top,
-                ),
-            ),
-        )
-
         Spacer(Modifier.height(4.dp))
 
         Material3SettingsGroup(
@@ -241,19 +239,5 @@ fun UpdaterScreen(
 
         Spacer(Modifier.height(32.dp))
     }
-
-    TopAppBar(
-        title = { Text(stringResource(R.string.updater)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        },
-    )
+    }
 }
