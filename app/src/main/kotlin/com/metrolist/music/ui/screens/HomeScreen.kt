@@ -140,7 +140,10 @@ import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.HomeObsidianBento
+import com.metrolist.music.ui.component.HomeObsidianHeader
 import com.metrolist.music.ui.component.NavigationTitle
+import com.metrolist.music.ui.component.ObsidianUiState
 import com.metrolist.music.ui.component.RandomizeGridItem
 import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongListItem
@@ -1189,6 +1192,17 @@ fun HomeScreen(
                 state = lazylistState,
                 contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
             ) {
+                item(key = "obsidian_header") {
+                    HomeObsidianHeader(
+                        accountImageUrl = url,
+                        accountName = accountName,
+                        onOpenProfile = { ObsidianUiState.profileOpen = true },
+                        onNavigate = { route -> navController.navigate(route) { launchSingleTop = true } },
+                    )
+                }
+                item(key = "obsidian_bento") {
+                    HomeObsidianBento { route -> navController.navigate(route) { launchSingleTop = true } }
+                }
                 item {
                     ChipsRow(
                         chips = homePage?.chips?.map { it to it.title } ?: emptyList(),

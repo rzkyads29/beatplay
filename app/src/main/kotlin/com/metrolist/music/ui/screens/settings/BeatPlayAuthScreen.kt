@@ -1,12 +1,11 @@
 /**
- * BeatPlay account: Deep Obsidian sign in / sign up (email, +62 phone OTP, Google).
+ * BeatPlay account: Deep Obsidian sign in / sign up with email + password and an email code.
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
 package com.metrolist.music.ui.screens.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,14 +24,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -82,28 +78,16 @@ import com.metrolist.music.ui.component.GlassButton
 import com.metrolist.music.ui.component.GlassCard
 import com.metrolist.music.ui.component.GradientButton
 import com.metrolist.music.ui.component.OtpBoxes
-import com.metrolist.music.ui.component.glassSurface
 import com.metrolist.music.ui.theme.ObsidianColors
 import com.metrolist.music.ui.theme.obsidianGradient
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.safeDataStoreEdit
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.security.MessageDigest
 import java.util.Date
 
 private enum class AuthMode { LOGIN, REGISTER }
-private enum class AuthStep { ACCOUNT, PHONE, OTP }
-
-/** Phone identities live on the same BeatPlay server via a deterministic, phone-derived account. */
-private fun phoneToEmail(phone: String): String =
-    "62${phone.filter { it.isDigit() }.trimStart('0')}@phone.beatplay.app"
-
-private fun phoneToPassword(phone: String): String {
-    val digest = MessageDigest.getInstance("SHA-256")
-        .digest("beatplay-phone:${phone.filter { it.isDigit() }}".toByteArray())
-    return digest.joinToString("") { "%02x".format(it) }
-}
+private enum class AuthStep { ACCOUNT, VERIFY }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -123,7 +107,8 @@ fun BeatPlayAuthScreen(navController: NavController) {
     var passwordInput by remember { mutableStateOf("") }
     var confirmInput by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
-    var phoneInput by remember { mutableStateOf("") }
+    var pendingEmail by remember { mutableStateOf("") }
+    var devCode by remember { mutableStateOf<String?>(null) }
     var otp by remember { mutableStateOf(List(6) { "" }) }
     var otpCountdown by remember { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(false) }
@@ -204,6 +189,16 @@ fun BeatPlayAuthScreen(navController: NavController) {
         }
     }
 
+    fun enterVerify(email: String, code: String?) {
+        pendingEmail = email
+        devCode = code
+        otp = List(6) { "" }
+        otpCountdown = 45
+        message = null
+        isError = false
+        step = AuthStep.VERIFY
+    }
+
     fun submitEmail() {
         val target = emailInput.trim().lowercase()
         if (!isValidPremiumEmail(target)) {
@@ -232,9 +227,8 @@ fun BeatPlayAuthScreen(navController: NavController) {
             }
                 .onSuccess { res ->
                     if (res.requiresVerification) {
-                        message = context.getString(R.string.bp_auth_register_sent)
-                        isError = false
-                        mode = AuthMode.LOGIN
+                        // The server emailed a 6-digit code; dev_code is present until SMTP is set up.
+                        enterVerify(target, res.devCode)
                     } else {
                         persistSession(res.email, res.token)
                         passwordInput = ""
@@ -243,45 +237,72 @@ fun BeatPlayAuthScreen(navController: NavController) {
                         isError = false
                     }
                 }
-                .onFailure {
-                    isError = true
-                    message = context.getString(
-                        if (mode == AuthMode.LOGIN) R.string.premium_login_failed else R.string.premium_register_failed,
-                        networkErrorMessage(it, serverPref),
-                    )
+                .onFailure { error ->
+                    val text = error.message.orEmpty()
+                    if (text.contains("belum diverifikasi", ignoreCase = true)) {
+                        // Unfinished registration: ask for a fresh code and continue.
+                        val code = runCatching { api.resendCode(base, target) }.getOrNull()
+                        enterVerify(target, code)
+                    } else {
+                        isError = true
+                        message = context.getString(
+                            if (mode == AuthMode.LOGIN) R.string.premium_login_failed else R.string.premium_register_failed,
+                            networkErrorMessage(error, serverPref),
+                        )
+                    }
                 }
             loading = false
         }
     }
 
-    fun submitPhone() {
+    fun submitCode() {
         if (loading) return
+        val code = otp.joinToString("")
+        if (code.length != 6) {
+            isError = true
+            message = "Masukkan 6 digit kode verifikasi."
+            return
+        }
         loading = true
         message = null
         isError = false
         scope.launch {
             val base = serverPref.trim().trimEnd('/')
-            val target = phoneToEmail(phoneInput)
-            val pass = phoneToPassword(phoneInput)
-            // Register first; an existing phone account falls back to a sign in.
-            val registered = runCatching { api.register(base, target, pass) }
-            val resolved = if (registered.isSuccess) registered else runCatching { api.login(base, target, pass) }
-            resolved
+            runCatching { api.verifyCode(base, pendingEmail, code) }
                 .onSuccess { res ->
-                    if (res.token.isBlank()) {
-                        isError = true
-                        message = "Akun dibuat, tetapi verifikasi email diperlukan. Selesaikan lewat email."
-                    } else {
-                        persistSession(res.email, res.token)
-                        step = AuthStep.ACCOUNT
-                        otp = List(6) { "" }
-                        message = "Masuk dengan nomor HP +62 ${phoneInput}."
-                        isError = false
-                    }
+                    persistSession(res.email, res.token)
+                    passwordInput = ""
+                    confirmInput = ""
+                    devCode = null
+                    step = AuthStep.ACCOUNT
+                    otp = List(6) { "" }
+                    message = "Email terverifikasi. Selamat datang, ${res.email}."
+                    isError = false
                 }
                 .onFailure {
                     isError = true
-                    message = "Verifikasi gagal: ${networkErrorMessage(it, serverPref)}"
+                    message = "Kode salah atau kedaluwarsa: ${networkErrorMessage(it, serverPref)}"
+                }
+            loading = false
+        }
+    }
+
+    fun resendCode() {
+        if (loading || otpCountdown > 0) return
+        loading = true
+        scope.launch {
+            val base = serverPref.trim().trimEnd('/')
+            runCatching { api.resendCode(base, pendingEmail) }
+                .onSuccess { code ->
+                    devCode = code
+                    otp = List(6) { "" }
+                    otpCountdown = 45
+                    isError = false
+                    message = if (code != null) "Kode baru dibuat (mode uji)." else "Kode baru dikirim ke email."
+                }
+                .onFailure {
+                    isError = true
+                    message = "Gagal kirim ulang: ${networkErrorMessage(it, serverPref)}"
                 }
             loading = false
         }
@@ -358,63 +379,33 @@ fun BeatPlayAuthScreen(navController: NavController) {
                         message = message,
                         isError = isError,
                         onSubmit = { submitEmail() },
-                        onPhone = {
-                            message = null
-                            step = AuthStep.PHONE
-                        },
-                        onGoogle = { navController.navigate("login") },
                     )
 
-                    AuthStep.PHONE -> PhonePanel(
-                        phone = phoneInput,
-                        onPhone = { phoneInput = it.filter { c -> c.isDigit() }.take(13) },
+                    AuthStep.VERIFY -> VerifyPanel(
+                        email = pendingEmail,
+                        code = otp,
+                        onCode = { next -> otp = next },
+                        countdown = otpCountdown,
+                        devCode = devCode,
                         loading = loading,
                         message = message,
                         isError = isError,
-                        onBack = {
+                        onResend = { resendCode() },
+                        onEdit = {
                             step = AuthStep.ACCOUNT
                             message = null
                         },
-                        onSend = {
-                            otpCountdown = 45
-                            otp = List(6) { "" }
-                            message = null
-                            step = AuthStep.OTP
-                        },
-                    )
-
-                    AuthStep.OTP -> OtpPanel(
-                        phone = phoneInput,
-                        code = otp,
-                        onCode = { next ->
-                            otp = next
-                            if (next.all { it.isNotEmpty() }) submitPhone()
-                        },
-                        countdown = otpCountdown,
-                        onResend = {
-                            otpCountdown = 45
-                            otp = List(6) { "" }
-                        },
-                        onEdit = {
-                            step = AuthStep.PHONE
-                            message = null
-                        },
-                        loading = loading,
-                        message = message,
-                        isError = isError,
-                        onSubmit = { submitPhone() },
+                        onSubmit = { submitCode() },
                     )
                 }
 
-                if (!isError) {
-                    Text(
-                        "Login YouTube opsional — hanya untuk menyinkronkan library.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = ObsidianColors.slate400,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+                Text(
+                    "Kode verifikasi dikirim ke email yang kamu daftarkan.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ObsidianColors.slate400,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
 
             BenefitsCard()
@@ -447,7 +438,8 @@ fun BeatPlayAuthScreen(navController: NavController) {
                         emailInput = ""
                         passwordInput = ""
                         confirmInput = ""
-                        phoneInput = ""
+                        pendingEmail = ""
+                        devCode = null
                         isError = false
                         message = context.getString(R.string.bp_auth_logged_out)
                     }
@@ -521,8 +513,6 @@ private fun AccountPanel(
     message: String?,
     isError: Boolean,
     onSubmit: () -> Unit,
-    onPhone: () -> Unit,
-    onGoogle: () -> Unit,
 ) {
     GlassCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
         Column(
@@ -606,6 +596,14 @@ private fun AccountPanel(
                 loading = loading,
             )
 
+            if (mode == AuthMode.REGISTER) {
+                Text(
+                    "Setelah mendaftar, kode verifikasi 6 digit dikirim ke email kamu.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ObsidianColors.slate400,
+                )
+            }
+
             message?.let {
                 Text(
                     it,
@@ -613,27 +611,6 @@ private fun AccountPanel(
                     color = if (isError) ObsidianColors.danger else ObsidianColors.cyan,
                 )
             }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Box(Modifier.weight(1f).height(1.dp).background(ObsidianColors.glassBorderStrong))
-                Text("atau", color = ObsidianColors.slate500, style = MaterialTheme.typography.labelMedium)
-                Box(Modifier.weight(1f).height(1.dp).background(ObsidianColors.glassBorderStrong))
-            }
-
-            GlassButton(
-                text = "Lanjutkan dengan nomor HP",
-                onClick = onPhone,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            GlassButton(
-                text = "Lanjutkan dengan Google",
-                onClick = onGoogle,
-                modifier = Modifier.fillMaxWidth(),
-            )
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -661,69 +638,17 @@ private fun AccountPanel(
 }
 
 @Composable
-private fun PhonePanel(
-    phone: String,
-    onPhone: (String) -> Unit,
-    loading: Boolean,
-    message: String?,
-    isError: Boolean,
-    onBack: () -> Unit,
-    onSend: () -> Unit,
-) {
-    GlassCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
-        Column(
-            Modifier.fillMaxWidth().padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Text("Nomor HP kamu", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(
-                "Kami akan mengirim kode verifikasi 6 digit lewat SMS.",
-                color = ObsidianColors.slate400,
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(
-                    Modifier
-                        .glassSurface(RoundedCornerShape(12.dp), ObsidianColors.glassFillStrong, ObsidianColors.glassBorderStrong)
-                        .padding(horizontal = 14.dp, vertical = 16.dp),
-                ) {
-                    Text("🇮🇩 +62", color = ObsidianColors.textPrimary, fontWeight = FontWeight.SemiBold)
-                }
-                OutlinedTextField(
-                    value = phone,
-                    onValueChange = onPhone,
-                    modifier = Modifier.weight(1f),
-                    label = { Text("812 3456 7890") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Done),
-                    shape = RoundedCornerShape(14.dp),
-                )
-            }
-            GradientButton(
-                text = "Kirim kode",
-                onClick = onSend,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                enabled = phone.length >= 8 && !loading,
-            )
-            message?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = if (isError) ObsidianColors.danger else ObsidianColors.cyan)
-            }
-            TextButton(onClick = onBack) { Text("Kembali ke email") }
-        }
-    }
-}
-
-@Composable
-private fun OtpPanel(
-    phone: String,
+private fun VerifyPanel(
+    email: String,
     code: List<String>,
     onCode: (List<String>) -> Unit,
     countdown: Int,
-    onResend: () -> Unit,
-    onEdit: () -> Unit,
+    devCode: String?,
     loading: Boolean,
     message: String?,
     isError: Boolean,
+    onResend: () -> Unit,
+    onEdit: () -> Unit,
     onSubmit: () -> Unit,
 ) {
     GlassCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
@@ -732,14 +657,22 @@ private fun OtpPanel(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("Masukkan kode verifikasi", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Verifikasi email", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text(
-                "Kode 6 digit dikirim ke +62 $phone",
+                "Masukkan kode 6 digit yang dikirim ke\n$email",
                 color = ObsidianColors.slate400,
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
             )
             OtpBoxes(code, onCode)
+            if (devCode != null) {
+                Text(
+                    "Mode uji (SMTP belum aktif) — kode: $devCode",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ObsidianColors.cyan,
+                    textAlign = TextAlign.Center,
+                )
+            }
             GradientButton(
                 text = if (loading) "Memverifikasi..." else "Verifikasi",
                 onClick = onSubmit,
@@ -754,11 +687,11 @@ private fun OtpPanel(
                     color = if (countdown > 0) ObsidianColors.slate500 else ObsidianColors.cyan,
                     fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.clickable(enabled = countdown == 0) { onResend() },
+                    modifier = Modifier.clickable(enabled = countdown == 0 && !loading) { onResend() },
                 )
             }
             Text(
-                "Edit nomor telepon",
+                "Ubah email",
                 color = ObsidianColors.slate400,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.clickable(enabled = !loading) { onEdit() },

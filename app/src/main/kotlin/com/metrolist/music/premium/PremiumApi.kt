@@ -67,7 +67,8 @@ class PremiumApi(
     /** Register new BeatPlay account. Returns (token, requiresVerification). Throws on error. */
     suspend fun register(serverUrl: String, email: String, password: String): AuthResult {
         val base = serverUrl.trim().trimEnd('/')
-        val payload = "{\"email\":\"${esc(email)}\",\"password\":\"${esc(password)}\"}"
+        // verify_mode=code asks the server to email a 6-digit code instead of a link.
+        val payload = "{\"email\":\"${esc(email)}\",\"password\":\"${esc(password)}\",\"verify_mode\":\"code\"}"
         val (status, text) = retrying(onlyIfNotSent = true) {
             val res = client.post("$base/api/auth/register") {
                 contentType(ContentType.Application.Json)
@@ -79,7 +80,45 @@ class PremiumApi(
         val root = Json.parseToJsonElement(text).jsonObject
         val token = root["token"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content.orEmpty()
         val requiresVerification = root["requires_verification"]?.jsonPrimitive?.booleanOrNull == true
-        return AuthResult(token, requiresVerification, email)
+        val devCode = root["dev_code"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content
+        return AuthResult(token, requiresVerification, email, devCode)
+    }
+
+    /** Verify the 6-digit email code; returns a signed-in session. */
+    suspend fun verifyCode(serverUrl: String, email: String, code: String): AuthResult {
+        val base = serverUrl.trim().trimEnd('/')
+        val payload = "{\"email\":\"${esc(email)}\",\"code\":\"${esc(code)}\"}"
+        val (status, text) = retrying {
+            val res = client.post("$base/api/auth/verify-code") {
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }
+            res.status.value to res.bodyAsText()
+        }
+        check(status == 200) { parseError(text) }
+        val root = Json.parseToJsonElement(text).jsonObject
+        return AuthResult(
+            token = root["token"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content.orEmpty(),
+            requiresVerification = false,
+            email = root["email"]?.jsonPrimitive?.content ?: email,
+        )
+    }
+
+    /** Ask for a fresh email code. Returns the dev code when SMTP is not configured. */
+    suspend fun resendCode(serverUrl: String, email: String): String? {
+        val base = serverUrl.trim().trimEnd('/')
+        val payload = "{\"email\":\"${esc(email)}\"}"
+        val (status, text) = retrying {
+            val res = client.post("$base/api/auth/resend") {
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }
+            res.status.value to res.bodyAsText()
+        }
+        check(status == 200) { parseError(text) }
+        return runCatching {
+            Json.parseToJsonElement(text).jsonObject["dev_code"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content
+        }.getOrNull()
     }
 
     suspend fun login(serverUrl: String, email: String, password: String): AuthResult {
@@ -268,6 +307,7 @@ data class AuthResult(
     val token: String,
     val requiresVerification: Boolean,
     val email: String,
+    val devCode: String? = null,
 )
 
 /** Thrown when the server rejects the session token (expired/revoked/logged out elsewhere). */

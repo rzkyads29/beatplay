@@ -45,7 +45,23 @@ sealed class Screens(
         route = "library"
     )
 
+    object Premium : Screens(
+        titleId = R.string.premium,
+        iconIdInactive = R.drawable.crown,
+        iconIdActive = R.drawable.crown,
+        route = "settings/premium"
+    )
+
+    /** The "+" action: opens the create sheet instead of navigating. */
+    object Create : Screens(
+        titleId = R.string.create,
+        iconIdInactive = R.drawable.add,
+        iconIdActive = R.drawable.add,
+        route = "create"
+    )
+
     companion object {
-        val MainScreens = listOf(Home, Search, ListenTogether, Library)
+        // Home, Cari, Koleksi, Premium and the "+ Buat" action: five destinations.
+        val MainScreens = listOf(Home, Search, Library, Premium, Create)
     }
 }

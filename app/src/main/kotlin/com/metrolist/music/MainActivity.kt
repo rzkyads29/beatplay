@@ -181,6 +181,9 @@ import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AccountSettingsDialog
 import com.metrolist.music.ui.component.AppNavigationBar
 import com.metrolist.music.ui.component.AppNavigationRail
+import com.metrolist.music.ui.component.ObsidianCreateSheet
+import com.metrolist.music.ui.component.ObsidianProfileDrawer
+import com.metrolist.music.ui.component.ObsidianUiState
 import com.metrolist.music.ui.component.BottomSheetMenu
 import com.metrolist.music.ui.component.BottomSheetPage
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
@@ -715,6 +718,7 @@ class MainActivity : FragmentActivity() {
 
                 val homeViewModel: HomeViewModel = hiltViewModel()
                 val accountImageUrl by homeViewModel.accountImageUrl.collectAsStateWithLifecycle()
+                val accountName by homeViewModel.accountName.collectAsStateWithLifecycle()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val (previousTab, setPreviousTab) = rememberSaveable { mutableStateOf("home") }
 
@@ -1088,7 +1092,7 @@ class MainActivity : FragmentActivity() {
                                                     )
                                                 }
                                             }
-                                            IconButton(onClick = { showAccountDialog = true }) {
+                                            IconButton(onClick = { ObsidianUiState.profileOpen = true }) {
                                                 BadgedBox(badge = {
                                                     if (latestVersionName != BuildConfig.BASE_VERSION_NAME) {
                                                         Badge()
@@ -1150,7 +1154,10 @@ class MainActivity : FragmentActivity() {
                                         if (playerBottomSheetState.isExpanded) {
                                             playerBottomSheetState.collapseSoft()
                                         }
-                                        if (isSelected) {
+                                        if (screen == Screens.Create) {
+                                            // The "+" tab opens the create sheet instead of navigating.
+                                            ObsidianUiState.createOpen = true
+                                        } else if (isSelected) {
                                             val targetEntry =
                                                 try {
                                                     val route = navController.currentBackStackEntry?.destination?.route
@@ -1418,6 +1425,26 @@ class MainActivity : FragmentActivity() {
                                 homeViewModel.refresh()
                             },
                             latestVersionName = latestVersionName,
+                        )
+                    }
+
+                    if (ObsidianUiState.profileOpen) {
+                        ObsidianProfileDrawer(
+                            navController = navController,
+                            accountImageUrl = accountImageUrl,
+                            accountName = accountName,
+                            onOpenAccount = {
+                                ObsidianUiState.profileOpen = false
+                                showAccountDialog = true
+                            },
+                            onDismiss = { ObsidianUiState.profileOpen = false },
+                        )
+                    }
+
+                    if (ObsidianUiState.createOpen) {
+                        ObsidianCreateSheet(
+                            navController = navController,
+                            onDismiss = { ObsidianUiState.createOpen = false },
                         )
                     }
 

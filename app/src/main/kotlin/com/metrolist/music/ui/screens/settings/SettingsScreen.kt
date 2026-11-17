@@ -10,23 +10,36 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.navigation.NavController
@@ -34,12 +47,19 @@ import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AccountNameKey
+import com.metrolist.music.constants.BeatPlayAccountEmailKey
 import com.metrolist.music.constants.InnerTubeCookieKey
+import com.metrolist.music.constants.IsPremiumKey
 import com.metrolist.innertube.utils.parseCookieString
+import com.metrolist.music.ui.component.GlassButton
+import com.metrolist.music.ui.component.GlassCard
+import com.metrolist.music.ui.component.GradientButton
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.ReleaseNotesCard
+import com.metrolist.music.ui.theme.ObsidianColors
+import com.metrolist.music.ui.theme.obsidianGradient
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.rememberPreference
@@ -89,6 +109,9 @@ fun SettingsScreen(
                 )
             )
         )
+
+        SettingsHero(navController, youtubeAccountName)
+        Spacer(modifier = Modifier.height(16.dp))
 
         // BeatPlay Premium + Akun YouTube (top-level for visibility)
         Material3SettingsGroup(
@@ -334,4 +357,39 @@ fun SettingsScreen(
             }
         }
     )
+}
+
+@Composable
+private fun SettingsHero(navController: NavController, youtubeAccountName: String) {
+    val (isPremium) = rememberPreference(IsPremiumKey, false)
+    val beatPlayEmail by rememberPreference(BeatPlayAccountEmailKey, "")
+    GlassCard(Modifier.fillMaxWidth().padding(top = 12.dp), shape = RoundedCornerShape(22.dp)) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(
+                    Modifier.size(52.dp).clip(CircleShape).background(obsidianGradient()),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(painterResource(R.drawable.account), null, tint = Color.White)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        beatPlayEmail.ifBlank { youtubeAccountName.ifBlank { "Tamu" } },
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        if (isPremium) "Premium aktif" else "Akun gratis",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isPremium) ObsidianColors.cyan else ObsidianColors.slate400,
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                GradientButton("Rekap Tahun Ini", { navController.navigate("wrapped") }, Modifier.weight(1f))
+                GlassButton("Statistik", { navController.navigate("stats") }, Modifier.weight(1f))
+            }
+        }
+    }
 }

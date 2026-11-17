@@ -5,17 +5,27 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
+import com.metrolist.music.ui.theme.obsidianGradient
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
@@ -33,6 +43,7 @@ import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import com.metrolist.music.R
 import com.metrolist.music.ui.screens.Screens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -110,22 +121,39 @@ fun AppNavigationRail(
                 }
             }
 
-            NavigationRailItem(
-                selected = isSelected,
-                onClick = {
-                    if (!isSearchItem && !isHomeHoldItem) {
-                        onItemClick(screen, currentIsSelected)
-                    }
-                    // Long presses are handled via InteractionSource
-                },
-                interactionSource = interactionSource,
-                icon = {
+            if (screen == Screens.Create) {
+                Box(
+                    Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(obsidianGradient())
+                        .clickable { ObsidianUiState.createOpen = true },
+                    contentAlignment = Alignment.Center,
+                ) {
                     Icon(
-                        painter = painterResource(id = iconRes),
-                        contentDescription = stringResource(screen.titleId)
+                        painter = painterResource(R.drawable.add),
+                        contentDescription = stringResource(screen.titleId),
+                        tint = Color.White,
                     )
                 }
-            )
+            } else {
+                NavigationRailItem(
+                    selected = isSelected,
+                    onClick = {
+                        if (!isSearchItem && !isHomeHoldItem) {
+                            onItemClick(screen, currentIsSelected)
+                        }
+                        // Long presses are handled via InteractionSource
+                    },
+                    interactionSource = interactionSource,
+                    icon = {
+                        Icon(
+                            painter = painterResource(id = iconRes),
+                            contentDescription = stringResource(screen.titleId)
+                        )
+                    }
+                )
+            }
         }
 
         Spacer(modifier = Modifier.weight(1f))
@@ -203,6 +231,33 @@ fun AppNavigationBar(
                 }
             }
 
+            if (screen == Screens.Create) {
+                Column(
+                    Modifier.weight(1f).height(56.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Box(
+                        Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(obsidianGradient())
+                            .clickable { ObsidianUiState.createOpen = true },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.add),
+                            contentDescription = stringResource(screen.titleId),
+                            tint = Color.White,
+                        )
+                    }
+                    Text(
+                        text = stringResource(screen.titleId),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                    )
+                }
+            } else {
             NavigationBarItem(
                 selected = isSelected,
                 colors = itemColors,
@@ -229,6 +284,7 @@ fun AppNavigationBar(
                     }
                 } else null
             )
+            }
         }
     }
 }
