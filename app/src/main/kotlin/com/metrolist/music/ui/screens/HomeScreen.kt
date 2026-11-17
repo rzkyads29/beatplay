@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -82,6 +84,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -1293,61 +1296,40 @@ fun HomeScreen(
 
             val maxWidthDp = maxWidth
 
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .windowInsetsPadding(
-                        LocalPlayerAwareWindowInsets.current.only(
-                            WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
-                        ),
-                    ),
-            ) {
-                // Pinned header: the avatar and the filter pills stay fixed while
-                // the feed below scrolls. A soft vertical fade keeps it readable.
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    ObsidianColors.bg.copy(alpha = 0.97f),
-                                    ObsidianColors.bg.copy(alpha = 0.86f),
-                                ),
-                            ),
-                        ),
-                ) {
-                    HomeObsidianHeader(
-                        accountImageUrl = url,
-                        accountName = beatPlayName.ifBlank { accountName },
-                        onOpenProfile = {
-                            // Avatar opens the Spotify-style slide-in drawer; never navigate
-                            // straight to the account screen from here.
-                            ObsidianUiState.profileOpen = true
-                        },
-                        onNavigate = { route -> navController.navigate(route) { launchSingleTop = true } },
-                        chips = homePage?.chips?.map { it.title }
-                            ?.filter { it.isNotBlank() && !it.equals("Semua", ignoreCase = true) }
-                            ?.distinct()
-                            .orEmpty(),
-                        selectedChipTitle = selectedChip?.title,
-                        onSelectChip = { title ->
-                            if (title.isBlank()) {
-                                selectedChip?.let(viewModel::toggleChip)
-                            } else {
-                                homePage?.chips?.firstOrNull { it.title == title }?.let(viewModel::toggleChip)
-                            }
-                        },
-                    )
-                }
+            // Glass header geometry: the feed scrolls underneath a translucent
+            // gradient bar instead of being clipped by a solid block.
+            val headerInset = LocalPlayerAwareWindowInsets.current
+                .only(WindowInsetsSides.Top)
+                .asPaddingValues()
+                .calculateTopPadding()
+            val headerSpace = headerInset + 64.dp
+            val basePadding = LocalPlayerAwareWindowInsets.current
+                .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                .asPaddingValues()
+            val listPadding = PaddingValues(
+                start = basePadding.calculateStartPadding(LocalLayoutDirection.current),
+                top = headerSpace,
+                end = basePadding.calculateEndPadding(LocalLayoutDirection.current),
+                bottom = basePadding.calculateBottomPadding(),
+            )
+
+            Box(Modifier.fillMaxSize()) {
                 LazyColumn(
                     state = lazylistState,
-                    modifier = Modifier.weight(1f),
-                    contentPadding = LocalPlayerAwareWindowInsets.current
-                        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
-                        .asPaddingValues(),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = listPadding,
                 ) {
                 item(key = "obsidian_quick") {
                     HomeObsidianQuickGrid(quickTiles)
+                }
+
+                // BeatPlay Wrapped 2026 entry — opens the full-screen story.
+                item(key = "beatplay_wrapped_entry") {
+                    com.metrolist.music.ui.screens.beatplay.BeatPlayWrappedEntryCard(
+                        onOpen = {
+                            navController.navigate("beatplay_wrapped") { launchSingleTop = true }
+                        },
+                    )
                 }
 
                 // The header already shows the fallback pills while chips load.
@@ -2650,6 +2632,53 @@ fun HomeScreen(
                     }
                 }
             }
+
+                // Glass header overlay: pinned above the feed. The scrim fades
+                // from almost opaque at the status bar to fully transparent, so
+                // scrolling content melts behind the chips instead of hitting a
+                // solid bar.
+                Box(
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to ObsidianColors.bg.copy(alpha = 0.95f),
+                                    0.55f to ObsidianColors.bg.copy(alpha = 0.78f),
+                                    1.0f to Color.Transparent,
+                                ),
+                            ),
+                        )
+                        .windowInsetsPadding(
+                            LocalPlayerAwareWindowInsets.current.only(
+                                WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+                            ),
+                        ),
+                ) {
+                    HomeObsidianHeader(
+                        accountImageUrl = url,
+                        accountName = beatPlayName.ifBlank { accountName },
+                        onOpenProfile = {
+                            // Avatar opens the Spotify-style slide-in drawer; never navigate
+                            // straight to the account screen from here.
+                            ObsidianUiState.profileOpen = true
+                        },
+                        onNavigate = { route -> navController.navigate(route) { launchSingleTop = true } },
+                        chips = homePage?.chips?.map { it.title }
+                            ?.filter { it.isNotBlank() && !it.equals("Semua", ignoreCase = true) }
+                            ?.distinct()
+                            .orEmpty(),
+                        selectedChipTitle = selectedChip?.title,
+                        onSelectChip = { title ->
+                            if (title.isBlank()) {
+                                selectedChip?.let(viewModel::toggleChip)
+                            } else {
+                                homePage?.chips?.firstOrNull { it.title == title }?.let(viewModel::toggleChip)
+                            }
+                        },
+                    )
+                }
             }
 
             HideOnScrollFAB(
