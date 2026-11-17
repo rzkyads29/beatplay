@@ -138,7 +138,15 @@ fun ObsidianProfileDrawer(
             ) {
                 Text("Profil", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
 
-                GlassCard(Modifier.fillMaxWidth(), fill = ObsidianColors.glassFillStrong) {
+                GlassCard(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            onDismiss()
+                            navController.navigate("profile") { launchSingleTop = true }
+                        },
+                    fill = ObsidianColors.glassFillStrong,
+                ) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Box(
@@ -164,11 +172,6 @@ fun ObsidianProfileDrawer(
                                     overflow = TextOverflow.Ellipsis,
                                 )
                                 Text(
-                                    "Lihat profil",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = ObsidianColors.slate400,
-                                )
-                                Text(
                                     when {
                                         bpCode.isNotBlank() -> "Kode " + bpCode.chunked(4).joinToString("-")
                                         isPremium -> "Premium aktif"
@@ -179,21 +182,12 @@ fun ObsidianProfileDrawer(
                                 )
                             }
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            GradientButton(
-                                text = "Kelola Premium",
-                                onClick = { go("settings/premium") },
-                                modifier = Modifier.weight(1f),
-                            )
-                            GlassButton(
-                                text = "Akun",
-                                onClick = {
-                                    onDismiss()
-                                    onOpenAccount()
-                                },
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
+                        Text(
+                            "Lihat profil",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = ObsidianColors.textPrimary,
+                        )
                     }
                 }
 

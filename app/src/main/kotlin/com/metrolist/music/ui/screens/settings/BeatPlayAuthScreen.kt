@@ -83,6 +83,7 @@ import com.metrolist.music.premium.isValidPremiumEmail
 import com.metrolist.music.premium.networkErrorMessage
 import com.metrolist.music.ui.component.GlassButton
 import com.metrolist.music.ui.component.GlassCard
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.ui.component.GradientButton
 import com.metrolist.music.ui.component.OtpBoxes
 import com.metrolist.music.ui.theme.ObsidianColors
@@ -102,6 +103,7 @@ fun BeatPlayAuthScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val api = remember { PremiumApi() }
+    val playerConnection = LocalPlayerConnection.current
     DisposableEffect(api) { onDispose { api.close() } }
 
     var authEmail by rememberPreference(BeatPlayAccountEmailKey, "")
@@ -463,6 +465,11 @@ fun BeatPlayAuthScreen(navController: NavController) {
             confirmButton = {
                 TextButton(onClick = {
                     showLogoutDialog = false
+                    // Stop music playback on logout
+                    runCatching {
+                        playerConnection?.player?.stop()
+                        playerConnection?.player?.clearMediaItems()
+                    }
                     scope.launch {
                         api.logout(serverPref.trim().trimEnd('/'), authToken)
                         context.safeDataStoreEdit { prefs ->
@@ -538,8 +545,8 @@ private fun AuthSplash(
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(26.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF1ED760),
-                    contentColor = Color(0xFF0C0908),
+                    containerColor = ObsidianColors.elegantWhite,
+                    contentColor = ObsidianColors.coal,
                 ),
             ) {
                 Text(
@@ -634,8 +641,8 @@ private fun AccountPanel(
                 enabled = emailOk && !loading,
                 shape = RoundedCornerShape(26.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF1ED760),
-                    contentColor = Color(0xFF0C0908),
+                    containerColor = ObsidianColors.elegantWhite,
+                    contentColor = ObsidianColors.coal,
                     disabledContainerColor = ObsidianColors.surfaceHigh,
                     disabledContentColor = ObsidianColors.slate400,
                 ),
