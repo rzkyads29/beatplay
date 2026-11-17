@@ -159,9 +159,14 @@ fun ObsidianProfileDrawer(
                             Column(Modifier.weight(1f)) {
                                 Text(
                                     displayName,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    "Lihat profil",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = ObsidianColors.slate400,
                                 )
                                 Text(
                                     when {

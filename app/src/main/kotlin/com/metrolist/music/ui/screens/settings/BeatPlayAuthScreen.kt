@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,11 +25,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Button
@@ -36,8 +37,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -324,38 +323,58 @@ fun BeatPlayAuthScreen(navController: NavController) {
         }
     }
 
+    val isSplash = !loggedIn && !emailSubmitted && step != AuthStep.VERIFY
+
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        stringResource(R.string.bp_auth_title),
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                    )
-                },
-                navigationIcon = {
-                    Box(
-                        Modifier
-                            .padding(start = 8.dp)
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(ObsidianColors.surfaceHigh)
-                            .clickable { navController.navigateUp() },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                            tint = ObsidianColors.textPrimary,
-                            modifier = Modifier.size(20.dp),
+            if (!isSplash) {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            stringResource(R.string.bp_auth_title),
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
                         )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-            )
+                    },
+                    navigationIcon = {
+                        Box(
+                            Modifier
+                                .padding(start = 8.dp)
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(ObsidianColors.surfaceHigh)
+                                .clickable { navController.navigateUp() },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painterResource(R.drawable.arrow_back),
+                                contentDescription = null,
+                                tint = ObsidianColors.textPrimary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                )
+            }
         },
     ) { padding ->
+        if (isSplash) {
+            AuthSplash(
+                onContinueEmail = {
+                    mode = AuthMode.LOGIN
+                    emailSubmitted = true
+                    message = null
+                    isError = false
+                },
+                onSwitchToRegister = {
+                    mode = AuthMode.REGISTER
+                    emailSubmitted = true
+                    message = null
+                    isError = false
+                },
+            )
+        } else {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -401,21 +420,6 @@ fun BeatPlayAuthScreen(navController: NavController) {
                     },
                     onSubmit = { submitCode() },
                 )
-            } else if (!emailSubmitted) {
-                AuthSplash(
-                    onContinueEmail = {
-                        mode = AuthMode.LOGIN
-                        emailSubmitted = true
-                        message = null
-                        isError = false
-                    },
-                    onSwitchToRegister = {
-                        mode = AuthMode.REGISTER
-                        emailSubmitted = true
-                        message = null
-                        isError = false
-                    },
-                )
             } else {
                 AccountPanel(
                     mode = mode,
@@ -447,6 +451,7 @@ fun BeatPlayAuthScreen(navController: NavController) {
                     onBack = { emailSubmitted = false; message = null; isError = false },
                 )
             }
+        }
         }
     }
 
@@ -500,53 +505,65 @@ private fun AuthSplash(
 ) {
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 48.dp, bottom = 36.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+            .fillMaxSize()
+            .background(ObsidianColors.bg),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            "Masuk ke BeatPlay",
-            color = ObsidianColors.textPrimary,
-            fontSize = 34.sp,
-            fontWeight = FontWeight.Bold,
-            lineHeight = 40.sp,
-        )
-
-        Button(
-            onClick = onContinueEmail,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(26.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF1ED760),
-                contentColor = Color(0xFF0C0908),
-            ),
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentAlignment = Alignment.Center,
         ) {
             Text(
-                "Lanjutkan dengan email",
-                style = MaterialTheme.typography.titleMedium,
+                "Jutaan lagu.\nGratis di BeatPlay.",
+                color = ObsidianColors.textPrimary,
+                fontSize = 30.sp,
                 fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                lineHeight = 38.sp,
+                modifier = Modifier.padding(horizontal = 32.dp),
             )
         }
 
-        Spacer(Modifier.height(180.dp))
-
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 48.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                "Belum punya akun?",
-                color = ObsidianColors.slate400,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Text(
-                "Daftar",
-                color = ObsidianColors.textPrimary,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.clickable { onSwitchToRegister() },
-            )
+            Button(
+                onClick = onSwitchToRegister,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(26.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF1ED760),
+                    contentColor = Color(0xFF0C0908),
+                ),
+            ) {
+                Text(
+                    "Daftar gratis",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+
+            OutlinedButton(
+                onClick = onContinueEmail,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(26.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = ObsidianColors.textPrimary,
+                ),
+                border = BorderStroke(1.dp, ObsidianColors.slate400),
+            ) {
+                Text(
+                    "Masuk",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
     }
 }
