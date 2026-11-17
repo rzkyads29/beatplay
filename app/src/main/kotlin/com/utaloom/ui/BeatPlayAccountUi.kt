@@ -202,6 +202,10 @@ fun BeatPlayAuthDialog(onDismiss: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var messageIsError by remember { mutableStateOf(false) }
+    var verifyStep by remember { mutableStateOf(false) }
+    var pendingEmail by remember { mutableStateOf("") }
+    var devCode by remember { mutableStateOf<String?>(null) }
+    var codeInput by remember { mutableStateOf("") }
 
     val emailOk = isValidEmail(email)
     val passwordOk = password.length >= 8
@@ -229,9 +233,12 @@ fun BeatPlayAuthDialog(onDismiss: () -> Unit) {
             result
                 .onSuccess { res ->
                     if (res.requiresVerification) {
+                        pendingEmail = email.trim().lowercase()
+                        devCode = res.devCode
+                        codeInput = ""
+                        verifyStep = true
                         messageIsError = false
-                        message = "Pendaftaran berhasil. Cek email untuk tautan verifikasi, lalu masuk."
-                        tab = AuthTab.LOGIN
+                        message = null
                     } else {
                         BeatPlayAuth.storeSession(server, res)
                             .onSuccess { onDismiss() }
@@ -242,15 +249,80 @@ fun BeatPlayAuthDialog(onDismiss: () -> Unit) {
                     }
                 }
                 .onFailure {
+                    val text = it.message.orEmpty()
+                    if (text.contains("belum diverifikasi", ignoreCase = true)) {
+                        pendingEmail = email.trim().lowercase()
+                        verifyStep = true
+                        message = null
+                        scope.launch {
+                            BeatPlayAuth.resendCode(server, pendingEmail).onSuccess { code -> devCode = code }
+                        }
+                    } else {
+                        messageIsError = true
+                        message = (if (tab == AuthTab.LOGIN) "Gagal masuk: " else "Gagal daftar: ") +
+                            networkErrorMessage(it, server)
+                    }
+                }
+            busy = false
+        }
+    }
+
+    fun verify() {
+        if (busy) return
+        busy = true
+        message = null
+        scope.launch {
+            BeatPlayAuth.verifyCode(server, pendingEmail, codeInput)
+                .onSuccess { res ->
+                    BeatPlayAuth.storeSession(server, res)
+                        .onSuccess { onDismiss() }
+                        .onFailure {
+                            messageIsError = true
+                            message = "Email terverifikasi, tapi cek status gagal: ${networkErrorMessage(it, server)}"
+                        }
+                }
+                .onFailure {
                     messageIsError = true
-                    message = (if (tab == AuthTab.LOGIN) "Gagal masuk: " else "Gagal daftar: ") +
-                        networkErrorMessage(it, server)
+                    message = "Kode salah atau kedaluwarsa: ${networkErrorMessage(it, server)}"
                 }
             busy = false
         }
     }
 
     Dialog(onDismissRequest = { if (!busy) onDismiss() }) {
+        if (verifyStep) {
+            Surface(shape = MaterialTheme.shapes.large, tonalElevation = 6.dp) {
+                Column(
+                    Modifier.width(430.dp).verticalScroll(rememberScrollState()).padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Text("Verifikasi email", style = MaterialTheme.typography.headlineSmall)
+                    Text("Masukkan kode 6 digit yang dikirim ke $pendingEmail.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedTextField(
+                        codeInput,
+                        { codeInput = it.filter(Char::isDigit).take(6) },
+                        Modifier.fillMaxWidth(),
+                        label = { Text("Kode verifikasi") },
+                        singleLine = true,
+                    )
+                    devCode?.let { Text("Mode uji (SMTP belum aktif) — kode: $it", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall) }
+                    Button({ verify() }, Modifier.fillMaxWidth().height(48.dp), enabled = codeInput.length == 6 && !busy) {
+                        Text(if (busy) "Memverifikasi..." else "Verifikasi")
+                    }
+                    message?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = if (messageIsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                    }
+                    TextButton({
+                        if (!busy) scope.launch {
+                            BeatPlayAuth.resendCode(server, pendingEmail)
+                                .onSuccess { code -> devCode = code; message = "Kode baru dibuat/dikirim."; messageIsError = false }
+                                .onFailure { messageIsError = true; message = "Gagal kirim ulang: ${networkErrorMessage(it, server)}" }
+                        }
+                    }) { Text("Kirim ulang kode") }
+                    TextButton({ verifyStep = false; message = null }) { Text("Kembali") }
+                }
+            }
+        } else {
         Surface(shape = MaterialTheme.shapes.large, tonalElevation = 6.dp) {
             Column(
                 Modifier
@@ -358,6 +430,7 @@ fun BeatPlayAuthDialog(onDismiss: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
         }
     }
 }

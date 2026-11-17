@@ -60,9 +60,11 @@ object Obsidian {
     val surfaceHigh = Color(0xFF161A24)
     val surfaceHighest = Color(0xFF1D2230)
 
-    val violet = Color(0xFF8B5CF6)
-    val cyan = Color(0xFF06B6D4)
-    val accent = listOf(violet, cyan)
+    val violet = Color(0xFFA855F7)
+    val pink = Color(0xFFEC4899)
+    // Kept as an alias so existing call sites keep the second accent; it is hot pink now.
+    val cyan = pink
+    val accent = listOf(violet, pink)
 
     val textPrimary = Color(0xFFF8FAFC)
     val slate400 = Color(0xFF94A3B8)

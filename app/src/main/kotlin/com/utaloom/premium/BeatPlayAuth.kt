@@ -19,6 +19,8 @@ data class AuthResult(
     val email: String,
     val token: String,
     val requiresVerification: Boolean,
+    /** Present only while the server has no SMTP configured, so the flow can still be tested. */
+    val devCode: String? = null,
 )
 
 /** Account + entitlement snapshot from GET /api/auth/me. */
@@ -124,7 +126,7 @@ object BeatPlayAuth {
             send(
                 serverUrl,
                 "/api/auth/register",
-                """{"email":"${esc(normalizeEmail(email))}","password":"${esc(password)}"}""",
+                """{"email":"${esc(normalizeEmail(email))}","password":"${esc(password)}","verify_mode":"code"}""",
                 retryUnsentOnly = true,
             ).map { body ->
                 val root = json.parseToJsonElement(body).jsonObject
@@ -132,9 +134,36 @@ object BeatPlayAuth {
                     email = root["email"]?.jsonPrimitive?.content ?: normalizeEmail(email),
                     token = root["token"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content.orEmpty(),
                     requiresVerification = root["requires_verification"]?.jsonPrimitive?.booleanOrNull == true,
+                    devCode = root["dev_code"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content,
                 )
             }
         }
+
+    /** Verify the 6-digit code emailed after registration and return a signed-in session. */
+    suspend fun verifyCode(serverUrl: String, email: String, code: String): Result<AuthResult> =
+        withContext(Dispatchers.IO) {
+            send(
+                serverUrl,
+                "/api/auth/verify-code",
+                """{"email":"${esc(normalizeEmail(email))}","code":"${esc(code)}"}""",
+            ).map { body ->
+                val root = json.parseToJsonElement(body).jsonObject
+                AuthResult(
+                    email = root["email"]?.jsonPrimitive?.content ?: normalizeEmail(email),
+                    token = root["token"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content.orEmpty(),
+                    requiresVerification = false,
+                )
+            }
+        }
+
+    /** Ask for a fresh email code; returns the dev code while SMTP is not configured. */
+    suspend fun resendCode(serverUrl: String, email: String): Result<String?> = withContext(Dispatchers.IO) {
+        send(serverUrl, "/api/auth/resend", """{"email":"${esc(normalizeEmail(email))}"}""").map { body ->
+            runCatching {
+                json.parseToJsonElement(body).jsonObject["dev_code"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content
+            }.getOrNull()
+        }
+    }
 
     suspend fun login(serverUrl: String, email: String, password: String): Result<AuthResult> =
         withContext(Dispatchers.IO) {

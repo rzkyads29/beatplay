@@ -447,6 +447,34 @@ def send_email_verification(smtp_cfg, to_email, verify_url):
         return False, str(exc)
 
 
+def send_email_code(smtp_cfg, to_email, code):
+    """Kirim kode verifikasi 6 digit ke email pendaftar. Return (ok, error)."""
+    if not smtp_cfg or not smtp_cfg.get("host"):
+        return False, "SMTP belum dikonfigurasi"
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = "Kode verifikasi BeatPlay: " + code
+        msg["From"] = smtp_cfg.get("from", "BeatPlay <no-reply@beatplay>")
+        msg["To"] = to_email
+        msg.set_content(
+            "Halo,\n\n"
+            "Kode verifikasi akun BeatPlay kamu adalah:\n\n"
+            "    " + code + "\n\n"
+            "Kode ini berlaku 15 menit. Masukkan kode tersebut di aplikasi BeatPlay "
+            "untuk mengaktifkan akun.\n\n"
+            "Abaikan email ini jika kamu tidak mendaftar."
+        )
+        with smtplib.SMTP(smtp_cfg["host"], int(smtp_cfg.get("port", 587)), timeout=15) as s:
+            if smtp_cfg.get("use_tls", True):
+                s.starttls()
+            if smtp_cfg.get("username"):
+                s.login(smtp_cfg["username"], smtp_cfg.get("password", ""))
+            s.send_message(msg)
+        return True, None
+    except Exception as exc:  # noqa: BLE001
+        return False, str(exc)
+
+
 class PremiumStore:
     """Gmail manual (lifetime) + expiry berbayar (epoch detik)."""
 
@@ -503,6 +531,9 @@ class UserStore:
     SCRYPT_R = 8
     SCRYPT_P = 1
     SESSION_TTL = 60 * 60 * 24 * 30  # 30 hari
+    CODE_TTL = 15 * 60  # kode verifikasi email berlaku 15 menit
+    CODE_MAX_ATTEMPTS = 6
+    RESEND_INTERVAL = 60  # detik antar kirim ulang kode
 
     def __init__(self, users_path, sessions_path):
         self.users_path = users_path
@@ -567,6 +598,64 @@ class UserStore:
                     return user
         return None
 
+    def _code_hash(self, email, code, salt):
+        return hashlib.sha256(
+            ("{}|{}|{}".format(email.strip().lower(), code, salt)).encode("utf-8")
+        ).hexdigest()
+
+    def issue_code(self, email):
+        """Buat kode 6 digit baru (hash + expiry disimpan). Return kode plaintext atau None."""
+        email = email.strip().lower()
+        with self.lock:
+            user = self.users.get(email)
+            if not user:
+                return None
+            salt = secrets.token_hex(16)
+            code = "{:06d}".format(secrets.randbelow(1_000_000))
+            now = int(time.time())
+            user["verify_code_salt"] = salt
+            user["verify_code_hash"] = self._code_hash(email, code, salt)
+            user["verify_code_expires"] = now + self.CODE_TTL
+            user["verify_code_sent_at"] = now
+            user["verify_attempts"] = 0
+            self.save()
+            return code
+
+    def verify_code(self, email, code):
+        """Cek kode 6 digit. Return user jika valid, None jika salah/kedaluwarsa/terlalu banyak percobaan."""
+        email = email.strip().lower()
+        code = "".join(ch for ch in str(code or "") if ch.isdigit())
+        with self.lock:
+            user = self.users.get(email)
+            if not user or user.get("verified"):
+                return None
+            if int(user.get("verify_code_expires", 0)) < int(time.time()):
+                return None
+            if int(user.get("verify_attempts", 0)) >= self.CODE_MAX_ATTEMPTS:
+                return None
+            user["verify_attempts"] = int(user.get("verify_attempts", 0)) + 1
+            expected = user.get("verify_code_hash", "")
+            salt = user.get("verify_code_salt", "")
+            if len(code) != 6 or not expected or not hmac.compare_digest(
+                self._code_hash(email, code, salt), expected
+            ):
+                self.save()
+                return None
+            user["verified"] = True
+            for key in (
+                "verify_code_hash", "verify_code_salt", "verify_code_expires",
+                "verify_code_sent_at", "verify_attempts", "verify_token",
+            ):
+                user.pop(key, None)
+            self.save()
+            return user
+
+    def resend_allowed(self, email):
+        user = self.get(email)
+        if not user:
+            return True
+        return int(time.time()) - int(user.get("verify_code_sent_at", 0)) >= self.RESEND_INTERVAL
+
     def check_password(self, email, password):
         user = self.get(email)
         if not user:
@@ -574,6 +663,17 @@ class UserStore:
             self._hash(password or "", secrets.token_hex(16))
             return None
         if not user.get("verified"):
+            return None
+        computed = self._hash(password or "", user.get("salt", ""))
+        if not hmac.compare_digest(computed, user.get("password_hash", "")):
+            return None
+        return user
+
+    def check_password_any(self, email, password):
+        """Cek kata sandi tanpa peduli status verifikasi (untuk mengirim ulang kode)."""
+        user = self.get(email)
+        if not user:
+            self._hash(password or "", secrets.token_hex(16))
             return None
         computed = self._hash(password or "", user.get("salt", ""))
         if not hmac.compare_digest(computed, user.get("password_hash", "")):
@@ -1095,7 +1195,7 @@ class Handler(BaseHTTPRequestHandler):
                             "/api/admin/notify/test", "/api/admin/verify",
                             "/api/orders/mock-pay", "/api/orders/create", "/api/orders/proof",
                             "/api/auth/register", "/api/auth/login", "/api/auth/logout",
-                            "/api/auth/resend"):
+                            "/api/auth/verify-code", "/api/auth/resend"):
             return self._send(404, {"error": "not found"})
         needs_body = url.path not in ("/api/orders/mock-pay", "/api/auth/logout")
         raw, data = self._body_json()
@@ -1107,10 +1207,38 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/auth/register":
             email = str(data.get("email", "")).strip().lower()
             password = str(data.get("password", ""))
+            verify_mode = str(data.get("verify_mode", "")).strip().lower()
             user, err = self.users.create(email, password)
+            smtp_ready = bool(self.smtp_cfg and self.smtp_cfg.get("host"))
             if err:
+                # An unfinished registration may request a fresh code with the same password.
+                if err == "email sudah terdaftar" and verify_mode == "code":
+                    existing = self.users.check_password_any(email, password)
+                    if existing and not existing.get("verified") and self.users.resend_allowed(email):
+                        code = self.users.issue_code(email)
+                        if smtp_ready:
+                            sent, send_err = send_email_code(self.smtp_cfg, email, code)
+                            if not sent:
+                                return self._send(500, {"error": "gagal mengirim email verifikasi: " + str(send_err)})
+                            return self._send(200, {"ok": True, "email": email,
+                                                    "requires_verification": True, "verification": "code"})
+                        return self._send(200, {"ok": True, "email": email,
+                                                "requires_verification": True, "verification": "code",
+                                                "dev_code": code})
                 return self._send(400, {"error": err})
-            if self.smtp_cfg and self.smtp_cfg.get("host"):
+            if verify_mode == "code":
+                code = self.users.issue_code(email)
+                if smtp_ready:
+                    sent, send_err = send_email_code(self.smtp_cfg, email, code)
+                    if not sent:
+                        return self._send(500, {"error": "gagal mengirim email verifikasi: " + str(send_err)})
+                    return self._send(200, {"ok": True, "email": email,
+                                            "requires_verification": True, "verification": "code"})
+                # SMTP belum dikonfigurasi: kode dikembalikan agar alur verifikasi tetap bisa diuji.
+                return self._send(200, {"ok": True, "email": email,
+                                        "requires_verification": True, "verification": "code",
+                                        "dev_code": code})
+            if smtp_ready:
                 verify_url = self.public_base.rstrip("/") + "/api/auth/verify?token=" + user["verify_token"]
                 sent, send_err = send_email_verification(self.smtp_cfg, email, verify_url)
                 if not sent:
@@ -1122,11 +1250,26 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": True, "email": email, "token": token,
                                     "requires_verification": False})
 
+        if url.path == "/api/auth/verify-code":
+            email = str(data.get("email", "")).strip().lower()
+            code = str(data.get("code", "")).strip()
+            user = self.users.verify_code(email, code)
+            if not user:
+                return self._send(400, {"error": "kode verifikasi salah atau sudah kedaluwarsa"})
+            self.users.set_verified_and_link_manual(user["email"], self.premium)
+            token = self.users.create_session(user["email"])
+            return self._send(200, {"ok": True, "email": user["email"], "token": token,
+                                    "verified": True})
+
         if url.path == "/api/auth/login":
             email = str(data.get("email", "")).strip().lower()
             password = str(data.get("password", ""))
             user = self.users.check_password(email, password)
             if not user:
+                pending = self.users.check_password_any(email, password)
+                if pending and not pending.get("verified"):
+                    return self._send(403, {"error": "email belum diverifikasi. Masukkan kode verifikasi.",
+                                            "verification": "code", "email": email})
                 return self._send(401, {"error": "email atau kata sandi salah"})
             token = self.users.create_session(user["email"])
             return self._send(200, {"ok": True, "email": user["email"], "token": token})
@@ -1143,15 +1286,15 @@ class Handler(BaseHTTPRequestHandler):
             if not user or user.get("verified"):
                 # Do not reveal whether the account exists or is already verified.
                 return self._send(200, {"ok": True})
-            if not self.smtp_cfg or not self.smtp_cfg.get("host"):
-                return self._send(400, {"error": "SMTP belum dikonfigurasi"})
-            user["verify_token"] = secrets.token_hex(32)
-            self.users.save()
-            verify_url = self.public_base.rstrip("/") + "/api/auth/verify?token=" + user["verify_token"]
-            sent, send_err = send_email_verification(self.smtp_cfg, email, verify_url)
-            if not sent:
-                return self._send(500, {"error": "gagal mengirim email: " + str(send_err)})
-            return self._send(200, {"ok": True})
+            if not self.users.resend_allowed(email):
+                return self._send(429, {"error": "tunggu sebentar sebelum meminta kode baru"})
+            code = self.users.issue_code(email)
+            if self.smtp_cfg and self.smtp_cfg.get("host"):
+                sent, send_err = send_email_code(self.smtp_cfg, email, code)
+                if not sent:
+                    return self._send(500, {"error": "gagal mengirim email: " + str(send_err)})
+                return self._send(200, {"ok": True, "verification": "code"})
+            return self._send(200, {"ok": True, "verification": "code", "dev_code": code})
 
         if url.path == "/api/orders/create":
             return self._create_order(data)
