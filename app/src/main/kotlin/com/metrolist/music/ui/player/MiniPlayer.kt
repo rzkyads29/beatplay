@@ -424,12 +424,12 @@ private fun NewMiniPlayer(
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxSize().padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 10.dp),
+                modifier = Modifier.fillMaxSize().padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
             ) {
                 // Square album art
                 Box(
                     Modifier
-                        .size(48.dp)
+                        .size(44.dp)
                         .clip(RoundedCornerShape(6.dp))
                         .background(ObsidianColors.surfaceHighest),
                 ) {
