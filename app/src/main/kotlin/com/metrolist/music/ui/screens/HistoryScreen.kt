@@ -225,20 +225,12 @@ fun HistoryScreen(
             item(key = "chips_row") {
                 ChipsRow(
                     chips =
-                        if (isLoggedIn) {
-                            listOf(
-                                HistorySource.LOCAL to stringResource(R.string.local_history),
-                                HistorySource.REMOTE to stringResource(R.string.remote_history),
-                            )
-                        } else {
-                            listOf(HistorySource.LOCAL to stringResource(R.string.local_history))
-                        },
+                        listOf(
+                            HistorySource.LOCAL to stringResource(R.string.local_history),
+                        ),
                     currentValue = historySource,
                     onValueUpdate = {
-                        viewModel.historySource.value = it
-                        if (it == HistorySource.REMOTE) {
-                            viewModel.fetchRemoteHistory()
-                        }
+                        viewModel.historySource.value = HistorySource.LOCAL
                     },
                 )
             }

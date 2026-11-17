@@ -84,6 +84,20 @@ fun BeatPlayProfileScreen(navController: NavController) {
     val (isPremium) = rememberPreference(IsPremiumKey, false)
     val serverPref by rememberPreference(PremiumServerUrlKey, DEFAULT_PREMIUM_SERVER_URL)
 
+    val isLoggedIn = authToken.isNotBlank() && authEmail.isNotBlank()
+    LaunchedEffect(isLoggedIn) {
+        if (!isLoggedIn) {
+            navController.navigate("beatplay_auth") {
+                launchSingleTop = true
+                popUpTo("profile") { inclusive = true }
+            }
+        }
+    }
+    if (!isLoggedIn) {
+        Box(Modifier.fillMaxSize().background(ObsidianColors.bg))
+        return
+    }
+
     val playlists by remember(database) { database.playlistsByCreateDateAsc() }
         .collectAsStateWithLifecycle(initialValue = emptyList())
 

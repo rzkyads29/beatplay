@@ -36,7 +36,7 @@
     <string name="share_lyrics">Share lyrics</string>
     <string name="share_as_text">Share as text</string>
     <string name="share_as_image">Share as image</string>
-    <string name="utaloom_lyrics_signature">woven with Utaloom</string>
+    <string name="utaloom_lyrics_signature">woven with BeatPlay</string>
     <string name="max_selection_limit">Maximum selection limit reached</string>
     <string name="share_selected">Share selected</string>
     <string name="customize_colors">Customize colors</string>
@@ -754,7 +754,7 @@
 
     <!-- Theme Palette Names -->
     <string name="palette_dynamic">Dynamic</string>
-    <string name="palette_utaloom_coral">Utaloom Coral</string>
+    <string name="palette_utaloom_coral">BeatPlay Coral</string>
     <string name="palette_crimson">Crimson</string>
     <string name="palette_rose">Rose</string>
     <string name="palette_purple">Purple</string>
@@ -1166,5 +1166,7 @@
     <string name="bp_account_manage">Kelola Premium</string>
     <string name="settings_youtube_account">Akun YouTube</string>
     <string name="settings_youtube_account_logged">Masuk sebagai %1$s</string>
-    <string name="settings_youtube_account_out">Belum masuk — hanya diperlukan untuk sinkron library</string>
+    <string name="settings_youtube_account_out">Belum masuk - hanya diperlukan untuk sinkron library</string>
+    <string name="settings_youtube_optional">Akun YouTube (opsional)</string>
+    <string name="settings_youtube_optional_desc">Hanya untuk sinkronisasi YouTube Music. Playlist, riwayat, dan rekap BeatPlay tetap tersimpan di BeatPlay.</string>
 </resources>

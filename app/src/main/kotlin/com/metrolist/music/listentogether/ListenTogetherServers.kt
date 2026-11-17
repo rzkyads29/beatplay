@@ -28,7 +28,7 @@ object ListenTogetherServers {
     private const val ServersJson = """
         [
           {
-            "name": "Utaloom",
+            "name": "BeatPlay",
             "url": "wss://utaloom.caliph.dev/ws",
             "location": "utaloom.caliph.dev",
             "operator": "cabrata"

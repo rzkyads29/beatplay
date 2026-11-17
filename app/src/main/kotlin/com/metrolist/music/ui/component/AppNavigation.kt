@@ -7,6 +7,7 @@ package com.metrolist.music.ui.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
@@ -22,8 +23,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.ui.theme.ObsidianColors
 import com.metrolist.music.ui.theme.obsidianGradient
@@ -172,23 +171,20 @@ fun AppNavigationBar(
     onSearchLongClick: (() -> Unit)? = null,
     onHomeLongHold: (() -> Unit)? = null,
 ) {
-    val containerColor = if (pureBlack) Color.Black.copy(alpha = 0.9f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-    val contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+    val containerColor = if (pureBlack) Color.Black else ObsidianColors.bg
+    val contentColor = ObsidianColors.slate400
     val haptics = LocalHapticFeedback.current
     val viewConfiguration = LocalViewConfiguration.current
-    val hairline = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     val itemColors = NavigationBarItemDefaults.colors(
-        selectedIconColor = MaterialTheme.colorScheme.primary,
-        selectedTextColor = MaterialTheme.colorScheme.primary,
-        indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+        selectedIconColor = ObsidianColors.elegantWhite,
+        selectedTextColor = ObsidianColors.elegantWhite,
+        indicatorColor = Color.Transparent,
         unselectedIconColor = contentColor,
         unselectedTextColor = contentColor,
     )
 
     NavigationBar(
-        modifier = modifier.drawBehind {
-            drawLine(hairline, Offset.Zero, Offset(size.width, 0f), 1.dp.toPx())
-        },
+        modifier = modifier,
         containerColor = containerColor,
         contentColor = contentColor,
         tonalElevation = 0.dp,
@@ -234,29 +230,30 @@ fun AppNavigationBar(
 
             if (screen == Screens.Create) {
                 Column(
-                    Modifier.weight(1f).height(56.dp),
+                    Modifier
+                        .weight(1f)
+                        .height(56.dp)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = LocalIndication.current,
+                        ) { ObsidianUiState.createOpen = true },
                     horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
                 ) {
-                    Box(
-                        Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(obsidianGradient())
-                            .clickable { ObsidianUiState.createOpen = true },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.add),
-                            contentDescription = stringResource(screen.titleId),
-                            tint = ObsidianColors.onAccent,
+                    Icon(
+                        painter = painterResource(R.drawable.add),
+                        contentDescription = stringResource(screen.titleId),
+                        tint = contentColor,
+                        modifier = Modifier.size(24.dp),
+                    )
+                    if (!slimNav) {
+                        Text(
+                            text = stringResource(screen.titleId),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = contentColor,
+                            maxLines = 1,
                         )
                     }
-                    Text(
-                        text = stringResource(screen.titleId),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                    )
                 }
             } else {
             NavigationBarItem(

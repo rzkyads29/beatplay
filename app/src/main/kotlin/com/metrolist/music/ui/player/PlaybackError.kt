@@ -198,7 +198,7 @@ fun PlaybackError(
             OutlinedButton(
                 onClick = {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("Utaloom Android Playback Error", errorReport))
+                    clipboard.setPrimaryClip(ClipData.newPlainText("BeatPlay Android Playback Error", errorReport))
                 },
                 shape = RoundedCornerShape(20.dp),
             ) {
@@ -232,7 +232,7 @@ private fun buildPlaybackErrorReport(
     reportedAt: Instant,
 ): String =
     buildString {
-        appendLine("Utaloom Android Playback Error Report")
+        appendLine("BeatPlay Android Playback Error Report")
         appendLine("================================")
         appendLine("Time: $reportedAt")
         appendLine("App version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")

@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.ui.theme.ObsidianColors
 
@@ -46,18 +47,21 @@ fun BeatPlayCodeBars(
     code: String,
     modifier: Modifier = Modifier,
     barColor: Color = ObsidianColors.onAccent,
+    barWidth: Dp = 3.dp,
+    barGap: Dp = 3.dp,
+    heightUnit: Dp = 7.dp,
 ) {
     val bars = remember(code) { followCodeBars(code) }
     Row(
         modifier,
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(barGap),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         bars.forEach { h ->
             Box(
                 Modifier
-                    .width(3.dp)
-                    .height((h * 7).dp)
+                    .width(barWidth)
+                    .height(heightUnit * h)
                     .clip(RoundedCornerShape(2.dp))
                     .background(barColor),
             )

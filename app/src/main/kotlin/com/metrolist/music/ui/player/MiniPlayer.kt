@@ -122,6 +122,7 @@ import coil3.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.metrolist.music.ui.theme.PlayerColorExtractor
+import com.metrolist.music.ui.theme.ObsidianColors
 
 /**
  * Stable wrapper for progress state - reads values only during draw phase
@@ -284,13 +285,12 @@ private fun NewMiniPlayer(
             gradientColors = emptyList()
         }
     }
-
     // Memoize colors
     val backgroundColor = when (miniPlayerBackground) {
-        MiniPlayerBackgroundStyle.DEFAULT    -> MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.94f)
+        MiniPlayerBackgroundStyle.DEFAULT    -> ObsidianColors.surfaceHigh
         MiniPlayerBackgroundStyle.TRANSPARENT -> Color.Black.copy(alpha = 0.25f)
-        MiniPlayerBackgroundStyle.BLUR       -> MaterialTheme.colorScheme.surfaceContainer
-        MiniPlayerBackgroundStyle.GRADIENT   -> MaterialTheme.colorScheme.surfaceContainer
+        MiniPlayerBackgroundStyle.BLUR       -> ObsidianColors.surfaceHigh
+        MiniPlayerBackgroundStyle.GRADIENT   -> ObsidianColors.surfaceHigh
         MiniPlayerBackgroundStyle.PURE_BLACK -> Color.Black
     }
     val forceLightColors = !useDarkTheme && (miniPlayerBackground == MiniPlayerBackgroundStyle.PURE_BLACK ||
@@ -381,12 +381,10 @@ private fun NewMiniPlayer(
                     .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
                     .clip(RoundedCornerShape(32.dp))
                     .background(color = backgroundColor)
-                    // Liquid glass rim: bright specular top edge fading out, no runtime blur needed.
+                    // Flat hairline rim (no gradients).
                     .border(
                         1.dp,
-                        Brush.verticalGradient(
-                            listOf(Color.White.copy(alpha = 0.45f), outlineColor.copy(alpha = 0.12f)),
-                        ),
+                        outlineColor.copy(alpha = 0.16f),
                         RoundedCornerShape(32.dp),
                     )
                     .clickable(
@@ -416,40 +414,40 @@ private fun NewMiniPlayer(
                     }
                 }
                 MiniPlayerBackgroundStyle.GRADIENT -> {
-                    val colors = if (gradientColors.isNotEmpty()) gradientColors
-                    else listOf(
-                        MaterialTheme.colorScheme.surfaceContainer,
-                        MaterialTheme.colorScheme.surfaceContainer,
-                    )
                     Box(
                         Modifier
                             .fillMaxSize()
-                            .background(
-                                Brush.horizontalGradient(colors)
-                            )
-                            .background(Color.Black.copy(alpha = 0.15f)),
+                            .background(ObsidianColors.surfaceHigh),
                     )
                 }
                 else -> {}
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxSize().padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 10.dp),
             ) {
-                // Play button with progress - isolated composable
-                NewMiniPlayerPlayButton(
-                    progressState = progressState,
-                    playbackState = playbackState,
-                    isCasting = isCasting,
-                    castHandler = castHandler,
-                    playerConnection = playerConnection,
-                    mediaMetadata = mediaMetadata,
-                    primaryColor = primaryColor,
-                    outlineColor = outlineColor,
-                    listenTogetherManager = listenTogetherManager,
-                )
+                // Square album art
+                Box(
+                    Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(ObsidianColors.surfaceHighest),
+                ) {
+                    mediaMetadata?.let { metadata ->
+                        val thumbnailUrl =
+                            remember(metadata.thumbnailUrl) {
+                                metadata.thumbnailUrl?.resize(120, 120)
+                            }
+                        AsyncImage(
+                            model = thumbnailUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(6.dp)),
+                        )
+                    }
+                }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(10.dp))
 
                 // Song info - isolated composable
                 NewMiniPlayerSongInfo(
@@ -459,7 +457,7 @@ private fun NewMiniPlayer(
                     modifier = Modifier.weight(1f),
                 )
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
                 // Cast indicator
                 if (isCasting) {
@@ -469,32 +467,106 @@ private fun NewMiniPlayer(
                         tint = primaryColor,
                         modifier = Modifier.size(20.dp),
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
 
-// Subscribe button - isolated composable
-                mediaMetadata?.artists?.firstOrNull()?.id?.let { artistId ->
-                    SubscribeButton(
-                        artistId = artistId,
-                        metadata = mediaMetadata!!,
-                        primaryColor = primaryColor,
+// Favorite (add) button - isolated composable
+                mediaMetadata?.let {
+                    FavoriteButton(
+                        songId = it.id,
+                        errorColor = errorColor,
                         outlineColor = outlineColor,
                         onSurfaceColor = onSurfaceColor,
                     )
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-// Favorite button - isolated composable
-                mediaMetadata?.let { FavoriteButton(
-                    songId = it.id,
-                    errorColor = errorColor,
-                    outlineColor = outlineColor,
-                    onSurfaceColor = onSurfaceColor,
+                // Play / pause
+                NewMiniPlayerPlayToggle(
+                    playbackState = playbackState,
+                    isCasting = isCasting,
+                    castHandler = castHandler,
+                    playerConnection = playerConnection,
+                    listenTogetherManager = listenTogetherManager,
+                    primaryColor = primaryColor,
                 )
-                }
             }
+
+            // Thin progress line along the bottom of the card
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp)
+                    .height(2.dp)
+                    .clip(RoundedCornerShape(1.dp))
+                    .background(onSurfaceColor.copy(alpha = 0.15f))
+                    .drawWithContent {
+                        drawContent()
+                        val progress = progressState.progress
+                        drawRect(
+                            color = if (forceLightColors) Color.White else ObsidianColors.elegantWhite,
+                            size = Size(size.width * progress, size.height),
+                        )
+                    },
+            )
         }
+    }
+}
+
+/**
+ * Play/pause toggle matching the reference mini player.
+ */
+@Composable
+private fun NewMiniPlayerPlayToggle(
+    playbackState: Int,
+    isCasting: Boolean,
+    castHandler: CastConnectionHandler?,
+    playerConnection: PlayerConnection,
+    listenTogetherManager: ListenTogetherManager?,
+    primaryColor: Color,
+) {
+    val isPlaying by playerConnection.isPlaying.collectAsState()
+    val castIsPlaying by castHandler?.castIsPlaying?.collectAsState() ?: remember { mutableStateOf(false) }
+    val effectiveIsPlaying = if (isCasting) castIsPlaying else isPlaying
+    val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
+    val isMuted by playerConnection.isMuted.collectAsStateWithLifecycle()
+
+    val icon =
+        if (isListenTogetherGuest) {
+            if (isMuted) R.drawable.volume_off else R.drawable.volume_up
+        } else if (playbackState == Player.STATE_ENDED) {
+            R.drawable.replay
+        } else if (effectiveIsPlaying) {
+            R.drawable.pause
+        } else {
+            R.drawable.play
+        }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier =
+            Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .clickable {
+                    if (isListenTogetherGuest) {
+                        playerConnection.toggleMute()
+                    } else if (isCasting) {
+                        if (castIsPlaying) castHandler?.pause() else castHandler?.play()
+                    } else if (playbackState == Player.STATE_ENDED) {
+                        playerConnection.player.seekTo(0, 0)
+                        playerConnection.player.playWhenReady = true
+                    } else {
+                        playerConnection.togglePlayPause()
+                    }
+                },
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = primaryColor,
+            modifier = Modifier.size(24.dp),
+        )
     }
 }
 

@@ -5,8 +5,10 @@
 
 package com.metrolist.music.ui.screens.wrapped
 
+import java.time.LocalDate
+
 object WrappedConstants {
-    // This is intentionally hardcoded to 2025 and should not be changed.
-    const val YEAR = 2025
-    const val PLAYLIST_NAME = "Utaloom 2025"
+    /** Recap always follows the current calendar year so it stays "this year". */
+    val YEAR: Int = LocalDate.now().year
+    val PLAYLIST_NAME: String = "BeatPlay $YEAR"
 }

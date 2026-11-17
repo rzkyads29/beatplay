@@ -68,7 +68,7 @@ object OpenRouterStreamingService {
                             if (apiKey.isNotBlank()) addHeader("Authorization", "Bearer ${apiKey.trim()}")
                         }.addHeader("Content-Type", "application/json")
                         .addHeader("HTTP-Referer", "https://github.com/cabrata/utaloom-android")
-                        .addHeader("X-Title", "Utaloom Android")
+                        .addHeader("X-Title", "BeatPlay Android")
                         .post(body.toString().toRequestBody(jsonMediaType))
                         .build()
 

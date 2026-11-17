@@ -6,19 +6,23 @@
 package com.metrolist.music.ui.screens.settings
 
 import android.content.Intent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -42,6 +46,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -74,6 +83,7 @@ import com.metrolist.music.ui.component.GlassCard
 import com.metrolist.music.ui.component.GradientButton
 import com.metrolist.music.ui.theme.ObsidianColors
 import com.metrolist.music.ui.theme.obsidianGradient
+import com.metrolist.music.utils.ComposeToImage
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.launch
 
@@ -104,6 +114,8 @@ fun BeatPlayCodeScreen(navController: NavController) {
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var isError by remember { mutableStateOf(false) }
+    var saving by remember { mutableStateOf(false) }
+    val graphicsLayer = rememberGraphicsLayer()
 
     var inputCode by remember { mutableStateOf("") }
     var found by remember { mutableStateOf<ProfileInfo?>(null) }
@@ -161,6 +173,29 @@ fun BeatPlayCodeScreen(navController: NavController) {
         }
     }
 
+    fun saveCodeCard() {
+        if (followCode.isBlank() || saving) return
+        saving = true
+        message = null
+        scope.launch {
+            runCatching {
+                val bitmap = graphicsLayer.toImageBitmap().asAndroidBitmap()
+                ComposeToImage.saveBitmapAsFile(
+                    context = context,
+                    bitmap = bitmap,
+                    fileName = "BeatPlay-${followCode.uppercase()}",
+                )
+            }.onSuccess {
+                isError = false
+                message = "Kartu kode disimpan ke galeri."
+            }.onFailure {
+                isError = true
+                message = "Gagal menyimpan kartu kode."
+            }
+            saving = false
+        }
+    }
+
     Column(
         Modifier
             .fillMaxSize()
@@ -210,87 +245,53 @@ fun BeatPlayCodeScreen(navController: NavController) {
                     }
                 }
             } else {
-                GlassCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), fill = ObsidianColors.glassFillStrong) {
-                    Column(
-                        Modifier.fillMaxWidth().padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        Box(
-                            Modifier.size(76.dp).clip(CircleShape).background(obsidianGradient()),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (avatarUrl.isNotBlank()) {
-                                AsyncImage(
-                                    model = avatarUrl,
-                                    contentDescription = null,
-                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize(),
-                                )
-                            } else {
-                                Icon(painterResource(R.drawable.account), null, tint = ObsidianColors.onAccent)
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .drawWithContent {
+                            graphicsLayer.record {
+                                this@drawWithContent.drawContent()
                             }
-                        }
-                        Text(
-                            name.ifBlank { authEmail.substringBefore("@") },
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            "Scan atau bagikan kode ini agar orang bisa mengikutimu.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = ObsidianColors.slate400,
-                            textAlign = TextAlign.Center,
-                        )
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(18.dp))
-                                .background(ObsidianColors.surfaceHigh)
-                                .padding(vertical = 22.dp, horizontal = 12.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (followCode.isBlank()) {
-                                Text("Memuat kode...", style = MaterialTheme.typography.bodySmall, color = ObsidianColors.slate400)
-                            } else {
-                                BeatPlayCodeBars(followCode, barColor = ObsidianColors.elegantWhite)
+                            drawLayer(graphicsLayer)
+                        },
+                ) {
+                    BeatPlayCodeCard(
+                        name = name.ifBlank { authEmail.substringBefore("@") },
+                        code = followCode,
+                        avatarUrl = avatarUrl,
+                    )
+                }
+                GradientButton(
+                    text = if (saving) "Menyimpan..." else "Simpan ke foto",
+                    onClick = { saveCodeCard() },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    enabled = !saving && followCode.isNotBlank(),
+                    loading = saving,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    GradientButton(
+                        text = "Bagikan",
+                        onClick = {
+                            val code = followCode.ifBlank { return@GradientButton }
+                            val text = "Ikuti aku di BeatPlay! Kode: ${prettyCode(code)} — ${followUrl(serverPref, code)}"
+                            val send = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, text)
                             }
-                        }
-                        Text(
-                            if (followCode.isBlank()) "—" else prettyCode(followCode),
-                            color = ObsidianColors.elegantWhite,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 22.sp,
-                            letterSpacing = 4.sp,
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            GradientButton(
-                                text = "Bagikan",
-                                onClick = {
-                                    val code = followCode.ifBlank { return@GradientButton }
-                                    val text = "Ikuti aku di BeatPlay! Kode: ${prettyCode(code)} — ${followUrl(serverPref, code)}"
-                                    val send = Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, text)
-                                    }
-                                    context.startActivity(Intent.createChooser(send, "Bagikan kode BeatPlay"))
-                                },
-                                modifier = Modifier.weight(1f),
-                            )
-                            GlassButton(
-                                text = "Salin",
-                                onClick = {
-                                    val code = followCode.ifBlank { return@GlassButton }
-                                    clipboard.setText(AnnotatedString(prettyCode(code)))
-                                    message = "Kode disalin."
-                                    isError = false
-                                },
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
+                            context.startActivity(Intent.createChooser(send, "Bagikan kode BeatPlay"))
+                        },
+                        modifier = Modifier.weight(1f),
+                    )
+                    GlassButton(
+                        text = "Salin",
+                        onClick = {
+                            val code = followCode.ifBlank { return@GlassButton }
+                            clipboard.setText(AnnotatedString(prettyCode(code)))
+                            message = "Kode disalin."
+                            isError = false
+                        },
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
 
@@ -403,6 +404,136 @@ fun BeatPlayCodeScreen(navController: NavController) {
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BeatPlayCodeCard(
+    name: String,
+    code: String,
+    avatarUrl: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(28.dp))
+            .background(ObsidianColors.surfaceHigh)
+            .border(1.dp, ObsidianColors.glassBorderStrong, RoundedCornerShape(28.dp))
+            .padding(20.dp),
+    ) {
+        Column(
+            Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Box(
+                    Modifier
+                        .size(62.dp)
+                        .clip(CircleShape)
+                        .background(ObsidianColors.surfaceHighest)
+                        .border(1.dp, ObsidianColors.glassBorderStrong, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (avatarUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = avatarUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        Icon(
+                            painterResource(R.drawable.account),
+                            contentDescription = null,
+                            tint = ObsidianColors.slate400,
+                            modifier = Modifier.size(28.dp),
+                        )
+                    }
+                }
+                Column(
+                    Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text(
+                        text = "KODE BEATPLAY",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ObsidianColors.slate400,
+                        letterSpacing = 2.sp,
+                    )
+                    Text(
+                        text = name,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = if (code.isBlank()) "—" else prettyCode(code),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = ObsidianColors.elegantWhite,
+                        letterSpacing = 2.sp,
+                    )
+                }
+            }
+
+            Spacer(Modifier.weight(1f))
+
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(ObsidianColors.elegantWhite)
+                    .padding(vertical = 22.dp, horizontal = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (code.isBlank()) {
+                    Text(
+                        text = "Memuat kode...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ObsidianColors.onAccent,
+                    )
+                } else {
+                    BeatPlayCodeBars(
+                        code = code,
+                        barColor = ObsidianColors.coal,
+                        barWidth = 3.dp,
+                        barGap = 3.dp,
+                        heightUnit = 9.dp,
+                    )
+                }
+            }
+
+            Spacer(Modifier.weight(1f))
+
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.app_logo),
+                    contentDescription = null,
+                    modifier = Modifier.size(26.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "BeatPlay",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    text = "beatplay",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = ObsidianColors.slate400,
+                )
             }
         }
     }

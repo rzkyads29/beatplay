@@ -584,7 +584,7 @@ object ComposeToImage {
                 ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, "$fileName.png")
                     put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Utaloom")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/BeatPlay")
                 }
             val uri =
                 context.contentResolver.insert(

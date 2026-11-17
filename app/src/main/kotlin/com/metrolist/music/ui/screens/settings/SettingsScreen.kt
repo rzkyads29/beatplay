@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -96,47 +97,45 @@ fun SettingsScreen(
         }
     }
 
-    Column(
-        Modifier
-            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-    ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Top
-                )
-            )
-        )
-
-        SettingsHero(navController, youtubeAccountName)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // BeatPlay Premium + Akun YouTube (top-level for visibility)
-        Material3SettingsGroup(
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.crown),
-                    title = { Text(stringResource(R.string.premium)) },
-                    onClick = { navController.navigate("settings/premium") }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.account),
-                    title = { Text(stringResource(R.string.settings_youtube_account)) },
-                    description = {
-                        Text(
-                            if (youtubeAccountName.isNotBlank()) {
-                                stringResource(R.string.settings_youtube_account_logged, youtubeAccountName)
-                            } else {
-                                stringResource(R.string.settings_youtube_account_out)
-                            }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.settings)) },
+                navigationIcon = {
+                    IconButton(
+                        onClick = navController::navigateUp,
+                        onLongClick = navController::backToMain
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.arrow_back),
+                            contentDescription = null
                         )
-                    },
-                    onClick = { navController.navigate("settings/youtube_account") }
+                    }
+                }
+            )
+        },
+        contentWindowInsets = WindowInsets(0),
+    ) { innerPadding ->
+        Column(
+            Modifier
+                .padding(innerPadding)
+                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+        ) {
+            SettingsHero(navController, youtubeAccountName)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // BeatPlay Premium (top-level for visibility)
+            Material3SettingsGroup(
+                items = listOf(
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.crown),
+                        title = { Text(stringResource(R.string.premium)) },
+                        onClick = { navController.navigate("settings/premium") }
+                    )
                 )
             )
-        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -281,6 +280,22 @@ fun SettingsScreen(
                         )
                     )
                 }
+                add(
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.account),
+                        title = { Text(stringResource(R.string.settings_youtube_optional)) },
+                        description = {
+                            Text(
+                                if (youtubeAccountName.isNotBlank()) {
+                                    stringResource(R.string.settings_youtube_account_logged, youtubeAccountName)
+                                } else {
+                                    stringResource(R.string.settings_youtube_optional_desc)
+                                }
+                            )
+                        },
+                        onClick = { navController.navigate("settings/youtube_account") }
+                    )
+                )
                 if (BuildConfig.UPDATER_AVAILABLE) {
                     add(
                         Material3SettingsItem(
@@ -335,28 +350,14 @@ fun SettingsScreen(
                 }
             }
         )
-    if (BuildConfig.UPDATER_AVAILABLE && latestVersionName != BuildConfig.BASE_VERSION_NAME) {
-            Spacer(modifier = Modifier.height(16.dp))
-            ReleaseNotesCard()
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-    }
-
-    TopAppBar(
-        title = { Text(stringResource(R.string.settings)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null
-                )
+            if (BuildConfig.UPDATER_AVAILABLE && latestVersionName != BuildConfig.BASE_VERSION_NAME) {
+                Spacer(modifier = Modifier.height(16.dp))
+                ReleaseNotesCard()
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
-    )
+    }
 }
 
 @Composable

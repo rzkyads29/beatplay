@@ -63,7 +63,7 @@ object Paxsenix {
 
                 defaultRequest {
                     url("https://lyrics.paxsenix.org")
-                    header("User-Agent", "Utaloom-Android/$appVersion")
+                    header("User-Agent", "BeatPlay-Android/$appVersion")
                 }
 
                 expectSuccess = true

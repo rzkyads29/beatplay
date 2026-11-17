@@ -50,7 +50,7 @@ object LastFM {
         format: String = "json"
     ) {
         contentType(ContentType.Application.FormUrlEncoded)
-        userAgent("Utaloom Android (https://github.com/cabrata/utaloom-android)")
+        userAgent("BeatPlay Android (https://github.com/cabrata/utaloom-android)")
         val paramsForSig = mutableMapOf(
             "method" to method,
             "api_key" to apiKey

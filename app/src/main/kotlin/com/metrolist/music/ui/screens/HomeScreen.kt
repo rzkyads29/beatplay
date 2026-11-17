@@ -9,6 +9,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -84,8 +86,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrolist.music.LocalNavController
@@ -116,7 +121,9 @@ import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.InnerTubeCookieKey
+import com.metrolist.music.constants.BeatPlayAccountEmailKey
 import com.metrolist.music.constants.BeatPlayAccountNameKey
+import com.metrolist.music.constants.BeatPlayAuthTokenKey
 import com.metrolist.music.constants.BeatPlayAvatarUrlKey
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
@@ -141,6 +148,7 @@ import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.HomeObsidianHeader
 import com.metrolist.music.ui.component.HomeObsidianQuickGrid
+import com.metrolist.music.ui.theme.ObsidianColors
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
@@ -190,8 +198,6 @@ sealed class HomeSection(
 
     data object KeepListening : HomeSection("keep_listening", 50)
 
-    data object AccountPlaylists : HomeSection("account_playlists", 40)
-
     data object ForgottenFavorites : HomeSection("forgotten_favorites", 30)
 
     data object FromTheCommunity : HomeSection("from_the_community", 20)
@@ -205,6 +211,32 @@ sealed class HomeSection(
     ) : HomeSection("home_page_section_$index", 10)
 
     data object MoodAndGenres : HomeSection("mood_and_genres", 5)
+}
+
+@Composable
+private fun RecapStat(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(ObsidianColors.glassFill)
+            .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = ObsidianColors.slate400,
+        )
+    }
 }
 
 @Composable
@@ -668,7 +700,6 @@ fun HomeScreen(
     val forgottenFavorites by viewModel.forgottenFavorites.collectAsStateWithLifecycle()
     val keepListening by viewModel.keepListening.collectAsStateWithLifecycle()
     val similarRecommendations by viewModel.similarRecommendations.collectAsStateWithLifecycle()
-    val accountPlaylists by viewModel.accountPlaylists.collectAsStateWithLifecycle()
     val homePage by viewModel.homePage.collectAsStateWithLifecycle()
     val explorePage by viewModel.explorePage.collectAsStateWithLifecycle()
     val dailyDiscover by viewModel.dailyDiscover.collectAsStateWithLifecycle()
@@ -714,6 +745,11 @@ fun HomeScreen(
     // BeatPlay accounts (email/password) can have a profile picture even without YouTube login.
     val beatPlayAvatar by rememberPreference(BeatPlayAvatarUrlKey, "")
     val beatPlayName by rememberPreference(BeatPlayAccountNameKey, "")
+    val beatPlayEmail by rememberPreference(BeatPlayAccountEmailKey, "")
+    val beatPlayToken by rememberPreference(BeatPlayAuthTokenKey, "")
+    val isBeatPlayLoggedIn = remember(beatPlayEmail, beatPlayToken) {
+        beatPlayEmail.isNotBlank() && beatPlayToken.isNotBlank()
+    }
     val url = beatPlayAvatar.ifBlank { if (isLoggedIn) accountImageUrl else null }
 
     // Extract unique podcasts from episodes for "Podcast Channels" row
@@ -1041,7 +1077,6 @@ fun HomeScreen(
             quickPicks,
             dailyDiscover,
             keepListening,
-            accountPlaylists,
             forgottenFavorites,
             communityPlaylists,
             similarRecommendations,
@@ -1056,7 +1091,6 @@ fun HomeScreen(
             if (!chipActive && communityPlaylists?.isNotEmpty() == true) list.add(HomeSection.FromTheCommunity)
             if (!chipActive && dailyDiscover?.isNotEmpty() == true) list.add(HomeSection.DailyDiscover)
             if (!chipActive && keepListening?.isNotEmpty() == true) list.add(HomeSection.KeepListening)
-            if (!chipActive && accountPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
             if (!chipActive && forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.ForgottenFavorites)
 
             if (!chipActive) {
@@ -1090,7 +1124,6 @@ fun HomeScreen(
                             // Top tier starts equal
 
                             HomeSection.KeepListening,
-                            HomeSection.AccountPlaylists,
                             HomeSection.ForgottenFavorites,
                             HomeSection.FromTheCommunity,
                             -> 300
@@ -1113,7 +1146,6 @@ fun HomeScreen(
                             // Range: [300-100, 300+400] = [200, 700]
                             // This allows them to occasionally appear above a "bad roll" top tier item
                             HomeSection.KeepListening,
-                            HomeSection.AccountPlaylists,
                             HomeSection.ForgottenFavorites,
                             HomeSection.FromTheCommunity,
                             -> sectionRandom.nextInt(-100, 400)
@@ -1131,7 +1163,6 @@ fun HomeScreen(
                         HomeSection.FromTheCommunity to 80,
                         HomeSection.DailyDiscover to 70,
                         HomeSection.KeepListening to 60,
-                        HomeSection.AccountPlaylists to 50,
                         HomeSection.ForgottenFavorites to 40,
                         HomeSection.MoodAndGenres to 10,
                     )
@@ -1155,21 +1186,8 @@ fun HomeScreen(
     }
 
     val quickTiles =
-        remember(accountPlaylists, localPlaylists) {
+        remember(localPlaylists) {
             val tiles = mutableListOf<ObsidianQuickTile>()
-            accountPlaylists.orEmpty().forEach { playlist ->
-                tiles +=
-                    ObsidianQuickTile(
-                        id = "yt_${playlist.id}",
-                        title = playlist.title,
-                        thumbnail = playlist.thumbnail,
-                        onClick = {
-                            navController.navigate("online_playlist/${playlist.id}") {
-                                launchSingleTop = true
-                            }
-                        },
-                    )
-            }
             localPlaylists.forEach { playlist ->
                 tiles +=
                     ObsidianQuickTile(
@@ -1262,7 +1280,11 @@ fun HomeScreen(
                         accountImageUrl = url,
                         accountName = beatPlayName.ifBlank { accountName },
                         onOpenProfile = {
-                            navController.navigate("profile") { launchSingleTop = true }
+                            if (isBeatPlayLoggedIn) {
+                                navController.navigate("profile") { launchSingleTop = true }
+                            } else {
+                                navController.navigate("beatplay_auth") { launchSingleTop = true }
+                            }
                         },
                         onNavigate = { route -> navController.navigate(route) { launchSingleTop = true } },
                         chips = homePage?.chips?.map { it.title }
@@ -1437,62 +1459,111 @@ fun HomeScreen(
 
                 if (selectedChip == null) {
                     item(key = "wrapped_card") {
-                        AnimatedVisibility(visible = shouldShowWrappedCard) {
-                            Card(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                colors =
-                                    CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    ),
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .background(ObsidianColors.surfaceHigh)
+                                    .border(1.dp, ObsidianColors.glassBorder, RoundedCornerShape(24.dp))
+                                    .clickable {
+                                        navController.navigate("wrapped") { launchSingleTop = true }
+                                    }
+                                    .padding(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
                                 Box(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth(),
+                                    Modifier
+                                        .size(38.dp)
+                                        .clip(CircleShape)
+                                        .background(ObsidianColors.elegantWhite),
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    if (isWrappedDataReady) {
-                                        val bbhFont =
-                                            try {
-                                                FontFamily(Font(R.font.bbh_bartle_regular))
-                                            } catch (e: Exception) {
-                                                FontFamily.Default
-                                            }
-                                        Column(
-                                            modifier = Modifier.padding(16.dp),
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
-                                        ) {
-                                            Text(
-                                                text = stringResource(R.string.wrapped_ready_title),
-                                                style =
-                                                    MaterialTheme.typography.headlineLarge.copy(
-                                                        fontFamily = bbhFont,
-                                                        textAlign = TextAlign.Center,
-                                                    ),
-                                            )
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            Text(
-                                                text = stringResource(R.string.wrapped_ready_subtitle),
-                                                style =
-                                                    MaterialTheme.typography.bodyLarge.copy(
-                                                        textAlign = TextAlign.Center,
-                                                    ),
-                                            )
-                                            Spacer(modifier = Modifier.height(16.dp))
-                                            Button(onClick = {
-                                                navController.navigate("wrapped")
-                                            }) {
-                                                Text(stringResource(R.string.open))
+                                    Icon(
+                                        painter = painterResource(R.drawable.stats),
+                                        contentDescription = null,
+                                        tint = ObsidianColors.onAccent,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+                                Column(Modifier.weight(1f)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Text(
+                                            text = "Rekap Tahun Ini",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                        if (shouldShowWrappedCard) {
+                                            Box(
+                                                Modifier
+                                                    .clip(CircleShape)
+                                                    .background(ObsidianColors.elegantWhite)
+                                                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                                            ) {
+                                                Text(
+                                                    text = "Baru",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = ObsidianColors.onAccent,
+                                                )
                                             }
                                         }
-                                    } else {
-                                        ContainedLoadingIndicator()
                                     }
+                                    Text(
+                                        text = if (isWrappedDataReady) "Cerita musikmu sepanjang tahun" else "Menyiapkan rekap...",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = ObsidianColors.slate400,
+                                    )
                                 }
+                                Text(
+                                    text = "Lihat",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = ObsidianColors.elegantWhite,
+                                )
+                            }
+
+                            if (isWrappedDataReady) {
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    RecapStat(
+                                        value = "${wrappedState.totalMinutes}",
+                                        label = "menit",
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    RecapStat(
+                                        value = "${wrappedState.uniqueSongCount}",
+                                        label = "lagu",
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    RecapStat(
+                                        value = "${wrappedState.uniqueArtistCount}",
+                                        label = "artis",
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                                wrappedState.topSongs.firstOrNull()?.let { topSong ->
+                                    Text(
+                                        text = "Lagu teratas: ${topSong.title}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = ObsidianColors.slate400,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            } else {
+                                ContainedLoadingIndicator()
                             }
                         }
                     }
@@ -2078,64 +2149,6 @@ fun HomeScreen(
                                     ) {
                                         items(keepListening.distinctBy { it.id }, key = { "home_keep_listening_${it.id}" }) {
                                             localGridItem(it)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        HomeSection.AccountPlaylists -> {
-                            accountPlaylists?.takeIf { it.isNotEmpty() }?.let { accountPlaylists ->
-                                item(key = "account_playlists_title") {
-                                    NavigationTitle(
-                                        label = stringResource(R.string.mixes),
-                                        title = accountName,
-                                        thumbnail = {
-                                            if (url != null) {
-                                                AsyncImage(
-                                                    model =
-                                                        ImageRequest
-                                                            .Builder(LocalContext.current)
-                                                            .data(url)
-                                                            .diskCachePolicy(CachePolicy.ENABLED)
-                                                            .diskCacheKey(url)
-                                                            .crossfade(false)
-                                                            .build(),
-                                                    placeholder = painterResource(id = R.drawable.person),
-                                                    error = painterResource(id = R.drawable.person),
-                                                    contentDescription = null,
-                                                    contentScale = ContentScale.Crop,
-                                                    modifier =
-                                                        Modifier
-                                                            .size(ListThumbnailSize)
-                                                            .clip(CircleShape),
-                                                )
-                                            } else {
-                                                Icon(
-                                                    painter = painterResource(id = R.drawable.person),
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(ListThumbnailSize),
-                                                )
-                                            }
-                                        },
-                                        onClick = {
-                                            navController.navigate("account")
-                                        },
-                                    )
-                                }
-
-                                item(key = "account_playlists_list") {
-                                    LazyRow(
-                                        contentPadding =
-                                            WindowInsets.systemBars
-                                                .only(WindowInsetsSides.Horizontal)
-                                                .asPaddingValues(),
-                                    ) {
-                                        items(
-                                            items = accountPlaylists.distinctBy { it.id },
-                                            key = { "home_account_playlist_${it.id}" },
-                                        ) { item ->
-                                            ytGridItem(item)
                                         }
                                     }
                                 }
