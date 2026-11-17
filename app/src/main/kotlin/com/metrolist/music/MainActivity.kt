@@ -155,7 +155,9 @@ import com.metrolist.music.constants.MiniPlayerHeight
 import com.metrolist.music.constants.NavigationBarAnimationSpec
 import com.metrolist.music.constants.NavigationBarHeight
 import com.metrolist.music.constants.PauseListenHistoryKey
+import com.metrolist.music.constants.BeatPlayAccountEmailKey
 import com.metrolist.music.constants.BeatPlayAccountNameKey
+import com.metrolist.music.constants.BeatPlayAuthTokenKey
 import com.metrolist.music.constants.BeatPlayAvatarUrlKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.constants.PreferredLyricsProvider
@@ -196,6 +198,7 @@ import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.player.BottomSheetPlayer
 import com.metrolist.music.ui.screens.Screens
 import com.metrolist.music.ui.screens.navigationBuilder
+import com.metrolist.music.ui.screens.settings.BeatPlayAuthScreen
 import com.metrolist.music.ui.screens.settings.ChangelogScreen
 import com.metrolist.music.ui.screens.settings.EditProfileDialog
 import com.metrolist.music.ui.screens.settings.DarkMode
@@ -1001,6 +1004,9 @@ class MainActivity : FragmentActivity() {
                 var showEditProfile by remember { mutableStateOf(false) }
                 var beatPlayName by rememberPreference(BeatPlayAccountNameKey, "")
                 var beatPlayAvatar by rememberPreference(BeatPlayAvatarUrlKey, "")
+                val beatPlayToken by rememberPreference(BeatPlayAuthTokenKey, "")
+                val beatPlayEmail by rememberPreference(BeatPlayAccountEmailKey, "")
+                val isBeatPlayLoggedIn = beatPlayToken.isNotBlank() && beatPlayEmail.isNotBlank()
 
                 val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
                 val artistNameAliases by ArtistNameAliases.aliases.collectAsStateWithLifecycle()
@@ -1018,6 +1024,14 @@ class MainActivity : FragmentActivity() {
                     LocalChangelogState provides showChangelog,
                     LocalArtistNameAliases provides artistNameAliases,
                 ) {
+                    // Mandatory login gate — when not signed in, render ONLY the auth screen
+                    // and return. The main Scaffold, NavHost, player and services never
+                    // initialize, so no playback can start and no screen is reachable.
+                    if (!isBeatPlayLoggedIn) {
+                        BeatPlayAuthScreen(navController)
+                        return@CompositionLocalProvider
+                    }
+
                     if (showChangelog.value) {
                         ChangelogScreen(onDismiss = { showChangelog.value = false })
                     }

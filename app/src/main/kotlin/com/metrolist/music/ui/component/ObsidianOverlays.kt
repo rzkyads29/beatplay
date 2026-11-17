@@ -37,12 +37,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,11 +62,16 @@ import com.metrolist.music.constants.BeatPlayAvatarUrlKey
 import com.metrolist.music.constants.BeatPlayFollowCodeKey
 import com.metrolist.music.constants.DEFAULT_PREMIUM_SERVER_URL
 import com.metrolist.music.constants.IsPremiumKey
+import com.metrolist.music.constants.PremiumEmailKey
+import com.metrolist.music.constants.PremiumExpiryKey
 import com.metrolist.music.constants.PremiumServerUrlKey
 import com.metrolist.music.premium.PremiumApi
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.ui.theme.ObsidianColors
 import com.metrolist.music.ui.theme.obsidianGradient
 import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.utils.safeDataStoreEdit
+import kotlinx.coroutines.launch
 
 /** App-wide overlay state shared by the top bar, the nav bar and the profile drawer. */
 object ObsidianUiState {
@@ -81,6 +88,9 @@ fun ObsidianProfileDrawer(
     onEditProfile: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val playerConnection = LocalPlayerConnection.current
     val (isPremium) = rememberPreference(IsPremiumKey, false)
     var bpName by rememberPreference(BeatPlayAccountNameKey, "")
     var bpAvatar by rememberPreference(BeatPlayAvatarUrlKey, "")
@@ -200,9 +210,30 @@ fun ObsidianProfileDrawer(
                 DrawerRow("Statistik Mendengarkan", R.drawable.stats) { go("stats") }
                 DrawerRow("Baru Diputar", R.drawable.history) { go("history") }
                 DrawerRow("Dengarkan Bersama", R.drawable.group_outlined) { go("listen_together") }
-                DrawerRow("Akun BeatPlay", R.drawable.account) { go("beatplay_auth") }
                 DrawerRow("Pengaturan", R.drawable.settings) { go("settings") }
-                DrawerRow("Keluar", R.drawable.logout) { go("beatplay_auth") }
+                DrawerRow("Keluar", R.drawable.logout) {
+                    // Stop any active playback so audio doesn't keep playing post-logout.
+                    playerConnection?.let { pc ->
+                        runCatching {
+                            pc.player.stop()
+                            pc.player.clearMediaItems()
+                        }
+                    }
+                    // Full logout: drop session so the mandatory login gate re-engages.
+                    scope.launch {
+                        runCatching { api.logout(serverPref.trim().trimEnd('/'), bpToken) }
+                        bpToken = ""
+                        bpEmail = ""
+                        context.safeDataStoreEdit { prefs ->
+                            prefs.remove(BeatPlayAuthTokenKey)
+                            prefs.remove(BeatPlayAccountEmailKey)
+                            prefs[IsPremiumKey] = false
+                            prefs.remove(PremiumEmailKey)
+                            prefs.remove(PremiumExpiryKey)
+                        }
+                    }
+                    onDismiss()
+                }
 
                 Spacer(Modifier.height(4.dp))
                 Text(
