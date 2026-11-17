@@ -38,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -68,12 +69,12 @@ object Obsidian {
     val coal = Color(0xFF0C0908)
 
     val violet = elegantWhite
-    val pink = champagne
+    val pink = elegantWhite
     // Kept as an alias so existing call sites keep a second accent; it is elegant white now.
     val cyan = elegantWhite
-    val accent = listOf(elegantWhite, champagne)
+    val accent = listOf(elegantWhite, elegantWhite)
 
-    /** Text/icons painted on top of the (light) accent gradient. */
+    /** Text/icons painted on top of the flat Elegant White accent. */
     val onAccent = coal
 
     val textPrimary = Color(0xFFF5F0E1)
@@ -102,14 +103,10 @@ object Obsidian {
     )
 }
 
-/** Horizontal (default) or diagonal accent gradient, spanning the element it paints. */
-fun accentBrush(diagonal: Boolean = false): Brush =
-    if (diagonal) Brush.linearGradient(Obsidian.accent) else Brush.horizontalGradient(Obsidian.accent)
+/** Flat Elegant White accent. No gradients: one calm, premium colour. */
+fun accentBrush(diagonal: Boolean = false): Brush = SolidColor(Obsidian.elegantWhite)
 
-fun meshBrush(index: Int): Brush {
-    val (a, b) = Obsidian.meshStops[index.mod(Obsidian.meshStops.size)]
-    return Brush.linearGradient(listOf(a, b))
-}
+fun meshBrush(index: Int): Brush = SolidColor(Obsidian.surfaceHigh)
 
 /** Translucent glass card surface: fill + hairline border + soft rounding. */
 fun Modifier.glass(
@@ -137,9 +134,9 @@ fun obsidianScheme(seed: Color?, dark: Boolean): ColorScheme {
         onSecondary = Obsidian.onAccent,
         secondaryContainer = Obsidian.cyan.copy(alpha = 0.18f),
         onSecondaryContainer = Obsidian.textPrimary,
-        tertiary = Obsidian.champagne,
+        tertiary = Obsidian.elegantWhite,
         onTertiary = Obsidian.onAccent,
-        tertiaryContainer = Obsidian.champagne.copy(alpha = 0.20f),
+        tertiaryContainer = Obsidian.elegantWhite.copy(alpha = 0.20f),
         onTertiaryContainer = Obsidian.textPrimary,
         background = Obsidian.bg,
         onBackground = Obsidian.textPrimary,
@@ -333,10 +330,6 @@ fun MeshTile(
             .clickable { onClick() }
             .padding(16.dp),
     ) {
-        Box(
-            Modifier.matchParentSize().clip(RoundedCornerShape(16.dp))
-                .background(Brush.verticalGradient(listOf(Color(0x33000000), Color(0x66000000)))),
-        )
         Column(Modifier.align(Alignment.TopStart)) {
             emoji?.let { Text(it, fontSize = 22.sp) }
             Spacer(Modifier.height(6.dp))
@@ -366,7 +359,7 @@ fun BentoTile(
     }
 }
 
-/** Soft radial ambient glow layer to place behind hero content. */
+/** Flat ambient layer. Kept as a simple wrapper now that gradients are gone. */
 @Composable
 fun AmbientGlow(
     modifier: Modifier = Modifier,
@@ -375,13 +368,6 @@ fun AmbientGlow(
     content: @Composable BoxScope.() -> Unit,
 ) {
     Box(modifier) {
-        Box(
-            Modifier.matchParentSize().background(
-                Brush.radialGradient(
-                    colors = listOf(color.copy(alpha = alpha), Color.Transparent),
-                ),
-            ),
-        )
         content()
     }
 }

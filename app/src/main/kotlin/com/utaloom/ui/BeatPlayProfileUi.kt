@@ -53,9 +53,29 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.FileDialog
 import java.awt.Frame
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
+import javax.imageio.ImageIO
 
 private const val AVATAR_MAX_BYTES = 4 * 1024 * 1024
+
+/** Center-crop any picture to a square, then scale it down so it fits the avatar circle. */
+private fun squareAvatar(data: ByteArray): ByteArray? =
+    runCatching {
+        val src = ImageIO.read(ByteArrayInputStream(data)) ?: return null
+        val side = minOf(src.width, src.height)
+        val cropped = src.getSubimage((src.width - side) / 2, (src.height - side) / 2, side, side)
+        val target = minOf(side, 1024)
+        val out = BufferedImage(target, target, BufferedImage.TYPE_INT_RGB)
+        val g = out.createGraphics()
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+        g.drawImage(cropped, 0, 0, target, target, null)
+        g.dispose()
+        ByteArrayOutputStream().also { ImageIO.write(out, "jpg", it) }.toByteArray()
+    }.getOrNull()
 
 private fun prettyCode(code: String): String = code.uppercase().chunked(4).joinToString("-")
 
@@ -127,18 +147,14 @@ fun BeatPlayProfileDialog(onDismiss: () -> Unit) {
             message = "Ukuran foto maksimal 4 MB."
             return
         }
-        val mime = when {
-            data.size >= 2 && data[0] == 0xFF.toByte() && data[1] == 0xD8.toByte() -> "image/jpeg"
-            data.size >= 4 && data[0] == 0x89.toByte() && data[1] == 0x50.toByte() -> "image/png"
-            else -> null
-        }
-        if (mime == null) {
+        val cropped = squareAvatar(data)
+        if (cropped == null) {
             isError = true
             message = "Pilih file JPG atau PNG."
             return
         }
-        avatarBytes = data
-        avatarMime = mime
+        avatarBytes = cropped
+        avatarMime = "image/jpeg"
         removeAvatar = false
         message = null
     }
@@ -209,9 +225,9 @@ fun BeatPlayProfileDialog(onDismiss: () -> Unit) {
                         Modifier.size(84.dp).clip(CircleShape).background(Obsidian.elegantWhite),
                         contentAlignment = Alignment.Center,
                     ) {
-                        val preview = when {
-                            avatarBytes != null -> null
+                        val preview: Any? = when {
                             removeAvatar -> null
+                            avatarBytes != null -> avatarBytes
                             else -> s.beatPlayAvatarUrl
                         }
                         if (preview != null) {
@@ -222,6 +238,7 @@ fun BeatPlayProfileDialog(onDismiss: () -> Unit) {
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Foto profil", fontWeight = FontWeight.SemiBold)
+                        Text("Otomatis dipotong persegi agar pas di lingkaran.", style = MaterialTheme.typography.labelSmall, color = Obsidian.slate400)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton({ pickPhoto() }, enabled = !busy) { Text("Pilih foto") }
                             if (s.beatPlayAvatarUrl != null && avatarBytes == null && !removeAvatar) {

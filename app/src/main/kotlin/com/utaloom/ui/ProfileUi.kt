@@ -266,9 +266,7 @@ fun KoleksiProfileHeader() {
     val name = settings.beatPlayAccountName ?: settings.displayName ?: settings.accountName ?: settings.beatPlayAccountEmail?.substringBefore('@') ?: "Tamu"
 
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Box(Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(24.dp))) {
-            Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Obsidian.violet, Obsidian.cyan))))
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x33000000), Color(0xE60C0908)))))
+        Box(Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(24.dp)).background(Obsidian.surfaceHigh)) {
             Row(Modifier.fillMaxSize().padding(20.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 PremiumAvatar(settings.beatPlayAvatarUrl ?: settings.accountAvatar ?: settings.beatPlayAccountEmail, 84.dp, settings.isPremium)
                 Column(Modifier.weight(1f)) {

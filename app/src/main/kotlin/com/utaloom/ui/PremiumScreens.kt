@@ -45,36 +45,35 @@ private fun PremiumHero() {
     val s by Stores.settings.state.collectAsState()
     Box(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp).height(196.dp)
-            .clip(androidx.compose.foundation.shape.RoundedCornerShape(24.dp)),
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
+            .background(Obsidian.elegantWhite),
     ) {
-        Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Obsidian.violet, Obsidian.cyan))))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0x33000000), androidx.compose.ui.graphics.Color(0xD90C0908)))))
         Column(Modifier.fillMaxSize().padding(22.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     "BEATPLAY PREMIUM",
                     style = MaterialTheme.typography.labelMedium,
-                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),
+                    color = Obsidian.coal.copy(alpha = 0.7f),
                     letterSpacing = 3.sp,
                 )
                 Text(
                     if (s.isPremium) "Kamu sudah Premium" else "Dengar tanpa batas",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = androidx.compose.ui.graphics.Color.White,
+                    color = Obsidian.coal,
                 )
                 Text(
                     "Tanpa iklan audio • Kualitas tinggi • Aktif di semua perangkat",
                     style = MaterialTheme.typography.bodySmall,
-                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),
+                    color = Obsidian.coal.copy(alpha = 0.75f),
                 )
             }
             Box(
                 Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
-                    .background(androidx.compose.ui.graphics.Color(0x33FFFFFF))
+                    .background(Obsidian.coal.copy(alpha = 0.08f))
                     .padding(horizontal = 14.dp, vertical = 8.dp),
             ) {
-                Text("Mulai dari Rp20.000 / 30 hari", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.labelMedium)
+                Text("Mulai dari Rp20.000 / 30 hari", color = Obsidian.coal, style = MaterialTheme.typography.labelMedium)
             }
         }
     }
