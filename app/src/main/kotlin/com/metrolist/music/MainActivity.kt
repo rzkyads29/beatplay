@@ -207,6 +207,7 @@ import com.metrolist.music.ui.screens.settings.NavigationTab
 import com.metrolist.music.ui.theme.ColorSaver
 import com.metrolist.music.ui.theme.DefaultThemeColor
 import com.metrolist.music.ui.theme.MetrolistTheme
+import com.metrolist.music.ui.theme.ObsidianColors
 import com.metrolist.music.ui.theme.extractThemeColor
 import com.metrolist.music.ui.utils.appBarScrollBehavior
 import com.metrolist.music.ui.utils.resetHeightOffset
@@ -1120,17 +1121,19 @@ class MainActivity : FragmentActivity() {
                                 Box {
                                     // Spotify-style bottom scrim — content fades into a
                                     // transparent→dark gradient behind the mini player + nav.
+                                    val bottomScrimColor = if (pureBlack) Color.Black else ObsidianColors.bg
                                     Box(
                                         Modifier
                                             .align(Alignment.BottomCenter)
                                             .fillMaxWidth()
-                                            .height(bottomInset + navPadding + 80.dp)
+                                            .height(bottomInset + navPadding + 120.dp)
                                             .background(
                                                 Brush.verticalGradient(
                                                     colorStops = arrayOf(
                                                         0.0f to Color.Transparent,
-                                                        0.45f to Color.Black.copy(alpha = 0.75f),
-                                                        1.0f to Color.Black.copy(alpha = 0.96f),
+                                                        0.35f to bottomScrimColor.copy(alpha = 0.45f),
+                                                        0.75f to bottomScrimColor.copy(alpha = 0.85f),
+                                                        1.0f to bottomScrimColor.copy(alpha = 0.97f),
                                                     ),
                                                 ),
                                             ),

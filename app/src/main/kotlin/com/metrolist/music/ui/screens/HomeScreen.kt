@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -1290,11 +1291,31 @@ fun HomeScreen(
                     )
                 }
 
-            LazyColumn(
-                state = lazylistState,
-                contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+            val maxWidthDp = maxWidth
+
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current.only(
+                            WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+                        ),
+                    ),
             ) {
-                item(key = "obsidian_header") {
+                // Pinned header: the avatar and the filter pills stay fixed while
+                // the feed below scrolls. A soft vertical fade keeps it readable.
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    ObsidianColors.bg.copy(alpha = 0.97f),
+                                    ObsidianColors.bg.copy(alpha = 0.86f),
+                                ),
+                            ),
+                        ),
+                ) {
                     HomeObsidianHeader(
                         accountImageUrl = url,
                         accountName = beatPlayName.ifBlank { accountName },
@@ -1318,6 +1339,13 @@ fun HomeScreen(
                         },
                     )
                 }
+                LazyColumn(
+                    state = lazylistState,
+                    modifier = Modifier.weight(1f),
+                    contentPadding = LocalPlayerAwareWindowInsets.current
+                        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                        .asPaddingValues(),
+                ) {
                 item(key = "obsidian_quick") {
                     HomeObsidianQuickGrid(quickTiles)
                 }
@@ -1598,7 +1626,7 @@ fun HomeScreen(
 
                                 item(key = "speed_dial_list") {
                                     val targetItemSize = 160.dp
-                                    val availableWidth = maxWidth - 32.dp
+                                    val availableWidth = maxWidthDp - 32.dp
                                     val columns = (availableWidth / targetItemSize).toInt().coerceAtLeast(3)
                                     val rows =
                                         if (columns >= 6) {
@@ -2621,6 +2649,7 @@ fun HomeScreen(
                         }
                     }
                 }
+            }
             }
 
             HideOnScrollFAB(

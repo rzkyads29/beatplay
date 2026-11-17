@@ -13,6 +13,7 @@ import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -36,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -183,12 +185,31 @@ fun AppNavigationBar(
         unselectedTextColor = contentColor,
     )
 
-    NavigationBar(
-        modifier = modifier,
-        containerColor = containerColor,
-        contentColor = contentColor,
-        tonalElevation = 0.dp,
-    ) {
+    // Glassmorphism bottom bar: no solid container. A vertical fade
+    // (transparent -> dark) is drawn behind the icons so the content that
+    // scrolls underneath melts into the navigation instead of hitting a
+    // hard edge.
+    Box(modifier = modifier.fillMaxWidth()) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.Transparent,
+                            0.30f to containerColor.copy(alpha = 0.40f),
+                            0.65f to containerColor.copy(alpha = 0.78f),
+                            1.0f to containerColor.copy(alpha = 0.96f),
+                        ),
+                    ),
+                ),
+        )
+
+        NavigationBar(
+            containerColor = Color.Transparent,
+            contentColor = contentColor,
+            tonalElevation = 0.dp,
+        ) {
         navigationItems.forEach { screen ->
             val isSelected = remember(currentRoute, screen.route) {
                 isRouteSelected(currentRoute, screen.route, navigationItems)
@@ -283,6 +304,7 @@ fun AppNavigationBar(
                 } else null
             )
             }
+        }
         }
     }
 }
