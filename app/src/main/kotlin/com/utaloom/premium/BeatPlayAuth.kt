@@ -29,6 +29,17 @@ data class MeInfo(
     val verified: Boolean,
     val premium: Boolean,
     val expiry: Long?,
+    val name: String? = null,
+    val followCode: String? = null,
+    val avatarUrl: String? = null,
+)
+
+/** Public BeatPlay profile (own profile or someone found by follow code). */
+data class ProfileInfo(
+    val name: String,
+    val followCode: String,
+    val avatarUrl: String?,
+    val premium: Boolean,
 )
 
 /** Thrown when the server rejects the stored session token (401). */
@@ -189,6 +200,59 @@ object BeatPlayAuth {
                 verified = root["verified"]?.jsonPrimitive?.booleanOrNull == true,
                 premium = root["premium"]?.jsonPrimitive?.booleanOrNull == true,
                 expiry = root["expiry"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.longOrNull,
+                name = root["name"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content,
+                followCode = root["follow_code"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content,
+                avatarUrl = root["avatar_url"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content,
+            )
+        }
+    }
+
+    /** Update the display name and/or upload a new profile picture. */
+    suspend fun updateProfile(
+        serverUrl: String,
+        name: String? = null,
+        avatarBytes: ByteArray? = null,
+        avatarMime: String? = null,
+        removeAvatar: Boolean = false,
+    ): Result<ProfileInfo> = withContext(Dispatchers.IO) {
+        val token = com.utaloom.data.Stores.settings.value.beatPlayAuthToken
+            ?: return@withContext Result.failure(IllegalStateException("Belum masuk akun BeatPlay"))
+        val parts = mutableListOf<String>()
+        if (name != null) parts.add("\"name\":\"${esc(name.take(32))}\"")
+        if (avatarBytes != null && avatarMime != null) {
+            parts.add("\"avatar_base64\":\"${java.util.Base64.getEncoder().encodeToString(avatarBytes)}\"")
+            parts.add("\"avatar_mime\":\"${esc(avatarMime)}\"")
+        }
+        if (removeAvatar) parts.add("\"remove_avatar\":true")
+        send(serverUrl, "/api/auth/profile", "{${parts.joinToString(",")}}", token).map { body ->
+            val prof = json.parseToJsonElement(body).jsonObject["profile"]!!.jsonObject
+            val info = ProfileInfo(
+                name = prof["name"]?.jsonPrimitive?.content.orEmpty(),
+                followCode = prof["follow_code"]?.jsonPrimitive?.content.orEmpty(),
+                avatarUrl = prof["avatar_url"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content,
+                premium = prof["premium"]?.jsonPrimitive?.booleanOrNull == true,
+            )
+            com.utaloom.data.Stores.settings.update {
+                it.copy(
+                    beatPlayAccountName = info.name,
+                    beatPlayAvatarUrl = info.avatarUrl,
+                    beatPlayFollowCode = info.followCode,
+                )
+            }
+            info
+        }
+    }
+
+    /** Find someone by their BeatPlay follow code. */
+    suspend fun lookupUser(serverUrl: String, code: String): Result<ProfileInfo> = withContext(Dispatchers.IO) {
+        val clean = code.trim().uppercase().filter { it.isLetterOrDigit() }
+        send(serverUrl, "/api/user/$clean", null).map { body ->
+            val prof = json.parseToJsonElement(body).jsonObject["profile"]!!.jsonObject
+            ProfileInfo(
+                name = prof["name"]?.jsonPrimitive?.content.orEmpty(),
+                followCode = prof["follow_code"]?.jsonPrimitive?.content.orEmpty(),
+                avatarUrl = prof["avatar_url"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content,
+                premium = prof["premium"]?.jsonPrimitive?.booleanOrNull == true,
             )
         }
     }
@@ -230,6 +294,9 @@ object BeatPlayAuth {
                         premiumExpiry = info.expiry,
                         premiumLastChecked = System.currentTimeMillis(),
                         songsSinceAd = if (info.premium) 0 else it.songsSinceAd,
+                        beatPlayAccountName = info.name ?: it.beatPlayAccountName,
+                        beatPlayAvatarUrl = info.avatarUrl,
+                        beatPlayFollowCode = info.followCode ?: it.beatPlayFollowCode,
                     )
                 }
             }

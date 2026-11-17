@@ -46,8 +46,12 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 SAFE_REF_RE = re.compile(r"[^A-Za-z0-9-]")
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROOF_DIR = os.path.join(HERE, "proofs")
+AVATARS_DIR = os.path.join(HERE, "avatars")
 MAX_PHOTO_BYTES = 4 * 1024 * 1024
 PHOTO_MIMES = {"image/jpeg": "jpg", "image/png": "png"}
+# Follow codes avoid look-alike characters (0/O, 1/I) so they are easy to read out loud.
+FOLLOW_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+FOLLOW_CODE_LEN = 8
 
 TRIPAY_SANDBOX = "https://tripay.co.id/api-sandbox"
 TRIPAY_PROD = "https://tripay.co.id/api"
@@ -554,6 +558,63 @@ class UserStore:
     def get(self, email):
         return self.users.get(email.strip().lower())
 
+    # ---- follow code + public profile ----
+
+    def _new_follow_code(self):
+        while True:
+            code = "".join(secrets.choice(FOLLOW_ALPHABET) for _ in range(FOLLOW_CODE_LEN))
+            if not any(u.get("follow_code") == code for u in self.users.values()):
+                return code
+
+    def follow_code_of(self, user):
+        """Return the user's follow code, assigning one lazily for legacy accounts."""
+        if not user:
+            return ""
+        code = user.get("follow_code")
+        if code:
+            return code
+        with self.lock:
+            code = user.get("follow_code") or self._new_follow_code()
+            user["follow_code"] = code
+            self.save()
+        return code
+
+    def by_follow_code(self, code):
+        code = "".join(ch for ch in str(code or "").upper() if ch.isalnum())
+        if not code:
+            return None
+        for user in self.users.values():
+            if self.follow_code_of(user) == code:
+                return user
+        return None
+
+    def set_profile(self, email, name=None, avatar=None):
+        """Update display name and/or avatar filename. avatar='' clears it."""
+        email = email.strip().lower()
+        with self.lock:
+            user = self.users.get(email)
+            if not user:
+                return None
+            if name is not None:
+                user["name"] = name.strip()[:32]
+            if avatar is not None:
+                user["avatar"] = avatar
+            self.follow_code_of(user)
+            self.save()
+            return user
+
+    def public_profile(self, user):
+        code = self.follow_code_of(user)
+        out = {
+            "follow_code": code,
+            "name": user.get("name") or user["email"].split("@")[0],
+            "email": user["email"],
+        }
+        avatar = user.get("avatar") or ""
+        if avatar:
+            out["avatar"] = avatar
+        return out
+
     def _hash(self, password, salt_hex):
         return hashlib.scrypt(
             password.encode("utf-8"),
@@ -583,6 +644,9 @@ class UserStore:
                 "created_at": int(time.time()),
                 "premium_manual": False,
                 "premium_expiry": 0,
+                "name": email.split("@")[0][:32],
+                "follow_code": self._new_follow_code(),
+                "avatar": "",
             }
             self.users[email] = user
             self.save()
@@ -1029,6 +1093,15 @@ class Handler(BaseHTTPRequestHandler):
             return None
         return self.users.resolve_session(token)
 
+    def _abs(self, path):
+        """Absolute URL for a served asset, falling back to the request Host."""
+        base = (self.public_base or "").rstrip("/")
+        if not base:
+            host = self.headers.get("Host", "")
+            if host:
+                base = "https://" + host
+        return base + path
+
     def _provider_configured(self):
         if self.provider == "buatqris":
             return bool(self.buatqris and self.buatqris.enabled and self.buatqris.valid_mode and
@@ -1076,7 +1149,67 @@ class Handler(BaseHTTPRequestHandler):
             out = {"email": user["email"], "verified": bool(user.get("verified")), "premium": ok}
             if exp:
                 out["expiry"] = exp
+            out.update(self.users.public_profile(user))
+            if out.get("avatar"):
+                out["avatar_url"] = self._abs("/avatar/" + urllib.parse.quote(out["avatar"]))
             return self._send(200, out)
+        if url.path.startswith("/api/user/"):
+            code = urllib.parse.unquote(url.path[len("/api/user/"):]).strip()
+            user = self.users.by_follow_code(code)
+            if not user:
+                return self._send(404, {"error": "kode tidak ditemukan"})
+            prof = self.users.public_profile(user)
+            prof.pop("email", None)
+            ok, _ = self.users.premium_status(user["email"])
+            prof["premium"] = ok
+            if prof.get("avatar"):
+                prof["avatar_url"] = self._abs("/avatar/" + urllib.parse.quote(prof["avatar"]))
+            return self._send(200, {"profile": prof})
+        if url.path.startswith("/api/find-user"):
+            code = (qs.get("code", [""])[0] or "").strip()
+            user = self.users.by_follow_code(code)
+            if not user:
+                return self._send(404, {"error": "kode tidak ditemukan"})
+            prof = self.users.public_profile(user)
+            prof.pop("email", None)
+            if prof.get("avatar"):
+                prof["avatar_url"] = self._abs("/avatar/" + urllib.parse.quote(prof["avatar"]))
+            return self._send(200, {"profile": prof})
+        if url.path.startswith("/avatar/"):
+            name = os.path.basename(urllib.parse.unquote(url.path[len("/avatar/"):]))
+            p = os.path.join(AVATARS_DIR, name)
+            if not name or not os.path.exists(p):
+                return self._send(404, {"error": "avatar tidak ada"})
+            with open(p, "rb") as f:
+                data = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png" if p.lower().endswith(".png") else "image/jpeg")
+            self.send_header("Cache-Control", "public, max-age=86400")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
+        if url.path.startswith("/f/"):
+            code = urllib.parse.unquote(url.path[len("/f/"):]).strip()
+            user = self.users.by_follow_code(code)
+            name = (user.get("name") if user else "") or "Pengguna BeatPlay"
+            avatar = (user.get("avatar") if user else "") or ""
+            img = ("<img src='/avatar/" + urllib.parse.quote(avatar) + "' style='width:96px;height:96px;border-radius:48px;object-fit:cover'>"
+                   if avatar else "")
+            html = (
+                "<!doctype html><meta charset='utf-8'>"
+                "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+                "<title>BeatPlay - " + name + "</title>"
+                "<body style='margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;"
+                "background:#0C0908;color:#F5F0E1;font-family:system-ui,Segoe UI,sans-serif'>"
+                "<div style='text-align:center;padding:32px'>" + img +
+                "<h1 style='margin:16px 0 4px;font-size:24px'>" + name + "</h1>"
+                "<p style='margin:0;color:#A79F92'>Kode BeatPlay <b style='letter-spacing:3px'>" + code + "</b></p>"
+                "<p style='margin-top:24px;color:#A79F92;max-width:320px'>Buka aplikasi BeatPlay dan pilih "
+                "&ldquo;Ikuti dengan kode&rdquo; untuk mengikuti profil ini.</p>"
+                "</div></body>"
+            )
+            return self._send(200, html, ctype="text/html")
         if url.path == "/api/auth/verify":
             token = (qs.get("token", [""])[0] or "").strip()
             user = self.users.verify(token) if token else None
@@ -1195,7 +1328,7 @@ class Handler(BaseHTTPRequestHandler):
                             "/api/admin/notify/test", "/api/admin/verify",
                             "/api/orders/mock-pay", "/api/orders/create", "/api/orders/proof",
                             "/api/auth/register", "/api/auth/login", "/api/auth/logout",
-                            "/api/auth/verify-code", "/api/auth/resend"):
+                            "/api/auth/verify-code", "/api/auth/resend", "/api/auth/profile"):
             return self._send(404, {"error": "not found"})
         needs_body = url.path not in ("/api/orders/mock-pay", "/api/auth/logout")
         raw, data = self._body_json()
@@ -1295,6 +1428,41 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(500, {"error": "gagal mengirim email: " + str(send_err)})
                 return self._send(200, {"ok": True, "verification": "code"})
             return self._send(200, {"ok": True, "verification": "code", "dev_code": code})
+
+        if url.path == "/api/auth/profile":
+            user = self._auth_user()
+            if not user:
+                return self._send(401, {"error": "unauthorized"})
+            name = data.get("name", None)
+            if name is not None:
+                name = str(name).strip()
+                if not (1 <= len(name) <= 32):
+                    return self._send(400, {"error": "nama harus 1-32 karakter"})
+            avatar_name = None
+            if data.get("remove_avatar"):
+                avatar_name = ""
+            raw_b64 = data.get("avatar_base64")
+            if raw_b64:
+                try:
+                    raw = base64.b64decode(str(raw_b64), validate=True)
+                except Exception:
+                    return self._send(400, {"error": "avatar tidak valid (base64 rusak)"})
+                ext = validate_proof_photo(str(data.get("avatar_mime", "")).strip().lower(), raw)
+                if not ext:
+                    return self._send(400, {"error": "avatar harus JPEG/PNG maks 4MB"})
+                os.makedirs(AVATARS_DIR, exist_ok=True)
+                digest = hashlib.sha256(user["email"].encode("utf-8")).hexdigest()[:16]
+                avatar_name = "u{}.{}".format(digest, ext)
+                with open(os.path.join(AVATARS_DIR, avatar_name), "wb") as f:
+                    f.write(raw)
+            if name is None and avatar_name is None:
+                return self._send(400, {"error": "tidak ada perubahan"})
+            updated = self.users.set_profile(user["email"], name=name, avatar=avatar_name)
+            prof = self.users.public_profile(updated)
+            if prof.get("avatar"):
+                prof["avatar_url"] = self._abs("/avatar/" + urllib.parse.quote(prof["avatar"]))
+            prof["premium"], _ = self.users.premium_status(updated["email"])
+            return self._send(200, {"ok": True, "profile": prof})
 
         if url.path == "/api/orders/create":
             return self._create_order(data)

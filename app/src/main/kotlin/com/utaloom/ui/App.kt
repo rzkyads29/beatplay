@@ -281,9 +281,9 @@ private fun Sidebar(onAvatar: () -> Unit, onCreate: () -> Unit) {
         Spacer(Modifier.weight(1f))
         Box(Modifier.fillMaxWidth().padding(horizontal = 8.dp).clip(RoundedCornerShape(14.dp)).clickableCompat(onAvatar).padding(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                PremiumAvatar(settings.accountAvatar ?: settings.beatPlayAccountEmail, 34.dp, settings.isPremium)
+                PremiumAvatar(settings.beatPlayAvatarUrl ?: settings.accountAvatar ?: settings.beatPlayAccountEmail, 34.dp, settings.isPremium)
                 Column(Modifier.weight(1f)) {
-                    Text(settings.beatPlayAccountEmail?.substringBefore('@') ?: "Tamu", fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(settings.beatPlayAccountName ?: settings.beatPlayAccountEmail?.substringBefore('@') ?: "Tamu", fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(if (settings.isPremium) "Premium" else "Akun gratis", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -454,9 +454,9 @@ private fun TopBar(compact: Boolean, onAvatar: () -> Unit) {
                 GradientButton("Premium", { Nav.go(Screen.Premium) }, icon = Icons.Default.WorkspacePremium)
             }
             if (compact) {
-                IconButton(onAvatar) { PremiumAvatar(settings.accountAvatar ?: settings.beatPlayAccountEmail, 32.dp, settings.isPremium) }
+                IconButton(onAvatar) { PremiumAvatar(settings.beatPlayAvatarUrl ?: settings.accountAvatar ?: settings.beatPlayAccountEmail, 32.dp, settings.isPremium) }
             } else {
-                IconButton(onAvatar) { PremiumAvatar(settings.accountAvatar ?: settings.beatPlayAccountEmail, 34.dp, settings.isPremium) }
+                IconButton(onAvatar) { PremiumAvatar(settings.beatPlayAvatarUrl ?: settings.accountAvatar ?: settings.beatPlayAccountEmail, 34.dp, settings.isPremium) }
             }
         }
         if (onHome) {

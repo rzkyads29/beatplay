@@ -263,14 +263,14 @@ fun KoleksiProfileHeader() {
     var edit by remember { mutableStateOf(false) }
     var scanner by remember { mutableStateOf(false) }
     var preview by remember { mutableStateOf(false) }
-    val name = settings.displayName ?: settings.accountName ?: settings.beatPlayAccountEmail?.substringBefore('@') ?: "Tamu"
+    val name = settings.beatPlayAccountName ?: settings.displayName ?: settings.accountName ?: settings.beatPlayAccountEmail?.substringBefore('@') ?: "Tamu"
 
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Box(Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(24.dp))) {
             Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Obsidian.violet, Obsidian.cyan))))
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x33000000), Color(0xE6090A0F)))))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x33000000), Color(0xE60C0908)))))
             Row(Modifier.fillMaxSize().padding(20.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                PremiumAvatar(settings.accountAvatar ?: settings.beatPlayAccountEmail, 84.dp, settings.isPremium)
+                PremiumAvatar(settings.beatPlayAvatarUrl ?: settings.accountAvatar ?: settings.beatPlayAccountEmail, 84.dp, settings.isPremium)
                 Column(Modifier.weight(1f)) {
                     Text(name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
                     Text(
@@ -475,7 +475,7 @@ private fun RecapPreview(data: RecapData, theme: RecapTheme, modifier: Modifier 
         modifier.aspectRatio(9f / 16f).clip(RoundedCornerShape(20.dp))
             .background(Brush.linearGradient(listOf(theme.from, theme.to))),
     ) {
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x66000000), Color(0xCC090A0F)))))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x66000000), Color(0xCC0C0908)))))
         Column(Modifier.fillMaxSize().padding(22.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("BEATPLAY", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.85f), letterSpacing = 3.sp)

@@ -291,7 +291,7 @@ private fun VerticalCard(item: YTItem) {
             .border(1.dp, Obsidian.glassBorder, RoundedCornerShape(18.dp)).clickable { openItem(item) },
     ) {
         coil3.compose.AsyncImage(hiRes(item.thumbnail, 400), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE6090A0F)))))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE60C0908)))))
         Column(Modifier.align(Alignment.BottomStart).padding(12.dp)) {
             Text(item.title, color = Color.White, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(item.subtitle(), color = Obsidian.slate400, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)

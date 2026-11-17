@@ -38,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,24 +54,33 @@ import androidx.compose.ui.unit.sp
  * Deliberately shares no palette with other streaming services (no Spotify green, no flat grey cards).
  */
 object Obsidian {
-    val bg = Color(0xFF090A0F)
-    val bgDeep = Color(0xFF070810)
-    val surface = Color(0xFF101219)
-    val surfaceLow = Color(0xFF0C0E14)
-    val surfaceHigh = Color(0xFF161A24)
-    val surfaceHighest = Color(0xFF1D2230)
+    // Coal base with warm near-black surfaces.
+    val bg = Color(0xFF0C0908)
+    val bgDeep = Color(0xFF080606)
+    val surface = Color(0xFF151110)
+    val surfaceLow = Color(0xFF100D0C)
+    val surfaceHigh = Color(0xFF1C1715)
+    val surfaceHighest = Color(0xFF241E1A)
 
-    val violet = Color(0xFFA855F7)
-    val pink = Color(0xFFEC4899)
-    // Kept as an alias so existing call sites keep the second accent; it is hot pink now.
-    val cyan = pink
-    val accent = listOf(violet, pink)
+    // Elegant White accent on Coal: premium, warm, never green.
+    val elegantWhite = Color(0xFFF5F0E1)
+    val champagne = Color(0xFFCDBFA0)
+    val coal = Color(0xFF0C0908)
 
-    val textPrimary = Color(0xFFF8FAFC)
-    val slate400 = Color(0xFF94A3B8)
-    val slate500 = Color(0xFF64748B)
+    val violet = elegantWhite
+    val pink = champagne
+    // Kept as an alias so existing call sites keep a second accent; it is elegant white now.
+    val cyan = elegantWhite
+    val accent = listOf(elegantWhite, champagne)
+
+    /** Text/icons painted on top of the (light) accent gradient. */
+    val onAccent = coal
+
+    val textPrimary = Color(0xFFF5F0E1)
+    val slate400 = Color(0xFFA79F92)
+    val slate500 = Color(0xFF766F63)
     val danger = Color(0xFFF87171)
-    val success = Color(0xFF34D399)
+    val success = Color(0xFF8FD6A8)
 
     /** Frosted card fill: rgba(255,255,255,0.05). */
     val glassFill = Color(0x0DFFFFFF)
@@ -81,14 +91,14 @@ object Obsidian {
     val glassFillStrong = Color(0x1AFFFFFF)
     val glassBorderStrong = Color(0x24FFFFFF)
 
-    /** Mesh gradient stops reused by the Search category tiles. */
+    /** Warm neutral mesh for artwork placeholders; keeps the coal/ivory mood. */
     val meshStops = listOf(
-        Color(0xFF7C3AED) to Color(0xFF06B6D4),
-        Color(0xFF2563EB) to Color(0xFF8B5CF6),
-        Color(0xFFDB2777) to Color(0xFF7C3AED),
-        Color(0xFF0891B2) to Color(0xFF22D3EE),
-        Color(0xFF4338CA) to Color(0xFF06B6D4),
-        Color(0xFF9333EA) to Color(0xFFDB2777),
+        Color(0xFF3A342B) to Color(0xFF12100D),
+        Color(0xFF574E3E) to Color(0xFF1A1613),
+        Color(0xFF6E6350) to Color(0xFF221D18),
+        Color(0xFF443C31) to Color(0xFF0F0D0B),
+        Color(0xFF2A251F) to Color(0xFF4B4235),
+        Color(0xFF8A7C61) to Color(0xFF2A241D),
     )
 }
 
@@ -116,19 +126,21 @@ fun Modifier.glassPanel(shape: Shape = RoundedCornerShape(20.dp)): Modifier =
 /** Deep Obsidian dark scheme, or a soft counterpart for light mode. Accent follows the seed color. */
 fun obsidianScheme(seed: Color?, dark: Boolean): ColorScheme {
     val accentColor = seed ?: Obsidian.violet
+    // Keep CTA text readable whether the accent is the light default or a bright artwork seed.
+    val accentText = if (accentColor.luminance() > 0.45f) Obsidian.onAccent else Color.White
     return if (dark) darkColorScheme(
         primary = accentColor,
-        onPrimary = Color.White,
-        primaryContainer = accentColor.copy(alpha = 0.24f),
+        onPrimary = accentText,
+        primaryContainer = accentColor.copy(alpha = 0.18f),
         onPrimaryContainer = Obsidian.textPrimary,
         secondary = Obsidian.cyan,
-        onSecondary = Color(0xFF04202A),
-        secondaryContainer = Obsidian.cyan.copy(alpha = 0.20f),
-        onSecondaryContainer = Color(0xFFCFFAFE),
-        tertiary = Obsidian.violet,
-        onTertiary = Color.White,
-        tertiaryContainer = Obsidian.violet.copy(alpha = 0.22f),
-        onTertiaryContainer = Color(0xFFEDE9FE),
+        onSecondary = Obsidian.onAccent,
+        secondaryContainer = Obsidian.cyan.copy(alpha = 0.18f),
+        onSecondaryContainer = Obsidian.textPrimary,
+        tertiary = Obsidian.champagne,
+        onTertiary = Obsidian.onAccent,
+        tertiaryContainer = Obsidian.champagne.copy(alpha = 0.20f),
+        onTertiaryContainer = Obsidian.textPrimary,
         background = Obsidian.bg,
         onBackground = Obsidian.textPrimary,
         surface = Obsidian.surfaceLow,
@@ -152,26 +164,26 @@ fun obsidianScheme(seed: Color?, dark: Boolean): ColorScheme {
         scrim = Color(0xCC000000),
     ) else lightColorScheme(
         primary = accentColor,
-        onPrimary = Color.White,
+        onPrimary = accentText,
         primaryContainer = accentColor.copy(alpha = 0.16f),
-        onPrimaryContainer = Color(0xFF2E1065),
-        secondary = Obsidian.cyan,
-        onSecondary = Color.White,
-        secondaryContainer = Obsidian.cyan.copy(alpha = 0.16f),
-        onSecondaryContainer = Color(0xFF083344),
-        tertiary = Obsidian.violet,
-        onTertiary = Color.White,
-        background = Color(0xFFF6F7FB),
-        onBackground = Color(0xFF11131A),
+        onPrimaryContainer = Color(0xFF241E1A),
+        secondary = Obsidian.champagne,
+        onSecondary = Obsidian.onAccent,
+        secondaryContainer = Obsidian.champagne.copy(alpha = 0.16f),
+        onSecondaryContainer = Color(0xFF241E1A),
+        tertiary = Obsidian.champagne,
+        onTertiary = Obsidian.onAccent,
+        background = Color(0xFFF7F4EC),
+        onBackground = Color(0xFF17130F),
         surface = Color(0xFFFFFFFF),
-        onSurface = Color(0xFF11131A),
-        surfaceVariant = Color(0xFFEDEEF5),
-        onSurfaceVariant = Color(0xFF525A6B),
+        onSurface = Color(0xFF17130F),
+        surfaceVariant = Color(0xFFEDE7DA),
+        onSurfaceVariant = Color(0xFF5A5347),
         surfaceContainerLowest = Color(0xFFFFFFFF),
-        surfaceContainerLow = Color(0xFFF8F9FC),
-        surfaceContainer = Color(0xFFF2F3F8),
-        surfaceContainerHigh = Color(0xFFECEEF5),
-        surfaceContainerHighest = Color(0xFFE5E7F0),
+        surfaceContainerLow = Color(0xFFF9F6EF),
+        surfaceContainer = Color(0xFFF3EFE5),
+        surfaceContainerHigh = Color(0xFFEDE8DB),
+        surfaceContainerHighest = Color(0xFFE6E0D1),
         outline = Color(0x33000000),
         outlineVariant = Color(0x14000000),
     )
@@ -215,10 +227,10 @@ fun GradientButton(
         contentAlignment = Alignment.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (icon != null) Icon(icon, null, Modifier.size(18.dp), tint = Color.White)
+            if (icon != null) Icon(icon, null, Modifier.size(18.dp), tint = Obsidian.onAccent)
             Text(
                 text,
-                color = if (enabled) Color.White else Obsidian.slate500,
+                color = if (enabled) Obsidian.onAccent else Obsidian.slate500,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 15.sp,
             )
@@ -263,7 +275,7 @@ fun FilterPill(text: String, selected: Boolean, onClick: () -> Unit) {
     ) {
         Text(
             text,
-            color = if (selected) Color.White else Obsidian.slate400,
+            color = if (selected) Obsidian.onAccent else Obsidian.slate400,
             fontSize = 13.sp,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
             maxLines = 1,

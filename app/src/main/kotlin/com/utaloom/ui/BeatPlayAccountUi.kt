@@ -63,6 +63,7 @@ fun BeatPlayAccountSection(showServerField: Boolean = false) {
     val s by Stores.settings.state.collectAsState()
     val scope = rememberCoroutineScope()
     var authOpen by remember { mutableStateOf(false) }
+    var profileOpen by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var messageIsError by remember { mutableStateOf(false) }
@@ -102,6 +103,14 @@ fun BeatPlayAccountSection(showServerField: Boolean = false) {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    val code = s.beatPlayFollowCode
+                    if (loggedIn && !s.beatPlayAccountName.isNullOrBlank()) {
+                        Text(
+                            "Nama: ${s.beatPlayAccountName}" + (code?.let { " • Kode ${it.chunked(4).joinToString("-")}" } ?: ""),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
                 if (loggedIn) {
                     OutlinedButton({ Nav.go(Screen.Premium) }) { Text("Kelola Premium") }
@@ -131,6 +140,7 @@ fun BeatPlayAccountSection(showServerField: Boolean = false) {
                         busy = false
                     }
                 }, enabled = !busy) { Text(if (busy) "Mengecek..." else "Muat ulang status") }
+                OutlinedButton({ profileOpen = true }, enabled = !busy) { Text("Profil & Kode") }
                 TextButton({
                     if (busy) return@TextButton
                     busy = true
@@ -184,6 +194,7 @@ fun BeatPlayAccountSection(showServerField: Boolean = false) {
     }
 
     if (authOpen) BeatPlayAuthDialog(onDismiss = { authOpen = false })
+    if (profileOpen) BeatPlayProfileDialog(onDismiss = { profileOpen = false })
 }
 
 private enum class AuthTab { LOGIN, REGISTER }

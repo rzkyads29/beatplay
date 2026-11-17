@@ -159,6 +159,10 @@ data class Settings(
     // Akun BeatPlay (email + kata sandi). Premium terikat ke akun ini, bukan ke akun Google.
     val beatPlayAccountEmail: String? = null,
     val beatPlayAuthToken: String? = null,
+    val beatPlayAccountName: String? = null,
+    val beatPlayAvatarUrl: String? = null,
+    val beatPlayFollowCode: String? = null,
+    val beatPlayFollowing: List<String> = emptyList(),
     val premiumDevMode: Boolean = false, // tampilkan opsi developer di layar Premium
     val songsSinceAd: Int = 0,
     val adEveryNSongs: Int = 3,

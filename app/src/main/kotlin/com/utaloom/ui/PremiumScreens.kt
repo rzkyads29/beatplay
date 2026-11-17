@@ -48,7 +48,7 @@ private fun PremiumHero() {
             .clip(androidx.compose.foundation.shape.RoundedCornerShape(24.dp)),
     ) {
         Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Obsidian.violet, Obsidian.cyan))))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0x33000000), androidx.compose.ui.graphics.Color(0xD9090A0F)))))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0x33000000), androidx.compose.ui.graphics.Color(0xD90C0908)))))
         Column(Modifier.fillMaxSize().padding(22.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(

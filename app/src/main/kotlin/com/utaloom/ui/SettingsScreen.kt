@@ -335,10 +335,10 @@ private fun SettingsHero() {
     val loggedIn = !s.beatPlayAuthToken.isNullOrBlank()
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            PremiumAvatar(s.accountAvatar ?: s.beatPlayAccountEmail, 58.dp, s.isPremium)
+            PremiumAvatar(s.beatPlayAvatarUrl ?: s.accountAvatar ?: s.beatPlayAccountEmail, 58.dp, s.isPremium)
             Column(Modifier.weight(1f)) {
                 Text(
-                    s.beatPlayAccountEmail ?: s.accountName ?: "Tamu",
+                    s.beatPlayAccountName ?: s.beatPlayAccountEmail ?: s.accountName ?: "Tamu",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
