@@ -55,6 +55,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.metrolist.music.App
 import com.metrolist.music.R
 import com.metrolist.music.constants.BeatPlayAccountEmailKey
 import com.metrolist.music.constants.BeatPlayAccountNameKey
@@ -63,15 +64,13 @@ import com.metrolist.music.constants.BeatPlayAvatarUrlKey
 import com.metrolist.music.constants.BeatPlayFollowCodeKey
 import com.metrolist.music.constants.DEFAULT_PREMIUM_SERVER_URL
 import com.metrolist.music.constants.IsPremiumKey
-import com.metrolist.music.constants.PremiumEmailKey
-import com.metrolist.music.constants.PremiumExpiryKey
 import com.metrolist.music.constants.PremiumServerUrlKey
 import com.metrolist.music.premium.PremiumApi
+import com.metrolist.music.premium.clearBeatPlaySession
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.ui.theme.ObsidianColors
 import com.metrolist.music.ui.theme.obsidianGradient
 import com.metrolist.music.utils.rememberPreference
-import com.metrolist.music.utils.safeDataStoreEdit
 import kotlinx.coroutines.launch
 
 /** App-wide overlay state shared by the top bar, the nav bar and the profile drawer. */
@@ -91,6 +90,8 @@ fun ObsidianProfileDrawer(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // Logout work must outlive this drawer (dismissing it cancels [scope]).
+    val appScope = (context.applicationContext as? App)?.applicationScope ?: scope
     val playerConnection = LocalPlayerConnection.current
     val (isPremium) = rememberPreference(IsPremiumKey, false)
     var bpName by rememberPreference(BeatPlayAccountNameKey, "")
@@ -239,6 +240,9 @@ fun ObsidianProfileDrawer(
                 DrawerRow("BeatPlay Wrapped 2026", R.drawable.trending_up) { go("wrapped") }
                 DrawerRow("Pengaturan & Privasi", R.drawable.settings) { go("settings") }
                 DrawerRow("Keluar", R.drawable.logout) {
+                    // Capture what the background job needs before the drawer closes.
+                    val token = bpToken
+                    val base = serverPref.trim().trimEnd('/')
                     // Stop any active playback so audio doesn't keep playing post-logout.
                     playerConnection?.let { pc ->
                         runCatching {
@@ -246,20 +250,20 @@ fun ObsidianProfileDrawer(
                             pc.player.clearMediaItems()
                         }
                     }
-                    // Full logout: drop session so the mandatory login gate re-engages.
-                    scope.launch {
-                        runCatching { api.logout(serverPref.trim().trimEnd('/'), bpToken) }
-                        bpToken = ""
-                        bpEmail = ""
-                        context.safeDataStoreEdit { prefs ->
-                            prefs.remove(BeatPlayAuthTokenKey)
-                            prefs.remove(BeatPlayAccountEmailKey)
-                            prefs[IsPremiumKey] = false
-                            prefs.remove(PremiumEmailKey)
-                            prefs.remove(PremiumExpiryKey)
+                    // Close the drawer immediately so the tap feels instant...
+                    onDismiss()
+                    // ...then clear the session on the app scope (NOT the drawer scope, which
+                    // is cancelled as soon as the drawer is dismissed). Clearing locally first
+                    // lets the login gate re-engage instantly even if the server is slow.
+                    appScope.launch {
+                        clearBeatPlaySession(context)
+                        if (token.isNotBlank()) {
+                            // The drawer's api is closed on dismiss; use a fresh client.
+                            val logoutApi = PremiumApi()
+                            runCatching { logoutApi.logout(base, token) }
+                            logoutApi.close()
                         }
                     }
-                    onDismiss()
                 }
 
                 Spacer(Modifier.height(4.dp))

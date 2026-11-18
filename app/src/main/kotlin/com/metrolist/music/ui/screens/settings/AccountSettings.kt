@@ -39,23 +39,22 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.metrolist.music.App
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.R
 import com.metrolist.music.constants.BeatPlayAccountEmailKey
 import com.metrolist.music.constants.BeatPlayAuthTokenKey
 import com.metrolist.music.constants.DEFAULT_PREMIUM_SERVER_URL
 import com.metrolist.music.constants.IsPremiumKey
-import com.metrolist.music.constants.PremiumEmailKey
 import com.metrolist.music.constants.PremiumExpiryKey
 import com.metrolist.music.constants.PremiumServerUrlKey
-import com.metrolist.music.constants.SongsSinceAdKey
 import com.metrolist.music.premium.PremiumApi
+import com.metrolist.music.premium.clearBeatPlaySession
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.rememberPreference
-import com.metrolist.music.utils.safeDataStoreEdit
 import kotlinx.coroutines.launch
 
 @Composable
@@ -67,6 +66,8 @@ fun AccountSettings(
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    // Logout must survive this screen being replaced by the login gate.
+    val appScope = (context.applicationContext as? App)?.applicationScope ?: scope
 
     var authEmail by rememberPreference(BeatPlayAccountEmailKey, "")
     var authToken by rememberPreference(BeatPlayAuthTokenKey, "")
@@ -118,25 +119,19 @@ fun AccountSettings(
                     TextButton(
                         onClick = {
                             loggingOut = true
-                            scope.launch {
-                                val api = PremiumApi()
-                                try {
-                                    api.logout(serverPref.trim().trimEnd('/'), authToken)
-                                } finally {
+                            showLogoutDialog = false
+                            val token = authToken
+                            val base = serverPref.trim().trimEnd('/')
+                            // Clear the local session first (instant UI change), then revoke the
+                            // token server-side without blocking. Running on [appScope] keeps the
+                            // job alive after this screen is replaced by the login gate.
+                            appScope.launch {
+                                clearBeatPlaySession(context)
+                                if (token.isNotBlank()) {
+                                    val api = PremiumApi()
+                                    runCatching { api.logout(base, token) }
                                     api.close()
                                 }
-                                context.safeDataStoreEdit { prefs ->
-                                    prefs.remove(BeatPlayAuthTokenKey)
-                                    prefs.remove(BeatPlayAccountEmailKey)
-                                    prefs[IsPremiumKey] = false
-                                    prefs.remove(PremiumEmailKey)
-                                    prefs.remove(PremiumExpiryKey)
-                                    prefs[SongsSinceAdKey] = 0
-                                }
-                                authToken = ""
-                                authEmail = ""
-                                loggingOut = false
-                                showLogoutDialog = false
                             }
                         },
                         enabled = !loggingOut

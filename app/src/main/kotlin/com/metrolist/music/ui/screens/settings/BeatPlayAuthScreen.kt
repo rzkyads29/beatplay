@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.metrolist.music.App
 import com.metrolist.music.R
 import com.metrolist.music.constants.BeatPlayAccountEmailKey
 import com.metrolist.music.constants.BeatPlayAccountNameKey
@@ -79,6 +80,7 @@ import com.metrolist.music.constants.PremiumServerUrlKey
 import com.metrolist.music.constants.SongsSinceAdKey
 import com.metrolist.music.premium.PremiumApi
 import com.metrolist.music.premium.PremiumAuthException
+import com.metrolist.music.premium.clearBeatPlaySession
 import com.metrolist.music.premium.isValidPremiumEmail
 import com.metrolist.music.premium.networkErrorMessage
 import com.metrolist.music.ui.component.GlassButton
@@ -102,6 +104,8 @@ private enum class AuthStep { ACCOUNT, VERIFY }
 fun BeatPlayAuthScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // Logout must survive this screen being replaced by the login gate.
+    val appScope = (context.applicationContext as? App)?.applicationScope ?: scope
     val api = remember { PremiumApi() }
     val playerConnection = LocalPlayerConnection.current
     DisposableEffect(api) { onDispose { api.close() } }
@@ -470,29 +474,18 @@ fun BeatPlayAuthScreen(navController: NavController) {
                         playerConnection?.player?.stop()
                         playerConnection?.player?.clearMediaItems()
                     }
-                    scope.launch {
-                        api.logout(serverPref.trim().trimEnd('/'), authToken)
-                        context.safeDataStoreEdit { prefs ->
-                            prefs.remove(BeatPlayAuthTokenKey)
-                            prefs.remove(BeatPlayAccountEmailKey)
-                            prefs[IsPremiumKey] = false
-                            prefs.remove(PremiumEmailKey)
-                            prefs.remove(PremiumExpiryKey)
+                    val token = authToken
+                    val base = serverPref.trim().trimEnd('/')
+                    // Clear locally first so the login gate re-engages instantly, then revoke
+                    // server-side. [appScope] outlives this screen when the gate replaces it.
+                    appScope.launch {
+                        clearBeatPlaySession(context)
+                        if (token.isNotBlank()) {
+                            // This screen's api is closed when the login gate replaces it.
+                            val logoutApi = PremiumApi()
+                            runCatching { logoutApi.logout(base, token) }
+                            logoutApi.close()
                         }
-                        authToken = ""
-                        authEmail = ""
-                        showEmailForm = false
-                        premium = false
-                        expiry = null
-                        mode = AuthMode.LOGIN
-                        step = AuthStep.ACCOUNT
-                        emailInput = ""
-                        passwordInput = ""
-                        confirmInput = ""
-                        pendingEmail = ""
-                        devCode = null
-                        isError = false
-                        message = context.getString(R.string.bp_auth_logged_out)
                     }
                 }) { Text(stringResource(R.string.action_logout)) }
             },
