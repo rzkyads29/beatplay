@@ -127,18 +127,25 @@ status API mengonfirmasi `success`, ID transaksi cocok, dan `amount` serta
 - `POST /api/payments/xendit/callback` (dari Xendit, header `x-callback-token`) -> `{success:true}`
 - `POST /api/payments/buatqris/callback` (BuatQris, header `X-BuatQris-Signature`) -> `{success:true}`
 - `GET /api/premium?email=` -> `{email, premium, expiry?}` (`expiry` epoch detik; absen = lifetime manual)
-- Admin (`X-Admin-Token`): `GET /api/admin/list`, `GET /api/admin/orders`, `POST /api/admin/add|remove|revoke|activate|verify`, `POST /api/orders/mock-pay` (mock saja), `POST /api/orders/mock-pay` (mock saja), `POST /api/admin/notify/test` (kirim pesan tes ke Telegram)
+- Admin (`X-Admin-Token`): `GET /api/admin/list`, `GET /api/admin/orders`, `POST /api/admin/add|remove|revoke|activate|verify`, `POST /api/orders/mock-pay` (mock saja), `POST /api/admin/notify/test` (kirim pesan tes ke Telegram), `POST /api/admin/smtp/test` (kirim tes kode verifikasi ke email)
 
 ### Auth akun BeatPlay (tanpa Google)
 
-- `POST /api/auth/register` `{"email","password"}` -> `{ok, email, token?, requires_verification}`
-  - Tanpa SMTP (`smtp_config.json` kosong): langsung verified + token session (dev/self-host mode)
-  - Dengan SMTP: token belum ada; user cek email dan klik link verifikasi `GET /api/auth/verify?token=...`
-- `POST /api/auth/login` `{"email","password"}` -> `{ok, email, token}`
+- `POST /api/auth/register` `{"email","password","verify_mode"}` -> `{ok, email, token?, requires_verification, verification?, dev_code?}`
+  - `verify_mode="code"` (dipakai aplikasi): server membuat kode 6 digit. Dengan SMTP aktif kode dikirim ke email; `requires_verification=true` dan **tanpa** `token` sampai user memasukkan kode.
+  - Tanpa SMTP: `requires_verification=true` tetapi kode dikembalikan di `dev_code` (mode uji, aplikasi menampilkan kode di layar).
+  - `verify_mode` kosong + SMTP aktif: kirim link verifikasi (`GET /api/auth/verify?token=...`).
+  - `verify_mode` kosong + tanpa SMTP: langsung verified + token session (dev/self-host mode).
+- `POST /api/auth/verify-code` `{"email","code"}` -> `{ok, email, token, verified}` (kode 6 digit; TTL 15 menit, maks 5 percobaan)
+- `POST /api/auth/login` `{"email","password"}` -> `{ok, email, token}` (403 + `verification=code` bila akun belum diverifikasi)
 - `GET /api/auth/me` (header `Authorization: Bearer <token>`) -> `{email, verified, premium, expiry?}`
 - `POST /api/auth/logout` (header `Authorization: Bearer <token>`) -> `{ok}`
-- `POST /api/auth/resend` `{"email"}` -> kirim ulang email verifikasi (SMTP wajib)
+- `POST /api/auth/resend` `{"email"}` -> kirim ulang kode verifikasi (SMTP wajib); tanpa SMTP mengembalikan `dev_code`
 - `GET /api/auth/verify?token=...` -> aktifkan akun + link premium lama berbasis Gmail (kalau ada)
+
+**Mengaktifkan kode verifikasi email (SMTP):** isi `smtp_config.json` (lihat `smtp_config.json.example`) **atau** variabel lingkungan `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_USE_TLS`, `SMTP_USE_SSL` di `/etc/beatplay-premium.env`. Env menang atas file. Port 587 memakai STARTTLS (`SMTP_USE_TLS=true`); port 465 memakai SMTPS (`SMTP_USE_SSL=true`, `SMTP_USE_TLS=false`). Setelah diisi, restart `beatplay-premium` dan log akan menampilkan `SMTP aktif: ...`.
+
+Cara tercepat di VPS: jalankan `./enable_smtp.sh` (meminta host/port/username/password lalu menulis env + restart). Uji kirim: `POST /api/admin/smtp/test` dengan header `X-Admin-Token` dan body `{"to":"email@contoh.com"}`.
 
 Password disimpan dengan scrypt (salt acak per user). Session token acak 256-bit, TTL 30 hari, disimpan di `sessions.json`. Status premium lama berbasis Gmail di `premium_emails.json` otomatis di-link ke akun BeatPlay saat user dengan email itu mendaftar/verifikasi. Dashboard admin di `/` menampilkan daftar akun BeatPlay beserta tombol **Verifikasi** dan **Cabut**.
 

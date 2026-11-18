@@ -426,6 +426,26 @@ refreshAll();
 </script></body></html>"""
 
 
+def _open_smtp(smtp_cfg):
+    """Open an SMTP connection. Supports STARTTLS (587) and implicit SSL (465).
+
+    `use_ssl` forces SMTPS; otherwise SSL is assumed on port 465. When `use_tls` is true
+    (the default) a STARTTLS upgrade is performed on plain connections.
+    """
+    host = smtp_cfg["host"]
+    port = int(smtp_cfg.get("port", 587) or 587)
+    use_ssl = _provider_bool(smtp_cfg.get("use_ssl", port == 465))
+    if use_ssl:
+        conn = smtplib.SMTP_SSL(host, port, timeout=15)
+    else:
+        conn = smtplib.SMTP(host, port, timeout=15)
+        if smtp_cfg.get("use_tls", True):
+            conn.starttls()
+    if smtp_cfg.get("username"):
+        conn.login(smtp_cfg["username"], smtp_cfg.get("password", ""))
+    return conn
+
+
 def send_email_verification(smtp_cfg, to_email, verify_url):
     """Kirim link verifikasi. Return (ok, error). Jika SMTP tidak dikonfigurasi, anggap terkirim (dev mode)."""
     if not smtp_cfg or not smtp_cfg.get("host"):
@@ -440,11 +460,7 @@ def send_email_verification(smtp_cfg, to_email, verify_url):
             + verify_url
             + "\n\nAbaikan email ini jika kamu tidak mendaftar."
         )
-        with smtplib.SMTP(smtp_cfg["host"], int(smtp_cfg.get("port", 587)), timeout=15) as s:
-            if smtp_cfg.get("use_tls", True):
-                s.starttls()
-            if smtp_cfg.get("username"):
-                s.login(smtp_cfg["username"], smtp_cfg.get("password", ""))
+        with _open_smtp(smtp_cfg) as s:
             s.send_message(msg)
         return True, None
     except Exception as exc:  # noqa: BLE001
@@ -468,11 +484,7 @@ def send_email_code(smtp_cfg, to_email, code):
             "untuk mengaktifkan akun.\n\n"
             "Abaikan email ini jika kamu tidak mendaftar."
         )
-        with smtplib.SMTP(smtp_cfg["host"], int(smtp_cfg.get("port", 587)), timeout=15) as s:
-            if smtp_cfg.get("use_tls", True):
-                s.starttls()
-            if smtp_cfg.get("username"):
-                s.login(smtp_cfg["username"], smtp_cfg.get("password", ""))
+        with _open_smtp(smtp_cfg) as s:
             s.send_message(msg)
         return True, None
     except Exception as exc:  # noqa: BLE001
@@ -1325,7 +1337,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._buatqris_callback()
         if url.path not in ("/api/admin/add", "/api/admin/remove", "/api/admin/revoke",
                             "/api/admin/activate", "/api/admin/orders", "/api/admin/xendit/simulate",
-                            "/api/admin/notify/test", "/api/admin/verify",
+                            "/api/admin/notify/test", "/api/admin/smtp/test", "/api/admin/verify",
                             "/api/orders/mock-pay", "/api/orders/create", "/api/orders/proof",
                             "/api/auth/register", "/api/auth/login", "/api/auth/logout",
                             "/api/auth/verify-code", "/api/auth/resend", "/api/auth/profile"):
@@ -1587,6 +1599,17 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(400, {"error": "isi notify.telegram_bot_token + telegram_chat_id di tripay_config.json"})
             self._notify("Tes notif BeatPlay: kalau pesan ini masuk ke HP, notif bukti bayar sudah siap.")
             return self._send(200, {"ok": True})
+        if url.path == "/api/admin/smtp/test":
+            to = str(data.get("to", "")).strip()
+            if not EMAIL_RE.match(to):
+                return self._send(400, {"error": "email tujuan tidak valid"})
+            if not (self.smtp_cfg and self.smtp_cfg.get("host")):
+                return self._send(400, {"error": "SMTP belum dikonfigurasi: isi SMTP_HOST/SMTP_USERNAME/SMTP_PASSWORD atau smtp_config.json"})
+            code = "{:06d}".format(secrets.randbelow(1000000))
+            sent, err = send_email_code(self.smtp_cfg, to, code)
+            if not sent:
+                return self._send(502, {"error": "gagal mengirim email: {}".format(err)})
+            return self._send(200, {"ok": True, "to": to})
         return self._send(404, {"error": "not found"})
 
     # ---- helpers ----
@@ -1982,6 +2005,34 @@ def main():
     Handler.orders = OrderStore(args.orders_store)
     Handler.users = UserStore(args.users_store, args.sessions_store)
     Handler.smtp_cfg = load_json(os.path.join(HERE, "smtp_config.json"), {})
+    # SMTP for the email verification code. Credentials can come from smtp_config.json or
+    # from the service env file; environment variables win so secrets stay out of the repo.
+    #   SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM,
+    #   SMTP_USE_TLS (STARTTLS, default true), SMTP_USE_SSL (implicit TLS, default when port=465)
+    smtp_cfg = dict(Handler.smtp_cfg or {})
+    for env_name, key in (
+        ("SMTP_HOST", "host"),
+        ("SMTP_USERNAME", "username"),
+        ("SMTP_PASSWORD", "password"),
+        ("SMTP_FROM", "from"),
+    ):
+        value = os.getenv(env_name)
+        if value:
+            smtp_cfg[key] = value
+    if os.getenv("SMTP_PORT"):
+        try:
+            smtp_cfg["port"] = int(os.getenv("SMTP_PORT"))
+        except ValueError:
+            pass
+    if os.getenv("SMTP_USE_TLS") is not None:
+        smtp_cfg["use_tls"] = _provider_bool(os.getenv("SMTP_USE_TLS"))
+    if os.getenv("SMTP_USE_SSL") is not None:
+        smtp_cfg["use_ssl"] = _provider_bool(os.getenv("SMTP_USE_SSL"))
+    Handler.smtp_cfg = smtp_cfg
+    if smtp_cfg.get("host"):
+        print("SMTP aktif: kode verifikasi akan dikirim via {}".format(smtp_cfg["host"]), flush=True)
+    else:
+        print("SMTP nonaktif: /api/auth/register mengembalikan dev_code (bukan kirim email)", flush=True)
     Handler.plans = load_json(args.plans, {"plans": [], "tripay_method": "QRIS2"})
     Handler.pay_cfg = load_json(args.tripay_config, {"mode": "mock"})
     provider_env = os.getenv("PAYMENT_PROVIDER", "").strip().lower()

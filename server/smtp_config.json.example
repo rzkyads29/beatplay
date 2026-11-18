@@ -1,0 +1,9 @@
+{
+  "host": "smtp.example.com",
+  "port": 587,
+  "username": "no-reply@adminbeat.my.id",
+  "password": "ISI_PASSWORD_SMTP",
+  "from": "BeatPlay <no-reply@adminbeat.my.id>",
+  "use_tls": true,
+  "use_ssl": false
+}
