@@ -162,7 +162,19 @@ Cara tercepat di VPS: jalankan `./enable_smtp.sh` (meminta host/port/username/pa
 
 Password disimpan dengan scrypt (salt acak per user). Session token acak 256-bit, TTL 30 hari, disimpan di `sessions.json`. Status premium lama berbasis Gmail di `premium_emails.json` otomatis di-link ke akun BeatPlay saat user dengan email itu mendaftar/verifikasi. Dashboard admin di `/` menampilkan daftar akun BeatPlay beserta tombol **Verifikasi** dan **Cabut**.
 
-File runtime (`orders.json`, `premium_expiry.json`, `users.json`, `sessions.json`, `tripay_config.json`, `smtp_config.json`) di-gitignore.
+### Playlist publik, like, dan jumlah diputar
+
+Playlist disimpan di `beatplay_playlists.json` (runtime, gitignored). Setiap playlist milik satu akun dan menyimpan snapshot lagu, daftar email yang menyukai, dan penghitung pemutaran.
+
+- `POST /api/playlists/sync` `{"playlists":[{"id","name","cover","songs":[{"id","title","artist","thumbnail","duration"}]}]}` (Bearer token) -> `{ok, count}`. Menggantikan snapshot playlist akun; jumlah like dan pemutaran playlist lama dipertahankan.
+- `GET /api/user/<kode>/playlists` (Bearer opsional untuk status `liked`) -> `{profile, playlists:[{id,name,cover,songCount,likes,liked,plays,updatedAt}]}`
+- `GET /api/playlist/<id>` (Bearer opsional) -> detail playlist + `songs` + `owner`
+- `POST /api/playlist/like` `{"id"}` (Bearer token) -> `{likes, liked}` (toggle)
+- `POST /api/playlist/play` `{"id"}` -> `{plays}` (menambah satu pemutaran)
+
+Aplikasi memakai endpoint ini setelah pengguna menekan **Publikasikan** di halaman profil; QR pada kartu kode BeatPlay berisi link `/f/<kode>` sehingga bisa dipindai dari tab Pencarian.
+
+File runtime (`orders.json`, `premium_expiry.json`, `users.json`, `sessions.json`, `beatplay_playlists.json`, `tripay_config.json`, `smtp_config.json`) di-gitignore.
 Kredensial BuatQris disimpan di `/etc/beatplay-premium.env`, bukan di file aplikasi.
 Tes logika: `python3 test_tripay.py`.
 

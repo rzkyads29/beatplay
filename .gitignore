@@ -11,6 +11,7 @@ server/premium_expiry.json
 server/users.json
 server/sessions.json
 server/smtp_config.json
+server/beatplay_playlists.json
 server/proofs/
 server/__test_tmp/
 __pycache__/

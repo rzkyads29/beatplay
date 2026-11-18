@@ -516,6 +516,127 @@ def send_reset_code(smtp_cfg, to_email, code):
         return False, str(exc)
 
 
+class PlaylistStore:
+    """Playlist publik per akun BeatPlay, plus jumlah like dan berapa kali diputar."""
+
+    MAX_PLAYLISTS = 100
+    MAX_SONGS = 500
+
+    def __init__(self, path):
+        self.path = path
+        self.items = {}
+        self.lock = threading.RLock()
+        self.load()
+
+    def load(self):
+        self.items = load_json(self.path, {})
+
+    def save(self):
+        save_json(self.path, self.items)
+
+    @staticmethod
+    def _sanitize_song(song):
+        if not isinstance(song, dict):
+            return None
+        sid = str(song.get("id", "")).strip()
+        if not sid:
+            return None
+        try:
+            duration = int(song.get("duration") or 0)
+        except (TypeError, ValueError):
+            duration = 0
+        return {
+            "id": sid[:64],
+            "title": str(song.get("title", ""))[:200],
+            "artist": str(song.get("artist", ""))[:200],
+            "thumbnail": str(song.get("thumbnail", ""))[:600],
+            "duration": max(0, duration),
+        }
+
+    def sync(self, owner, playlists):
+        """Replace the owner's published playlists with [playlists], keeping likes/plays."""
+        owner = str(owner or "").strip().lower()
+        if not owner or not isinstance(playlists, list):
+            return 0
+        with self.lock:
+            keep = {}
+            for pl in playlists[: self.MAX_PLAYLISTS]:
+                if not isinstance(pl, dict):
+                    continue
+                pid = re.sub(r"[^A-Za-z0-9_-]", "", str(pl.get("id", "")).strip())[:64]
+                pid = pid or secrets.token_hex(8)
+                songs = [
+                    s
+                    for s in (
+                        self._sanitize_song(x)
+                        for x in (pl.get("songs") or [])[: self.MAX_SONGS]
+                    )
+                    if s
+                ]
+                existing = self.items.get(pid) or {}
+                keep[pid] = {
+                    "id": pid,
+                    "owner": owner,
+                    "name": (str(pl.get("name", "")).strip() or "Playlist")[:80],
+                    "cover": str(pl.get("cover", ""))[:600],
+                    "songs": songs,
+                    "likes": existing.get("likes") if isinstance(existing.get("likes"), list) else [],
+                    "plays": int(existing.get("plays", 0) or 0),
+                    "createdAt": int(existing.get("createdAt", time.time())),
+                    "updatedAt": int(time.time()),
+                }
+            for pid in [p for p, rec in self.items.items() if rec.get("owner") == owner and p not in keep]:
+                del self.items[pid]
+            self.items.update(keep)
+            self.save()
+            return len(keep)
+
+    def by_owner(self, email):
+        email = str(email or "").strip().lower()
+        return [rec for rec in self.items.values() if rec.get("owner") == email]
+
+    def get(self, pid):
+        return self.items.get(str(pid or "").strip())
+
+    def toggle_like(self, pid, email):
+        email = str(email or "").strip().lower()
+        with self.lock:
+            rec = self.get(pid)
+            if not rec:
+                return None
+            likes = rec.setdefault("likes", [])
+            if email in likes:
+                likes.remove(email)
+                liked = False
+            else:
+                likes.append(email)
+                liked = True
+            self.save()
+            return {"likes": len(likes), "liked": liked}
+
+    def add_play(self, pid):
+        with self.lock:
+            rec = self.get(pid)
+            if not rec:
+                return None
+            rec["plays"] = int(rec.get("plays", 0) or 0) + 1
+            self.save()
+            return {"plays": rec["plays"]}
+
+    def public_summary(self, rec, viewer_email=None):
+        likes = rec.get("likes") if isinstance(rec.get("likes"), list) else []
+        return {
+            "id": rec.get("id", ""),
+            "name": rec.get("name", ""),
+            "cover": rec.get("cover", ""),
+            "songCount": len(rec.get("songs") or []),
+            "likes": len(likes),
+            "liked": bool(viewer_email and viewer_email in likes),
+            "plays": int(rec.get("plays", 0) or 0),
+            "updatedAt": int(rec.get("updatedAt", 0) or 0),
+        }
+
+
 class PremiumStore:
     """Gmail manual (lifetime) + expiry berbayar (epoch detik)."""
 
@@ -1155,6 +1276,7 @@ class Handler(BaseHTTPRequestHandler):
     public_base = ""
     users = None
     sessions = None
+    playlists = None
     smtp_cfg = None
     auth_require_verify = False
 
@@ -1256,6 +1378,42 @@ class Handler(BaseHTTPRequestHandler):
             out.update(self.users.public_profile(user))
             if out.get("avatar"):
                 out["avatar_url"] = self._abs("/avatar/" + urllib.parse.quote(out["avatar"]))
+            return self._send(200, out)
+        if url.path.startswith("/api/user/") and url.path.rstrip("/").endswith("/playlists"):
+            code = urllib.parse.unquote(
+                url.path[len("/api/user/"): url.path.rstrip("/").rfind("/playlists")]
+            ).strip()
+            user = self.users.by_follow_code(code)
+            if not user:
+                return self._send(404, {"error": "kode tidak ditemukan"})
+            viewer = self._auth_user()
+            viewer_email = (viewer or {}).get("email")
+            records = sorted(
+                self.playlists.by_owner(user["email"]),
+                key=lambda rec: rec.get("updatedAt", 0),
+                reverse=True,
+            )
+            profile = self.users.public_profile(user)
+            profile.pop("email", None)
+            if profile.get("avatar"):
+                profile["avatar_url"] = self._abs("/avatar/" + urllib.parse.quote(profile["avatar"]))
+            return self._send(200, {
+                "profile": profile,
+                "playlists": [self.playlists.public_summary(rec, viewer_email) for rec in records],
+            })
+        if url.path.startswith("/api/playlist/"):
+            pid = urllib.parse.unquote(url.path[len("/api/playlist/"):]).strip().split("/")[0]
+            rec = self.playlists.get(pid)
+            if not rec:
+                return self._send(404, {"error": "playlist tidak ditemukan"})
+            viewer = self._auth_user()
+            viewer_email = (viewer or {}).get("email")
+            owner = self.users.get(rec.get("owner"))
+            out = self.playlists.public_summary(rec, viewer_email)
+            out["songs"] = rec.get("songs") or []
+            owner_profile = self.users.public_profile(owner) if owner else {"name": "Pengguna BeatPlay"}
+            owner_profile.pop("email", None)
+            out["owner"] = owner_profile
             return self._send(200, out)
         if url.path.startswith("/api/user/"):
             code = urllib.parse.unquote(url.path[len("/api/user/"):]).strip()
@@ -1433,7 +1591,8 @@ class Handler(BaseHTTPRequestHandler):
                             "/api/orders/mock-pay", "/api/orders/create", "/api/orders/proof",
                             "/api/auth/register", "/api/auth/login", "/api/auth/logout",
                             "/api/auth/verify-code", "/api/auth/resend", "/api/auth/profile",
-                            "/api/auth/forgot", "/api/auth/reset"):
+                            "/api/auth/forgot", "/api/auth/reset",
+                            "/api/playlists/sync", "/api/playlist/like", "/api/playlist/play"):
             return self._send(404, {"error": "not found"})
         needs_body = url.path not in ("/api/orders/mock-pay", "/api/auth/logout")
         raw, data = self._body_json()
@@ -1539,6 +1698,28 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(401, {"error": "email atau kata sandi salah"})
             token = self.users.create_session(user["email"])
             return self._send(200, {"ok": True, "email": user["email"], "token": token})
+
+        if url.path == "/api/playlists/sync":
+            user = self._auth_user()
+            if not user:
+                return self._send(401, {"error": "unauthorized"})
+            count = self.playlists.sync(user["email"], data.get("playlists") or [])
+            return self._send(200, {"ok": True, "count": count})
+
+        if url.path == "/api/playlist/like":
+            user = self._auth_user()
+            if not user:
+                return self._send(401, {"error": "unauthorized"})
+            result = self.playlists.toggle_like(data.get("id"), user["email"])
+            if not result:
+                return self._send(404, {"error": "playlist tidak ditemukan"})
+            return self._send(200, result)
+
+        if url.path == "/api/playlist/play":
+            result = self.playlists.add_play(data.get("id"))
+            if not result:
+                return self._send(404, {"error": "playlist tidak ditemukan"})
+            return self._send(200, result)
 
         if url.path == "/api/auth/logout":
             token = self._bearer_token()
@@ -2125,6 +2306,7 @@ def main():
     Handler.premium = PremiumStore(args.store, args.expiry_store)
     Handler.orders = OrderStore(args.orders_store)
     Handler.users = UserStore(args.users_store, args.sessions_store)
+    Handler.playlists = PlaylistStore(os.path.join(HERE, "beatplay_playlists.json"))
     Handler.smtp_cfg = load_json(os.path.join(HERE, "smtp_config.json"), {})
     # SMTP for the email verification code. Credentials can come from smtp_config.json or
     # from the service env file; environment variables win so secrets stay out of the repo.
