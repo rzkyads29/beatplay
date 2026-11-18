@@ -97,7 +97,7 @@ import kotlinx.coroutines.launch
 import java.util.Date
 
 private enum class AuthMode { LOGIN, REGISTER }
-private enum class AuthStep { ACCOUNT, VERIFY }
+private enum class AuthStep { ACCOUNT, VERIFY, RESET }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,6 +126,11 @@ fun BeatPlayAuthScreen(navController: NavController) {
     var devCode by remember { mutableStateOf<String?>(null) }
     var otp by remember { mutableStateOf(List(6) { "" }) }
     var otpCountdown by remember { mutableIntStateOf(0) }
+    // Forgot-password flow (separate from sign-up verification).
+    var resetEmail by remember { mutableStateOf("") }
+    var resetEmailPhase by remember { mutableStateOf(true) }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmNewPassword by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var isError by remember { mutableStateOf(false) }
@@ -329,7 +334,125 @@ fun BeatPlayAuthScreen(navController: NavController) {
         }
     }
 
-    val isSplash = !loggedIn && !emailSubmitted && step != AuthStep.VERIFY
+    fun sendResetCode() {
+        val target = resetEmail.trim().lowercase()
+        if (!isValidPremiumEmail(target)) {
+            isError = true
+            message = "Masukkan email yang valid."
+            return
+        }
+        if (loading) return
+        loading = true
+        message = null
+        isError = false
+        scope.launch {
+            val base = serverPref.trim().trimEnd('/')
+            runCatching { api.forgotPassword(base, target) }
+                .onSuccess { code ->
+                    resetEmail = target
+                    pendingEmail = target
+                    devCode = code
+                    otp = List(6) { "" }
+                    otpCountdown = 60
+                    resetEmailPhase = false
+                    step = AuthStep.RESET
+                    message = "Kalau email terdaftar, kode reset sudah dikirim."
+                    isError = false
+                }
+                .onFailure {
+                    isError = true
+                    message = "Gagal mengirim kode: ${networkErrorMessage(it, serverPref)}"
+                }
+            loading = false
+        }
+    }
+
+    fun openForgot() {
+        val target = emailInput.trim().lowercase()
+        message = null
+        isError = false
+        resetEmail = target
+        newPassword = ""
+        confirmNewPassword = ""
+        otp = List(6) { "" }
+        devCode = null
+        step = AuthStep.RESET
+        if (isValidPremiumEmail(target)) {
+            sendResetCode()
+        } else {
+            resetEmailPhase = true
+        }
+    }
+
+    fun resendResetCode() {
+        if (loading || otpCountdown > 0) return
+        loading = true
+        scope.launch {
+            val base = serverPref.trim().trimEnd('/')
+            runCatching { api.forgotPassword(base, pendingEmail) }
+                .onSuccess { code ->
+                    devCode = code
+                    otp = List(6) { "" }
+                    otpCountdown = 60
+                    isError = false
+                    message = if (code != null) "Kode baru dibuat (mode uji)." else "Kode baru dikirim ke email."
+                }
+                .onFailure {
+                    isError = true
+                    message = "Gagal kirim ulang: ${networkErrorMessage(it, serverPref)}"
+                }
+            loading = false
+        }
+    }
+
+    fun submitResetCode() {
+        if (loading) return
+        val code = otp.joinToString("")
+        if (code.length != 6) {
+            isError = true
+            message = "Masukkan 6 digit kode verifikasi."
+            return
+        }
+        if (newPassword.length < 8) {
+            isError = true
+            message = "Kata sandi baru minimal 8 karakter."
+            return
+        }
+        if (newPassword != confirmNewPassword) {
+            isError = true
+            message = "Konfirmasi kata sandi tidak cocok."
+            return
+        }
+        loading = true
+        message = null
+        isError = false
+        scope.launch {
+            val base = serverPref.trim().trimEnd('/')
+            runCatching { api.resetPassword(base, pendingEmail, code, newPassword) }
+                .onSuccess {
+                    message = "Password berhasil direset. Silakan masuk dengan password baru."
+                    isError = false
+                    step = AuthStep.ACCOUNT
+                    mode = AuthMode.LOGIN
+                    emailSubmitted = true
+                    emailInput = pendingEmail
+                    passwordInput = ""
+                    confirmInput = ""
+                    newPassword = ""
+                    confirmNewPassword = ""
+                    otp = List(6) { "" }
+                    devCode = null
+                    resetEmailPhase = true
+                }
+                .onFailure {
+                    isError = true
+                    message = "Gagal reset password: ${networkErrorMessage(it, serverPref)}"
+                }
+            loading = false
+        }
+    }
+
+    val isSplash = !loggedIn && !emailSubmitted && step == AuthStep.ACCOUNT
 
     Scaffold(
         topBar = {
@@ -349,7 +472,22 @@ fun BeatPlayAuthScreen(navController: NavController) {
                                 .size(40.dp)
                                 .clip(CircleShape)
                                 .background(ObsidianColors.surfaceHigh)
-                                .clickable { navController.navigateUp() },
+                                .clickable {
+                                    when (step) {
+                                        AuthStep.RESET -> {
+                                            step = AuthStep.ACCOUNT
+                                            emailSubmitted = true
+                                            message = null
+                                            isError = false
+                                        }
+                                        AuthStep.VERIFY -> {
+                                            step = AuthStep.ACCOUNT
+                                            emailSubmitted = false
+                                            message = null
+                                        }
+                                        else -> navController.navigateUp()
+                                    }
+                                },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
@@ -426,6 +564,35 @@ fun BeatPlayAuthScreen(navController: NavController) {
                     },
                     onSubmit = { submitCode() },
                 )
+            } else if (step == AuthStep.RESET) {
+                ResetPanel(
+                    emailPhase = resetEmailPhase,
+                    email = resetEmail,
+                    onEmail = { resetEmail = it; message = null },
+                    code = otp,
+                    onCode = { next -> otp = next },
+                    countdown = otpCountdown,
+                    devCode = devCode,
+                    newPassword = newPassword,
+                    onNewPassword = { newPassword = it; message = null },
+                    confirmNewPassword = confirmNewPassword,
+                    onConfirmNewPassword = { confirmNewPassword = it; message = null },
+                    showPassword = showPassword,
+                    onTogglePassword = { showPassword = !showPassword },
+                    loading = loading,
+                    message = message,
+                    isError = isError,
+                    onSendCode = { sendResetCode() },
+                    onResend = { resendResetCode() },
+                    onChangeEmail = { resetEmailPhase = true; message = null; isError = false },
+                    onSubmit = { submitResetCode() },
+                    onBack = {
+                        step = AuthStep.ACCOUNT
+                        emailSubmitted = true
+                        message = null
+                        isError = false
+                    },
+                )
             } else {
                 AccountPanel(
                     mode = mode,
@@ -455,6 +622,7 @@ fun BeatPlayAuthScreen(navController: NavController) {
                     isError = isError,
                     onSubmit = { submitEmail() },
                     onBack = { emailSubmitted = false; message = null; isError = false },
+                    onForgot = { openForgot() },
                 )
             }
         }
@@ -585,6 +753,7 @@ private fun AccountPanel(
     isError: Boolean,
     onSubmit: () -> Unit,
     onBack: () -> Unit,
+    onForgot: () -> Unit,
 ) {
     var emailPhase by remember { mutableStateOf(true) }
     val emailOk = isValidPremiumEmail(email)
@@ -683,6 +852,18 @@ private fun AccountPanel(
                         unfocusedTextColor = ObsidianColors.textPrimary,
                         cursorColor = ObsidianColors.textPrimary,
                     ),
+                )
+            }
+
+            if (mode == AuthMode.LOGIN) {
+                Text(
+                    "Lupa kata sandi?",
+                    color = ObsidianColors.cyan,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .clickable(enabled = !loading) { onForgot() },
                 )
             }
 
@@ -843,6 +1024,183 @@ private fun VerifyPanel(
             )
             message?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = if (isError) ObsidianColors.danger else ObsidianColors.cyan)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResetPanel(
+    emailPhase: Boolean,
+    email: String,
+    onEmail: (String) -> Unit,
+    code: List<String>,
+    onCode: (List<String>) -> Unit,
+    countdown: Int,
+    devCode: String?,
+    newPassword: String,
+    onNewPassword: (String) -> Unit,
+    confirmNewPassword: String,
+    onConfirmNewPassword: (String) -> Unit,
+    showPassword: Boolean,
+    onTogglePassword: () -> Unit,
+    loading: Boolean,
+    message: String?,
+    isError: Boolean,
+    onSendCode: () -> Unit,
+    onResend: () -> Unit,
+    onChangeEmail: () -> Unit,
+    onSubmit: () -> Unit,
+    onBack: () -> Unit,
+) {
+    GlassCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
+        Column(
+            Modifier.fillMaxWidth().padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(
+                "Lupa kata sandi?",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+
+            if (emailPhase) {
+                Text(
+                    "Masukkan email akun BeatPlay kamu. Kami akan mengirim kode verifikasi untuk membuat password baru.",
+                    color = ObsidianColors.slate400,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
+                )
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = onEmail,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = { Text("nama@gmail.com", color = ObsidianColors.slate500) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done),
+                    shape = RoundedCornerShape(6.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = ObsidianColors.surfaceHigh,
+                        unfocusedContainerColor = ObsidianColors.surfaceHigh,
+                        focusedBorderColor = ObsidianColors.textPrimary,
+                        unfocusedBorderColor = ObsidianColors.slate500,
+                        focusedTextColor = ObsidianColors.textPrimary,
+                        unfocusedTextColor = ObsidianColors.textPrimary,
+                        cursorColor = ObsidianColors.textPrimary,
+                    ),
+                )
+                GradientButton(
+                    text = if (loading) "Mengirim..." else "Kirim kode",
+                    onClick = onSendCode,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    enabled = isValidPremiumEmail(email) && !loading,
+                    loading = loading,
+                )
+                Text(
+                    "Kembali ke masuk",
+                    color = ObsidianColors.textPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.clickable(enabled = !loading) { onBack() },
+                )
+            } else {
+                Text(
+                    "Masukkan kode 6 digit yang dikirim ke\n$email",
+                    color = ObsidianColors.slate400,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
+                )
+                OtpBoxes(code, onCode)
+                if (devCode != null) {
+                    Text(
+                        "Mode uji (SMTP belum aktif) — kode: $devCode",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ObsidianColors.cyan,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                OutlinedTextField(
+                    value = newPassword,
+                    onValueChange = onNewPassword,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Password baru") },
+                    trailingIcon = {
+                        Text(
+                            stringResource(if (showPassword) R.string.bp_auth_hide else R.string.bp_auth_show),
+                            color = ObsidianColors.slate400,
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(end = 4.dp).clickable { onTogglePassword() },
+                        )
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
+                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    shape = RoundedCornerShape(6.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = ObsidianColors.surfaceHigh,
+                        unfocusedContainerColor = ObsidianColors.surfaceHigh,
+                        focusedBorderColor = ObsidianColors.textPrimary,
+                        unfocusedBorderColor = ObsidianColors.slate500,
+                        focusedTextColor = ObsidianColors.textPrimary,
+                        unfocusedTextColor = ObsidianColors.textPrimary,
+                        cursorColor = ObsidianColors.textPrimary,
+                    ),
+                )
+                OutlinedTextField(
+                    value = confirmNewPassword,
+                    onValueChange = onConfirmNewPassword,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Ulangi password baru") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    shape = RoundedCornerShape(6.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = ObsidianColors.surfaceHigh,
+                        unfocusedContainerColor = ObsidianColors.surfaceHigh,
+                        focusedBorderColor = ObsidianColors.textPrimary,
+                        unfocusedBorderColor = ObsidianColors.slate500,
+                        focusedTextColor = ObsidianColors.textPrimary,
+                        unfocusedTextColor = ObsidianColors.textPrimary,
+                        cursorColor = ObsidianColors.textPrimary,
+                    ),
+                )
+                GradientButton(
+                    text = if (loading) "Menyimpan..." else "Simpan password baru",
+                    onClick = onSubmit,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    enabled = code.joinToString("").length == 6 &&
+                        newPassword.length >= 8 &&
+                        newPassword == confirmNewPassword &&
+                        !loading,
+                    loading = loading,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Tidak menerima kode?", color = ObsidianColors.slate500, style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        if (countdown > 0) "Kirim ulang dalam ${countdown}s" else "Kirim ulang kode",
+                        color = if (countdown > 0) ObsidianColors.slate500 else ObsidianColors.cyan,
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.clickable(enabled = countdown == 0 && !loading) { onResend() },
+                    )
+                }
+                Text(
+                    "Ubah email",
+                    color = ObsidianColors.slate400,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.clickable(enabled = !loading) { onChangeEmail() },
+                )
+            }
+
+            message?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isError) ObsidianColors.danger else ObsidianColors.cyan,
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }

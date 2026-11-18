@@ -137,6 +137,39 @@ class PremiumApi(
         return AuthResult(token, false, email)
     }
 
+    /** Ask for a password-reset code. Returns the dev code when SMTP is not configured. */
+    suspend fun forgotPassword(serverUrl: String, email: String): String? {
+        val base = serverUrl.trim().trimEnd('/')
+        val payload = "{\"email\":\"${esc(email)}\"}"
+        val (status, text) = retrying(onlyIfNotSent = true) {
+            val res = client.post("$base/api/auth/forgot") {
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }
+            res.status.value to res.bodyAsText()
+        }
+        check(status == 200) { parseError(text) }
+        return runCatching {
+            Json.parseToJsonElement(text).jsonObject["dev_code"]
+                ?.takeIf { it !is JsonNull }?.jsonPrimitive?.content
+        }.getOrNull()
+    }
+
+    /** Finish a password reset with the emailed 6-digit code and a new password. */
+    suspend fun resetPassword(serverUrl: String, email: String, code: String, newPassword: String) {
+        val base = serverUrl.trim().trimEnd('/')
+        val payload =
+            "{\"email\":\"${esc(email)}\",\"code\":\"${esc(code)}\",\"password\":\"${esc(newPassword)}\"}"
+        val (status, text) = retrying(onlyIfNotSent = true) {
+            val res = client.post("$base/api/auth/reset") {
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }
+            res.status.value to res.bodyAsText()
+        }
+        check(status == 200) { parseError(text) }
+    }
+
     /** Fetch account info + premium status. Throws on 401. */
     suspend fun me(serverUrl: String, token: String): MeInfo {
         val base = serverUrl.trim().trimEnd('/')
