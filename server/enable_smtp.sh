@@ -13,6 +13,9 @@ set -euo pipefail
 ENV_FILE="${ENV_FILE:-/etc/beatplay-premium.env}"
 SERVICE="${SERVICE:-beatplay-premium}"
 
+# Pakai sudo hanya kalau bukan root, supaya skrip jalan di `sudo -i` maupun sebagai user biasa.
+if [ "$(id -u)" -eq 0 ]; then SUDO=""; else SUDO="sudo"; fi
+
 default_host="mail.adminbeat.my.id"
 default_user="no-reply@adminbeat.my.id"
 default_from="BeatPlay <no-reply@adminbeat.my.id>"
@@ -43,11 +46,11 @@ else
   SMTP_USE_SSL=false
 fi
 
-sudo touch "$ENV_FILE"
-sudo chmod 600 "$ENV_FILE"
+$SUDO touch "$ENV_FILE"
+$SUDO chmod 600 "$ENV_FILE"
 # Hapus baris SMTP lama, sisakan variabel lain (ADMIN_TOKEN, PUBLIC_BASE, dst).
-sudo sed -i '/^SMTP_/d' "$ENV_FILE"
-sudo tee -a "$ENV_FILE" >/dev/null <<EOF
+$SUDO sed -i '/^SMTP_/d' "$ENV_FILE"
+$SUDO tee -a "$ENV_FILE" >/dev/null <<EOF
 SMTP_HOST=$SMTP_HOST
 SMTP_PORT=$SMTP_PORT
 SMTP_USERNAME=$SMTP_USERNAME
@@ -58,10 +61,10 @@ SMTP_USE_SSL=$SMTP_USE_SSL
 EOF
 
 echo "Merestart $SERVICE ..."
-sudo systemctl restart "$SERVICE"
+$SUDO systemctl restart "$SERVICE"
 sleep 2
 echo "--- log terakhir ---"
-sudo journalctl -u "$SERVICE" -n 15 --no-pager || true
+$SUDO journalctl -u "$SERVICE" -n 15 --no-pager || true
 echo
 echo "Selesai. Pastikan log menampilkan 'SMTP aktif: ...'."
 echo "Uji kirim email dari server (ganti ADMIN_TOKEN):"
