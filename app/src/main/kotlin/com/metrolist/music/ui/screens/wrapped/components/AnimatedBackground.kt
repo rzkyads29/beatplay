@@ -72,17 +72,18 @@ internal fun AnimatedBackground(
             val currentX = element.initialX + (element.targetX - element.initialX) * progress
             val currentY = element.initialY + (element.targetY - element.initialY) * progress
 
+            val accent = WrappedAccents[index % WrappedAccents.size]
             when (element.shapeType) {
                 ShapeType.Circle -> {
                     drawCircle(
-                        color = Color.White.copy(alpha = element.alpha),
+                        color = accent.copy(alpha = element.alpha),
                         radius = element.size,
                         center = Offset(currentX * size.width, currentY * size.height)
                     )
                 }
                 ShapeType.Rect -> {
                     drawRect(
-                        color = Color.White.copy(alpha = element.alpha),
+                        color = accent.copy(alpha = element.alpha),
                         topLeft = Offset(currentX * size.width, currentY * size.height),
                         size = Size(element.size, element.size)
                     )
@@ -91,7 +92,7 @@ internal fun AnimatedBackground(
                     val endX = currentX + (element.targetX - element.initialX) * 0.1f
                     val endY = currentY + (element.targetY - element.initialY) * 0.1f
                     drawLine(
-                        color = Color.White.copy(alpha = element.alpha),
+                        color = accent.copy(alpha = element.alpha),
                         start = Offset(currentX * size.width, currentY * size.height),
                         end = Offset(endX * size.width, endY * size.height),
                         strokeWidth = 2f

@@ -30,7 +30,6 @@ import com.metrolist.music.ui.screens.artist.ArtistAlbumsScreen
 import com.metrolist.music.ui.screens.artist.ArtistItemsScreen
 import com.metrolist.music.ui.screens.artist.ArtistScreen
 import com.metrolist.music.ui.screens.artist.ArtistSongsScreen
-import com.metrolist.music.ui.screens.beatplay.BeatPlayWrappedRoute
 import com.metrolist.music.ui.screens.equalizer.EqScreen
 import com.metrolist.music.ui.screens.equalizer.wizard.WizardScreen
 import com.metrolist.music.ui.screens.library.LibraryScreen
@@ -471,13 +470,10 @@ fun NavGraphBuilder.navigationBuilder(
         )
     }
 
+    // Single BeatPlay recap entry point: the drawer row, the Home banners and
+    // Settings > "Rekap Tahun Ini" all land here.
     composable("wrapped") {
         WrappedScreen()
-    }
-
-    // BeatPlay Wrapped 2026 — story-style recap opened from the drawer / Home card.
-    composable("beatplay_wrapped") {
-        BeatPlayWrappedRoute(onClose = { navController.popBackStack() })
     }
 
     composable("equalizer") {

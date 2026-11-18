@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
@@ -49,8 +51,12 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.metrolist.music.R
 import com.metrolist.music.db.entities.Album
+import com.metrolist.music.ui.screens.beatplay.BeatPlayGreen
+import com.metrolist.music.ui.screens.beatplay.NeonBlue
+import com.metrolist.music.ui.screens.wrapped.WrappedConstants
 import com.metrolist.music.ui.screens.wrapped.components.AnimatedBackground
 import com.metrolist.music.ui.screens.wrapped.components.ShapeType
+import com.metrolist.music.ui.screens.wrapped.components.WrappedEyebrow
 import com.metrolist.music.ui.theme.bbh_bartle
 import kotlinx.coroutines.delay
 
@@ -81,6 +87,8 @@ fun WrappedTotalAlbumsScreen(uniqueAlbumCount: Int, isVisible: Boolean) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            WrappedEyebrow(text = "ALBUM UNIK • ${WrappedConstants.YEAR}", color = NeonBlue)
+            Spacer(Modifier.height(14.dp))
             AnimatedVisibility(
                 visible = visible,
                 enter = fadeIn(animationSpec = tween(1000, delayMillis = 200)) + slideInVertically(animationSpec = tween(1000, delayMillis = 200))
@@ -99,7 +107,7 @@ fun WrappedTotalAlbumsScreen(uniqueAlbumCount: Int, isVisible: Boolean) {
             BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 val density = LocalDensity.current
                 val baseStyle = MaterialTheme.typography.displayLarge.copy(
-                    color = Color.White,
+                    color = BeatPlayGreen,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
                     fontFamily = bbh_bartle,
@@ -163,6 +171,8 @@ fun WrappedTopAlbumScreen(topAlbum: Album?, isVisible: Boolean) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            WrappedEyebrow(text = "ALBUM TERATAS", color = NeonBlue)
+            Spacer(modifier = Modifier.height(12.dp))
             AnimatedVisibility(
                 visible = visible,
                 enter = fadeIn(animationSpec = tween(1000, delayMillis = 200)) + slideInVertically(animationSpec = tween(1000, delayMillis = 200))
@@ -188,7 +198,12 @@ fun WrappedTopAlbumScreen(topAlbum: Album?, isVisible: Boolean) {
                     contentDescription = stringResource(R.string.album_art_for, topAlbum?.title ?: ""),
                     modifier = Modifier
                         .size(200.dp)
-                        .clip(RoundedCornerShape(3.dp)),
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(
+                            width = 2.dp,
+                            brush = Brush.linearGradient(listOf(BeatPlayGreen, NeonBlue)),
+                            shape = RoundedCornerShape(8.dp),
+                        ),
                     contentScale = ContentScale.Crop
                 )
             }
@@ -241,6 +256,8 @@ fun WrappedTop5AlbumsScreen(topAlbums: List<Album>, isVisible: Boolean) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            WrappedEyebrow(text = "5 ALBUM TERATAS • ${WrappedConstants.YEAR}", color = NeonBlue)
+            Spacer(modifier = Modifier.height(10.dp))
             AnimatedVisibility(
                 visible = visible,
                 enter = fadeIn(animationSpec = tween(1000, delayMillis = 200)) + slideInVertically(animationSpec = tween(1000, delayMillis = 200))
@@ -274,7 +291,7 @@ fun WrappedTop5AlbumsScreen(topAlbums: List<Album>, isVisible: Boolean) {
                                 text = "${index + 1}",
                                 fontFamily = bbh_bartle,
                                 fontSize = 36.sp,
-                                color = Color.White.copy(alpha = 0.8f),
+                                color = if (index == 0) BeatPlayGreen else Color.White.copy(alpha = 0.55f),
                                 modifier = Modifier.width(40.dp)
                             )
                             Spacer(modifier = Modifier.width(16.dp))

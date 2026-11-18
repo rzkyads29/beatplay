@@ -236,7 +236,7 @@ fun ObsidianProfileDrawer(
                 DrawerRow("Statistik Pendengaran", R.drawable.stats) { go("stats") }
                 DrawerRow("Baru Diputar", R.drawable.history) { go("history") }
                 DrawerRow("Info Terkini", R.drawable.library_music_outlined) { go("library") }
-                DrawerRow("BeatPlay Wrapped 2026", R.drawable.trending_up) { go("beatplay_wrapped") }
+                DrawerRow("BeatPlay Wrapped 2026", R.drawable.trending_up) { go("wrapped") }
                 DrawerRow("Pengaturan & Privasi", R.drawable.settings) { go("settings") }
                 DrawerRow("Keluar", R.drawable.logout) {
                     // Stop any active playback so audio doesn't keep playing post-logout.

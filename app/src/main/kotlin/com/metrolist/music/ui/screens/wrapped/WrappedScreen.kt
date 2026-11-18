@@ -7,6 +7,7 @@ package com.metrolist.music.ui.screens.wrapped
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.VerticalPager
@@ -41,6 +42,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.metrolist.music.LocalNavController
 import com.metrolist.music.R
+import com.metrolist.music.ui.screens.beatplay.BeatPlayAuraBackground
 import com.metrolist.music.ui.screens.wrapped.pages.ConclusionPage
 import com.metrolist.music.ui.screens.wrapped.pages.PlaylistPage
 import com.metrolist.music.ui.screens.wrapped.pages.WrappedIntro
@@ -214,14 +216,20 @@ fun WrappedScreenContent() {
         },
         containerColor = Color.Black,
     ) { paddingValues ->
-        VerticalPager(
-            state = pagerState,
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-        ) { page ->
-            when (screens[page]) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+        ) {
+            // Neon BeatPlay aura: the recap keeps its original page flow, the
+            // color language comes from the Wrapped module.
+            BeatPlayAuraBackground()
+
+            VerticalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+            ) { page ->
+                when (screens[page]) {
                 is WrappedScreenType.Welcome -> {
                     WrappedIntro { scope.launch { pagerState.animateScrollToPage(page = 1) } }
                 }
@@ -311,6 +319,7 @@ fun WrappedScreenContent() {
 
                 is WrappedScreenType.Conclusion -> {
                     ConclusionPage(onClose = onClose)
+                }
                 }
             }
         }

@@ -1323,11 +1323,17 @@ fun HomeScreen(
                     HomeObsidianQuickGrid(quickTiles)
                 }
 
-                // BeatPlay Wrapped 2026 entry — opens the full-screen story.
+                // Single BeatPlay recap entry — the same screen the drawer and
+                // Settings > "Rekap Tahun Ini" open.
                 item(key = "beatplay_wrapped_entry") {
                     com.metrolist.music.ui.screens.beatplay.BeatPlayWrappedEntryCard(
+                        summary = if (isWrappedDataReady) {
+                            "${wrappedState.totalMinutes} menit • ${wrappedState.uniqueSongCount} lagu"
+                        } else {
+                            null
+                        },
                         onOpen = {
-                            navController.navigate("beatplay_wrapped") { launchSingleTop = true }
+                            navController.navigate("wrapped") { launchSingleTop = true }
                         },
                     )
                 }
@@ -1484,117 +1490,6 @@ fun HomeScreen(
                     }
                 }
 
-                if (selectedChip == null) {
-                    item(key = "wrapped_card") {
-                        Column(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                                    .clip(RoundedCornerShape(24.dp))
-                                    .background(ObsidianColors.surfaceHigh)
-                                    .border(1.dp, ObsidianColors.glassBorder, RoundedCornerShape(24.dp))
-                                    .clickable {
-                                        navController.navigate("wrapped") { launchSingleTop = true }
-                                    }
-                                    .padding(18.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Row(
-                                Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                Box(
-                                    Modifier
-                                        .size(38.dp)
-                                        .clip(CircleShape)
-                                        .background(ObsidianColors.elegantWhite),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.stats),
-                                        contentDescription = null,
-                                        tint = ObsidianColors.onAccent,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
-                                Column(Modifier.weight(1f)) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        Text(
-                                            text = "Rekap Tahun Ini",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                        )
-                                        if (shouldShowWrappedCard) {
-                                            Box(
-                                                Modifier
-                                                    .clip(CircleShape)
-                                                    .background(ObsidianColors.elegantWhite)
-                                                    .padding(horizontal = 8.dp, vertical = 2.dp),
-                                            ) {
-                                                Text(
-                                                    text = "Baru",
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = ObsidianColors.onAccent,
-                                                )
-                                            }
-                                        }
-                                    }
-                                    Text(
-                                        text = if (isWrappedDataReady) "Cerita musikmu sepanjang tahun" else "Menyiapkan rekap...",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = ObsidianColors.slate400,
-                                    )
-                                }
-                                Text(
-                                    text = "Lihat",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = ObsidianColors.elegantWhite,
-                                )
-                            }
-
-                            if (isWrappedDataReady) {
-                                Row(
-                                    Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    RecapStat(
-                                        value = "${wrappedState.totalMinutes}",
-                                        label = "menit",
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    RecapStat(
-                                        value = "${wrappedState.uniqueSongCount}",
-                                        label = "lagu",
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    RecapStat(
-                                        value = "${wrappedState.uniqueArtistCount}",
-                                        label = "artis",
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                }
-                                wrappedState.topSongs.firstOrNull()?.let { topSong ->
-                                    Text(
-                                        text = "Lagu teratas: ${topSong.title}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = ObsidianColors.slate400,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                            } else {
-                                ContainedLoadingIndicator()
-                            }
-                        }
-                    }
-                }
 
                 homeSections.forEach { section ->
                     when (section) {

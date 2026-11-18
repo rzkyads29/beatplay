@@ -39,10 +39,11 @@ fun AnimatedDecorativeElement(modifier: Modifier = Modifier, isVisible: Boolean)
     }
     Canvas(modifier.graphicsLayer { rotationZ = rotation.value }) {
         val strokeWidth = 2.dp.toPx()
+        val accent = WrappedAccents[shapeType % WrappedAccents.size].copy(alpha = 0.32f)
         when (shapeType) {
-            0 -> drawArc(Color.White.copy(0.2f), 0f, 90f, false, style = Stroke(strokeWidth))
-            1 -> drawCircle(Color.White.copy(0.2f), style = Stroke(strokeWidth))
-            2 -> drawRect(Color.White.copy(0.2f), style = Stroke(strokeWidth))
+            0 -> drawArc(accent, 0f, 90f, false, style = Stroke(strokeWidth))
+            1 -> drawCircle(accent, style = Stroke(strokeWidth))
+            2 -> drawRect(accent, style = Stroke(strokeWidth))
         }
     }
 }

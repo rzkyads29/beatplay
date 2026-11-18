@@ -9,6 +9,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -28,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -39,6 +41,10 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.metrolist.music.R
 import com.metrolist.music.db.entities.Artist
+import com.metrolist.music.ui.screens.beatplay.NeonBlue
+import com.metrolist.music.ui.screens.beatplay.NeonPink
+import com.metrolist.music.ui.screens.beatplay.NeonPurple
+import com.metrolist.music.ui.screens.wrapped.components.WrappedEyebrow
 
 @Composable
 fun WrappedTopArtistScreen(topArtist: Artist?, isVisible: Boolean) {
@@ -56,6 +62,8 @@ fun WrappedTopArtistScreen(topArtist: Artist?, isVisible: Boolean) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        WrappedEyebrow(text = "ARTIS TERATAS", color = NeonPurple)
+        Spacer(modifier = Modifier.height(12.dp))
         AnimatedVisibility(
             visible = visible,
             enter = fadeIn(animationSpec = tween(1000, delayMillis = 200)) + slideInVertically(animationSpec = tween(1000, delayMillis = 200))
@@ -80,7 +88,13 @@ fun WrappedTopArtistScreen(topArtist: Artist?, isVisible: Boolean) {
                     .build(),
                 contentDescription = stringResource(id = R.string.wrapped_top_artist_image_content_description),
                 modifier = Modifier
-                    .size(200.dp)
+                    .size(204.dp)
+                    .border(
+                        width = 3.dp,
+                        brush = Brush.sweepGradient(listOf(NeonPurple, NeonPink, NeonBlue, NeonPurple)),
+                        shape = CircleShape,
+                    )
+                    .padding(4.dp)
                     .clip(CircleShape),
                 contentScale = ContentScale.Crop
             )

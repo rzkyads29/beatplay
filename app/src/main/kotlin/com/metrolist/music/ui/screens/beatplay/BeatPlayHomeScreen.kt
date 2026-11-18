@@ -62,22 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.metrolist.music.R
-
-// ---------------------------------------------------------------------------
-// Palette — shared with BeatPlayWrappedDialog.kt
-// ---------------------------------------------------------------------------
-
-internal val BeatPlayBackground = Color(0xFF121212)
-internal val BeatPlayElevated = Color(0xFF282828)
-internal val BeatPlayGreen = Color(0xFF1DB954)
-internal val BeatPlayMuted = Color(0xFFB3B3B3)
-
-internal val NeonPurple = Color(0xFF7B2FF7)
-internal val NeonPink = Color(0xFFFF2E93)
-internal val NeonBlue = Color(0xFF00D1FF)
-internal val NeonOrange = Color(0xFFFF8A00)
-
-internal val BeatPlayChips = listOf("Semua", "Musik", "Podcast", "Buku Audio")
+import java.time.LocalDate
 
 private data class BeatPlayTab(
     val label: String,
@@ -102,8 +87,8 @@ private val BeatPlayTabs = listOf(
 fun BeatPlayHomeScreen(
     modifier: Modifier = Modifier,
     onNavigate: (String) -> Unit = {},
+    onOpenWrapped: () -> Unit = {},
 ) {
-    var showWrapped by remember { mutableStateOf(false) }
     var selectedChip by remember { mutableStateOf(BeatPlayChips.first()) }
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -125,7 +110,7 @@ fun BeatPlayHomeScreen(
                 }
 
                 item(key = "wrapped_entry", contentType = "wrapped") {
-                    BeatPlayWrappedEntryCard(onOpen = { showWrapped = true })
+                    BeatPlayWrappedEntryCard(onOpen = onOpenWrapped)
                 }
 
                 item(key = "recent_carousel", contentType = "carousel") {
@@ -153,13 +138,6 @@ fun BeatPlayHomeScreen(
                 onNavigate(BeatPlayTabs[index].route)
             },
             modifier = Modifier.align(Alignment.BottomCenter),
-        )
-    }
-
-    if (showWrapped) {
-        BeatPlayWrappedDialog(
-            stats = BeatPlaySampleData.wrapped,
-            onDismiss = { showWrapped = false },
         )
     }
 }
@@ -320,8 +298,10 @@ private fun QuickAccessCard(
 @Composable
 fun BeatPlayWrappedEntryCard(
     modifier: Modifier = Modifier,
+    summary: String? = null,
     onOpen: () -> Unit,
 ) {
+    val year = remember { LocalDate.now().year }
     val transition = rememberInfiniteTransition(label = "wrapped_banner")
     val shift by transition.animateFloat(
         initialValue = 0f,
@@ -352,7 +332,7 @@ fun BeatPlayWrappedEntryCard(
             .padding(18.dp),
     ) {
         Text(
-            text = "BEATPLAY WRAPPED 2026",
+            text = "BEATPLAY WRAPPED $year",
             color = Color.Black.copy(alpha = 0.72f),
             fontSize = 11.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -360,7 +340,7 @@ fun BeatPlayWrappedEntryCard(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Kilas Balik BeatPlay 2026\nKamu Sudah Siap!",
+            text = "Kilas Balik BeatPlay $year\nKamu Sudah Siap!",
             color = Color.White,
             fontSize = 22.sp,
             lineHeight = 27.sp,
@@ -379,7 +359,7 @@ fun BeatPlayWrappedEntryCard(
             ) {
                 Icon(
                     painter = painterResource(R.drawable.play),
-                    contentDescription = "Putar BeatPlay Wrapped",
+                    contentDescription = "Buka BeatPlay Wrapped",
                     tint = Color.White,
                     modifier = Modifier.size(20.dp),
                 )
@@ -387,13 +367,13 @@ fun BeatPlayWrappedEntryCard(
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(
-                    text = "Putar cerita",
+                    text = "Lihat rekap",
                     color = Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = "5 slide • 30 detik",
+                    text = summary ?: "Cerita musikmu sepanjang tahun",
                     color = Color.White.copy(alpha = 0.78f),
                     fontSize = 12.sp,
                 )

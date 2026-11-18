@@ -35,7 +35,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
+import com.metrolist.music.ui.screens.beatplay.BeatPlayGreen
+import com.metrolist.music.ui.screens.beatplay.NeonPurple
+import com.metrolist.music.ui.screens.wrapped.WrappedConstants
 import com.metrolist.music.ui.screens.wrapped.components.AnimatedDecorativeElement
+import com.metrolist.music.ui.screens.wrapped.components.WrappedEyebrow
 import com.metrolist.music.ui.theme.bbh_bartle
 import kotlin.random.Random
 
@@ -76,6 +80,8 @@ fun WrappedTotalArtistsScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            WrappedEyebrow(text = "ARTIS UNIK • ${WrappedConstants.YEAR}", color = NeonPurple)
+            Spacer(Modifier.height(14.dp))
             Text(
                 text = stringResource(id = R.string.wrapped_total_artists_title),
                 modifier = Modifier.padding(horizontal = 24.dp),
@@ -85,7 +91,7 @@ fun WrappedTotalArtistsScreen(
             BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 val density = LocalDensity.current
                 val baseStyle = MaterialTheme.typography.displayLarge.copy(
-                    color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                    color = BeatPlayGreen, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
                     fontFamily = bbh_bartle, drawStyle = Stroke(with(density) { 2.dp.toPx() })
                 )
                 val textStyle = remember(uniqueArtistCount, maxWidth) {

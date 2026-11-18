@@ -40,8 +40,12 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.metrolist.music.R
 import com.metrolist.music.db.entities.Artist
+import com.metrolist.music.ui.screens.beatplay.BeatPlayGreen
+import com.metrolist.music.ui.screens.beatplay.NeonPurple
+import com.metrolist.music.ui.screens.wrapped.WrappedConstants
 import com.metrolist.music.ui.screens.wrapped.components.AnimatedBackground
 import com.metrolist.music.ui.screens.wrapped.components.ShapeType
+import com.metrolist.music.ui.screens.wrapped.components.WrappedEyebrow
 import com.metrolist.music.ui.theme.bbh_bartle
 import kotlinx.coroutines.delay
 
@@ -65,6 +69,8 @@ fun WrappedTop5ArtistsScreen(topArtists: List<Artist>, isVisible: Boolean) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            WrappedEyebrow(text = "5 ARTIS TERATAS • ${WrappedConstants.YEAR}", color = NeonPurple)
+            Spacer(modifier = Modifier.height(10.dp))
             AnimatedVisibility(
                 visible = visible,
                 enter = fadeIn(animationSpec = tween(1000, delayMillis = 200)) + slideInVertically(animationSpec = tween(1000, delayMillis = 200))
@@ -94,7 +100,7 @@ fun WrappedTop5ArtistsScreen(topArtists: List<Artist>, isVisible: Boolean) {
                                 text = "${index + 1}",
                                 fontFamily = bbh_bartle,
                                 fontSize = 36.sp,
-                                color = Color.White.copy(alpha = 0.8f),
+                                color = if (index == 0) BeatPlayGreen else Color.White.copy(alpha = 0.55f),
                                 modifier = Modifier.width(40.dp)
                             )
                             Spacer(modifier = Modifier.width(16.dp))

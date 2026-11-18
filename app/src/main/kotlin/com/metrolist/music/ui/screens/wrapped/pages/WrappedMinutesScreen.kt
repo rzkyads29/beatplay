@@ -36,8 +36,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.metrolist.music.ui.screens.beatplay.BeatPlayGreen
+import com.metrolist.music.ui.screens.beatplay.NeonBlue
 import com.metrolist.music.ui.screens.wrapped.MessagePair
+import com.metrolist.music.ui.screens.wrapped.WrappedConstants
 import com.metrolist.music.ui.screens.wrapped.components.AnimatedDecorativeElement
+import com.metrolist.music.ui.screens.wrapped.components.WrappedEyebrow
 import com.metrolist.music.ui.theme.bbh_bartle
 import kotlin.random.Random
 
@@ -95,6 +99,11 @@ fun WrappedMinutesScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            WrappedEyebrow(
+                text = "TOTAL WAKTU • ${WrappedConstants.YEAR}",
+                color = NeonBlue,
+            )
+            Spacer(Modifier.height(14.dp))
             FormattedText(
                 text = messagePair?.tease ?: "", modifier = Modifier.padding(horizontal = 24.dp),
                 style = MaterialTheme.typography.headlineSmall.copy(color = Color.White, textAlign = TextAlign.Center)
@@ -103,7 +112,7 @@ fun WrappedMinutesScreen(
             BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 val density = LocalDensity.current
                 val baseStyle = MaterialTheme.typography.displayLarge.copy(
-                    color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                    color = BeatPlayGreen, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
                     fontFamily = bbh_bartle, drawStyle = Stroke(with(density) { 2.dp.toPx() })
                 )
                 val textStyle = remember(totalMinutes, maxWidth) {

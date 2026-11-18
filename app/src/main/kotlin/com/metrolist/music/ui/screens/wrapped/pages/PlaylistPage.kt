@@ -3,18 +3,17 @@ package com.metrolist.music.ui.screens.wrapped.pages
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -37,12 +37,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
+import com.metrolist.music.ui.screens.beatplay.BeatPlayGreen
+import com.metrolist.music.ui.screens.beatplay.NeonBlue
 import com.metrolist.music.ui.screens.wrapped.LocalWrappedManager
 import com.metrolist.music.ui.screens.wrapped.PlaylistCreationState
 import com.metrolist.music.ui.screens.wrapped.WrappedConstants
 import com.metrolist.music.ui.screens.wrapped.components.AnimatedBackground
 import com.metrolist.music.ui.screens.wrapped.components.AutoResizingText
 import com.metrolist.music.ui.screens.wrapped.components.ShapeType
+import com.metrolist.music.ui.screens.wrapped.components.WrappedEyebrow
+import com.metrolist.music.ui.screens.wrapped.components.WrappedPrimaryButton
 import com.metrolist.music.ui.theme.bbh_bartle
 import kotlinx.coroutines.delay
 import kotlin.random.Random
@@ -82,6 +86,8 @@ fun PlaylistPage() {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            WrappedEyebrow(text = "PLAYLIST PRIBADIMU", color = BeatPlayGreen)
+            Spacer(modifier = Modifier.height(14.dp))
             AutoResizingText(
                 text = stringResource(R.string.wrapped_playlist_ready),
                 style = TextStyle(
@@ -98,7 +104,12 @@ fun PlaylistPage() {
                 contentDescription = stringResource(R.string.album_cover_desc),
                 modifier = Modifier
                     .size(256.dp)
-                    .clip(RoundedCornerShape(3.dp))
+                    .clip(RoundedCornerShape(18.dp))
+                    .border(
+                        width = 2.dp,
+                        brush = Brush.linearGradient(listOf(BeatPlayGreen, NeonBlue)),
+                        shape = RoundedCornerShape(18.dp),
+                    )
             )
             Spacer(modifier = Modifier.height(24.dp))
             Text(
@@ -110,15 +121,14 @@ fun PlaylistPage() {
                 )
             )
             Spacer(modifier = Modifier.height(48.dp))
-            Button(
+            WrappedPrimaryButton(
                 onClick = {
                     if (playlistCreationState == PlaylistCreationState.Idle) {
                         manager.createPlaylist(playlistImageName)
                     }
                 },
-                shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                modifier = Modifier.height(50.dp)
+                enabled = playlistCreationState == PlaylistCreationState.Idle,
+                contentPadding = PaddingValues(horizontal = 28.dp, vertical = 14.dp),
             ) {
                 when (playlistCreationState) {
                     is PlaylistCreationState.Idle -> Text(
@@ -126,7 +136,7 @@ fun PlaylistPage() {
                         style = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold)
                     )
                     is PlaylistCreationState.Creating -> CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(22.dp),
                         color = Color.Black,
                         strokeWidth = 2.dp
                     )
