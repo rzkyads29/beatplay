@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -46,11 +47,14 @@ import com.metrolist.music.ui.screens.wrapped.WrappedConstants
 import com.metrolist.music.ui.screens.wrapped.components.AnimatedBackground
 import com.metrolist.music.ui.screens.wrapped.components.ShapeType
 import com.metrolist.music.ui.screens.wrapped.components.WrappedEyebrow
-import com.metrolist.music.ui.theme.bbh_bartle
 import kotlinx.coroutines.delay
 
 @Composable
-fun WrappedTop5ArtistsScreen(topArtists: List<Artist>, isVisible: Boolean) {
+fun WrappedTop5ArtistsScreen(
+    topArtists: List<Artist>,
+    artistImages: Map<String, String?> = emptyMap(),
+    isVisible: Boolean,
+) {
     var visible by remember { mutableStateOf(false) }
 
     LaunchedEffect(isVisible) {
@@ -77,13 +81,15 @@ fun WrappedTop5ArtistsScreen(topArtists: List<Artist>, isVisible: Boolean) {
             ) {
                 Text(
                     text = stringResource(id = R.string.wrapped_top_5_artists_title),
-                    fontSize = 48.sp,
+                    fontSize = 34.sp,
+                    lineHeight = 40.sp,
+                    fontWeight = FontWeight.Bold,
                     color = Color.White,
                     textAlign = TextAlign.Center
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Column {
                 topArtists.forEachIndexed { index, artist ->
@@ -93,23 +99,26 @@ fun WrappedTop5ArtistsScreen(topArtists: List<Artist>, isVisible: Boolean) {
                     ) {
                         Row(
                             modifier = Modifier
-                                .padding(vertical = 8.dp),
+                                .padding(vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "${index + 1}",
-                                fontFamily = bbh_bartle,
-                                fontSize = 36.sp,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 30.sp,
                                 color = if (index == 0) BeatPlayGreen else Color.White.copy(alpha = 0.55f),
                                 modifier = Modifier.width(40.dp)
                             )
                             Spacer(modifier = Modifier.width(16.dp))
                             AsyncImage(
-                                model = artist.artist.thumbnailUrl,
+                                model = artistImages[artist.id]?.takeIf { it.isNotBlank() }
+                                    ?: artist.artist.thumbnailUrl?.takeIf { it.isNotBlank() },
                                 contentDescription = "Artist image",
                                 modifier = Modifier
-                                    .size(64.dp)
+                                    .size(56.dp)
                                     .clip(CircleShape),
+                                placeholder = painterResource(R.drawable.app_logo),
+                                error = painterResource(R.drawable.app_logo),
                                 contentScale = ContentScale.Crop
                             )
                             Spacer(modifier = Modifier.width(16.dp))
@@ -121,7 +130,7 @@ fun WrappedTop5ArtistsScreen(topArtists: List<Artist>, isVisible: Boolean) {
                                     fontSize = 16.sp
                                 )
                                 Text(
-                                    text = stringResource(id = R.string.wrapped_artist_listening_time, (artist.timeListened ?: 0) / 60000),
+                                    text = stringResource(id = R.string.wrapped_play_count, artist.songCount),
                                     color = Color.White.copy(alpha = 0.7f),
                                     fontSize = 14.sp
                                 )

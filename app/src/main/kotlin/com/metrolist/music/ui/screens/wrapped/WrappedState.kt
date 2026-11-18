@@ -13,6 +13,8 @@ data class WrappedState(
     val totalMinutes: Long = 0,
     val topSongs: List<SongWithStats> = emptyList(),
     val topArtists: List<Artist> = emptyList(),
+    /** artistId -> image URL; artists without a stored image fall back to their top song art. */
+    val artistImages: Map<String, String?> = emptyMap(),
     val top5Albums: List<Album> = emptyList(),
     val topAlbum: Album? = null,
     val uniqueSongCount: Int = 0,

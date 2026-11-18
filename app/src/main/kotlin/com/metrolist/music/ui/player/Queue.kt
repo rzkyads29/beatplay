@@ -672,7 +672,7 @@ fun Queue(
         val mutableQueueWindows = remember { mutableStateListOf<Timeline.Window>() }
         val queueLength =
             remember(queueWindows) {
-                queueWindows.sumOf { it.mediaItem.metadata!!.duration }
+                queueWindows.sumOf { it.mediaItem.metadata?.duration ?: 0 }
             }
 
         val coroutineScope = rememberCoroutineScope()
@@ -785,6 +785,10 @@ fun Queue(
                     items = mutableQueueWindows,
                     key = { _, item -> item.uid.hashCode() },
                 ) { index, window ->
+                    // Queue windows can briefly exist without metadata (for example right after
+                    // the service reconnects), so skip anything that is not fully loaded instead
+                    // of crashing the whole sheet.
+                    val queueMetadata = window.mediaItem.metadata ?: return@itemsIndexed
                     ReorderableItem(
                         state = reorderableState,
                         key = window.uid.hashCode(),
@@ -846,7 +850,7 @@ fun Queue(
                                 modifier = Modifier.animateItem(),
                             ) {
                                 MediaMetadataListItem(
-                                    mediaMetadata = window.mediaItem.metadata!!,
+                                    mediaMetadata = queueMetadata,
                                     isSelected = false,
                                     isActive = isActive,
                                     isPlaying = isPlaying && isActive,
@@ -862,7 +866,7 @@ fun Queue(
                                                     onClick = {
                                                         menuState.show {
                                                             QueueMenu(
-                                                                mediaMetadata = window.mediaItem.metadata!!,
+                                                                mediaMetadata = queueMetadata,
                                                                 playerBottomSheetState = playerBottomSheetState,
                                                                 onShowDetailsDialog = {
                                                                     window.mediaItem.mediaId.let {
@@ -974,11 +978,12 @@ fun Queue(
                         items = automix,
                         key = { _, it -> it.mediaId },
                     ) { index, item ->
+                        val automixMetadata = item.metadata ?: return@itemsIndexed
                         Row(
                             horizontalArrangement = Arrangement.Center,
                         ) {
                             MediaMetadataListItem(
-                                mediaMetadata = item.metadata!!,
+                                mediaMetadata = automixMetadata,
                                 trailingContent = {
                                     if (!isListenTogetherGuest) {
                                         IconButton(
@@ -1017,7 +1022,7 @@ fun Queue(
                                             onLongClick = {
                                                 menuState.show {
                                                     QueueMenu(
-                                                        mediaMetadata = item.metadata!!,
+                                                        mediaMetadata = automixMetadata,
                                                         playerBottomSheetState = playerBottomSheetState,
                                                         onShowDetailsDialog = {
                                                             item.mediaId.let {

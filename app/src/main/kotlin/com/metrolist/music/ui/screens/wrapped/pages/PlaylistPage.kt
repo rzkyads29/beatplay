@@ -47,7 +47,6 @@ import com.metrolist.music.ui.screens.wrapped.components.AutoResizingText
 import com.metrolist.music.ui.screens.wrapped.components.ShapeType
 import com.metrolist.music.ui.screens.wrapped.components.WrappedEyebrow
 import com.metrolist.music.ui.screens.wrapped.components.WrappedPrimaryButton
-import com.metrolist.music.ui.theme.bbh_bartle
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
@@ -91,11 +90,11 @@ fun PlaylistPage() {
             AutoResizingText(
                 text = stringResource(R.string.wrapped_playlist_ready),
                 style = TextStyle(
-                    fontFamily = bbh_bartle,
-                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 28.sp,
                     color = Color.White,
                     textAlign = TextAlign.Center,
-                    lineHeight = 48.sp
+                    lineHeight = 34.sp
                 )
             )
             Spacer(modifier = Modifier.height(32.dp))

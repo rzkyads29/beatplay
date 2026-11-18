@@ -520,6 +520,141 @@ interface DatabaseDao {
         toTimeStamp: LocalDateTime? = LocalDateTime.now(),
     ): Flow<List<Song>>
 
+    /**
+     * Recap variant of [mostPlayedSongsStats] that ranks songs by how many times they were
+     * actually played instead of by total listening time.
+     */
+    @Transaction
+    @Query(
+        """
+        SELECT s.id, s.title, s.thumbnailUrl, s.isVideo,
+               (SELECT name FROM artist WHERE id = sam.artistId) as artistName,
+               (SELECT COUNT(1)
+                FROM event
+                WHERE songId = s.id
+                  AND timestamp > :fromTimeStamp AND timestamp <= :toTimeStamp) AS songCountListened,
+               (SELECT SUM(event.playTime)
+                FROM event
+                WHERE songId = s.id
+                  AND timestamp > :fromTimeStamp AND timestamp <= :toTimeStamp) AS timeListened
+        FROM song s
+        LEFT JOIN song_artist_map sam ON s.id = sam.songId
+        JOIN (SELECT songId
+              FROM event
+              WHERE timestamp > :fromTimeStamp
+                AND timestamp <= :toTimeStamp
+              GROUP BY songId
+              ORDER BY COUNT(1) DESC, SUM(playTime) DESC
+              LIMIT :limit OFFSET :offset) AS top_songs ON s.id = top_songs.songId
+        GROUP BY s.id
+        ORDER BY songCountListened DESC, timeListened DESC
+        """,
+    )
+    fun mostPlayedSongsStatsByPlays(
+        fromTimeStamp: LocalDateTime,
+        limit: Int = 6,
+        offset: Int = 0,
+        toTimeStamp: LocalDateTime? = LocalDateTime.now(),
+    ): Flow<List<SongWithStats>>
+
+    /** Album art of the artist's most played song, used when the artist has no image yet. */
+    @Query(
+        """
+        SELECT s.thumbnailUrl
+        FROM song s
+        JOIN song_artist_map sam ON s.id = sam.songId
+        JOIN event e ON e.songId = s.id
+        WHERE sam.artistId = :artistId
+          AND e.timestamp > :fromTimeStamp
+          AND e.timestamp <= :toTimeStamp
+          AND s.thumbnailUrl != ''
+        GROUP BY s.id
+        ORDER BY COUNT(1) DESC
+        LIMIT 1
+        """,
+    )
+    suspend fun artistBestThumbnail(
+        artistId: String,
+        fromTimeStamp: LocalDateTime,
+        toTimeStamp: LocalDateTime,
+    ): String?
+
+    @Transaction
+    @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
+    @Query(
+        """
+        SELECT artist.*,
+               (SELECT COUNT(1)
+                FROM song_artist_map
+                         JOIN event ON song_artist_map.songId = event.songId
+                WHERE artistId = artist.id
+                  AND timestamp > :fromTimeStamp AND timestamp <= :toTimeStamp) AS songCount,
+               (SELECT SUM(event.playTime)
+                FROM song_artist_map
+                         JOIN event ON song_artist_map.songId = event.songId
+                WHERE artistId = artist.id
+                  AND timestamp > :fromTimeStamp AND timestamp <= :toTimeStamp) AS timeListened
+        FROM artist
+                 JOIN (SELECT artistId, COUNT(1) AS plays
+                       FROM song_artist_map
+                                JOIN event ON song_artist_map.songId = event.songId
+                       WHERE event.timestamp > :fromTimeStamp
+                         AND event.timestamp <= :toTimeStamp
+                       GROUP BY artistId
+                       ORDER BY plays DESC
+                       LIMIT :limit
+                       OFFSET :offset)
+                     ON artist.id = artistId
+        """,
+    )
+    fun mostPlayedArtistsByPlays(
+        fromTimeStamp: LocalDateTime,
+        limit: Int = 6,
+        offset: Int = 0,
+        toTimeStamp: LocalDateTime? = LocalDateTime.now(),
+    ): Flow<List<Artist>>
+
+    @Transaction
+    @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
+    @Query(
+        """
+        SELECT album.*,
+               COUNT(DISTINCT song_album_map.songId) as downloadCount,
+               (SELECT COUNT(1)
+                FROM song_album_map
+                         JOIN event e ON song_album_map.songId = e.songId
+                WHERE albumId = album.id
+                  AND e.timestamp > :fromTimeStamp
+                  AND e.timestamp <= :toTimeStamp) AS songCountListened,
+               (SELECT SUM(e.playTime)
+                FROM song_album_map
+                         JOIN event e ON song_album_map.songId = e.songId
+                WHERE albumId = album.id
+                  AND e.timestamp > :fromTimeStamp
+                  AND e.timestamp <= :toTimeStamp) AS timeListened
+        FROM album
+        JOIN song_album_map ON album.id = song_album_map.albumId
+        WHERE album.id IN (
+            SELECT sam.albumId
+            FROM event
+                     JOIN song_album_map sam ON event.songId = sam.songId
+            WHERE event.timestamp > :fromTimeStamp
+              AND event.timestamp <= :toTimeStamp
+            GROUP BY sam.albumId
+            HAVING sam.albumId IS NOT NULL
+        )
+        GROUP BY album.id
+        ORDER BY songCountListened DESC, timeListened DESC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    fun mostPlayedAlbumsByPlays(
+        fromTimeStamp: LocalDateTime,
+        limit: Int = 6,
+        offset: Int = 0,
+        toTimeStamp: LocalDateTime? = LocalDateTime.now(),
+    ): Flow<List<Album>>
+
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
     @Query(

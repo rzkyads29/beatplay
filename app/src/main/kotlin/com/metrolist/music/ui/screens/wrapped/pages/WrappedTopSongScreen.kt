@@ -34,12 +34,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.metrolist.music.R
 import com.metrolist.music.db.entities.SongWithStats
 import com.metrolist.music.ui.screens.beatplay.BeatPlayGreen
@@ -104,7 +106,8 @@ fun WrappedTopSongScreen(topSong: SongWithStats?, isVisible: Boolean) {
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(topSong?.thumbnailUrl)
+                        .data(topSong?.thumbnailUrl?.takeIf { it.isNotBlank() })
+                        .crossfade(true)
                         .build(),
                 contentDescription = stringResource(id = R.string.wrapped_top_song_album_art_content_description),
                     modifier = Modifier
@@ -115,6 +118,8 @@ fun WrappedTopSongScreen(topSong: SongWithStats?, isVisible: Boolean) {
                             brush = Brush.linearGradient(listOf(BeatPlayGreen, NeonBlue)),
                             shape = RoundedCornerShape(8.dp),
                         ),
+                    placeholder = painterResource(R.drawable.app_logo),
+                    error = painterResource(R.drawable.app_logo),
                     contentScale = ContentScale.Crop
                 )
             }
@@ -144,7 +149,7 @@ fun WrappedTopSongScreen(topSong: SongWithStats?, isVisible: Boolean) {
                 enter = fadeIn(animationSpec = tween(1000, delayMillis = 1000)) + slideInVertically(animationSpec = tween(1000, delayMillis = 1000))
             ) {
                 Text(
-                text = stringResource(id = R.string.wrapped_top_song_listening_time, topSong?.timeListened?.div(60000) ?: 0),
+                text = stringResource(id = R.string.wrapped_top_song_play_count, topSong?.songCountListened ?: 0),
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color.White.copy(alpha = 0.8f),
                     textAlign = TextAlign.Center

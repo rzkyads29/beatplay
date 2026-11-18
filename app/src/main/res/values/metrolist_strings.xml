@@ -489,6 +489,10 @@
     <string name="wrapped_no_data">No data available</string>
     <string name="wrapped_top_5_artists_title">Your top artists of the year</string>
     <string name="wrapped_artist_listening_time">%d minutes</string>
+    <string name="wrapped_play_count">%d plays</string>
+    <string name="wrapped_top_song_play_count">You played this song %d times!</string>
+    <string name="wrapped_top_artist_play_count">You played their songs %d times!</string>
+    <string name="wrapped_album_play_count">You played this album %d times!</string>
     <string name="wrapped_top_5_songs_title">Your top songs of the year</string>
     <string name="wrapped_top_song_album_art_content_description">Album art</string>
     <string name="wrapped_top_artist_title">Your top artist of the year is</string>

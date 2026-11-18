@@ -194,6 +194,10 @@
     <string name="wrapped_no_data">Tidak ada data yang tersedia</string>
     <string name="wrapped_top_5_artists_title">Artis teratas Anda sepanjang tahun ini</string>
     <string name="wrapped_artist_listening_time">%d menit</string>
+    <string name="wrapped_play_count">%d kali diputar</string>
+    <string name="wrapped_top_song_play_count">Lagu ini kamu putar %d kali!</string>
+    <string name="wrapped_top_artist_play_count">Lagu mereka kamu putar %d kali!</string>
+    <string name="wrapped_album_play_count">Album ini kamu putar %d kali!</string>
     <string name="wrapped_top_5_songs_title">Lagu teratas Anda sepanjang tahun ini</string>
     <string name="wrapped_top_song_album_art_content_description">Sampul album</string>
     <string name="wrapped_top_artist_title">Artis teratas Anda sepanjang tahun ini adalah</string>

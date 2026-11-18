@@ -37,6 +37,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -129,9 +132,9 @@ fun WrappedScreenContent() {
     val lifecycleOwner = LocalLifecycleOwner.current
 
     DisposableEffect(Unit) {
-        val window = (view.context as android.app.Activity).window
-        val insetsController = WindowCompat.getInsetsController(window, view)
-        insetsController.hide(WindowInsetsCompat.Type.systemBars())
+        val window = view.context.findActivity()?.window
+        val insetsController = window?.let { WindowCompat.getInsetsController(it, view) }
+        insetsController?.hide(WindowInsetsCompat.Type.systemBars())
 
         val observer =
             LifecycleEventObserver { _, event ->
@@ -150,7 +153,7 @@ fun WrappedScreenContent() {
         lifecycleOwner.lifecycle.addObserver(observer)
 
         onDispose {
-            insetsController.show(WindowInsetsCompat.Type.systemBars())
+            insetsController?.show(WindowInsetsCompat.Type.systemBars())
             lifecycleOwner.lifecycle.removeObserver(observer)
             audioService.release()
         }
@@ -302,6 +305,7 @@ fun WrappedScreenContent() {
                 is WrappedScreenType.TopArtistReveal -> {
                     WrappedTopArtistScreen(
                         topArtist = state.topArtists.firstOrNull(),
+                        imageUrl = state.topArtists.firstOrNull()?.let { state.artistImages[it.id] },
                         isVisible = pagerState.currentPage == screens.indexOf(WrappedScreenType.TopArtistReveal),
                     )
                 }
@@ -309,6 +313,7 @@ fun WrappedScreenContent() {
                 is WrappedScreenType.Top5Artists -> {
                     WrappedTop5ArtistsScreen(
                         topArtists = state.topArtists,
+                        artistImages = state.artistImages,
                         isVisible = pagerState.currentPage == screens.indexOf(WrappedScreenType.Top5Artists),
                     )
                 }
@@ -324,4 +329,10 @@ fun WrappedScreenContent() {
             }
         }
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

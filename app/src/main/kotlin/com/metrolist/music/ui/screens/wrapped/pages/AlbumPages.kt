@@ -38,9 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -57,7 +56,6 @@ import com.metrolist.music.ui.screens.wrapped.WrappedConstants
 import com.metrolist.music.ui.screens.wrapped.components.AnimatedBackground
 import com.metrolist.music.ui.screens.wrapped.components.ShapeType
 import com.metrolist.music.ui.screens.wrapped.components.WrappedEyebrow
-import com.metrolist.music.ui.theme.bbh_bartle
 import kotlinx.coroutines.delay
 
 @Composable
@@ -105,13 +103,10 @@ fun WrappedTotalAlbumsScreen(uniqueAlbumCount: Int, isVisible: Boolean) {
             Spacer(Modifier.height(32.dp))
 
             BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                val density = LocalDensity.current
                 val baseStyle = MaterialTheme.typography.displayLarge.copy(
                     color = BeatPlayGreen,
                     fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    fontFamily = bbh_bartle,
-                    drawStyle = Stroke(with(density) { 2.dp.toPx() })
+                    textAlign = TextAlign.Center
                 )
 
                 val textStyle = remember(uniqueAlbumCount, maxWidth) {
@@ -180,11 +175,11 @@ fun WrappedTopAlbumScreen(topAlbum: Album?, isVisible: Boolean) {
                 Text(
                     text = stringResource(R.string.wrapped_top_album_title),
                     style = TextStyle(
-                        fontFamily = bbh_bartle,
-                        fontSize = 40.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 26.sp,
                         color = Color.White,
                         textAlign = TextAlign.Center,
-                        lineHeight = 48.sp
+                        lineHeight = 32.sp
                     )
                 )
             }
@@ -194,7 +189,7 @@ fun WrappedTopAlbumScreen(topAlbum: Album?, isVisible: Boolean) {
                 enter = fadeIn(animationSpec = tween(1000, delayMillis = 400)) + slideInVertically(animationSpec = tween(1000, delayMillis = 400))
             ) {
                 AsyncImage(
-                    model = topAlbum?.thumbnailUrl,
+                    model = topAlbum?.thumbnailUrl?.takeIf { it.isNotBlank() },
                     contentDescription = stringResource(R.string.album_art_for, topAlbum?.title ?: ""),
                     modifier = Modifier
                         .size(200.dp)
@@ -204,6 +199,8 @@ fun WrappedTopAlbumScreen(topAlbum: Album?, isVisible: Boolean) {
                             brush = Brush.linearGradient(listOf(BeatPlayGreen, NeonBlue)),
                             shape = RoundedCornerShape(8.dp),
                         ),
+                    placeholder = painterResource(R.drawable.app_logo),
+                    error = painterResource(R.drawable.app_logo),
                     contentScale = ContentScale.Crop
                 )
             }
@@ -226,7 +223,7 @@ fun WrappedTopAlbumScreen(topAlbum: Album?, isVisible: Boolean) {
                 enter = fadeIn(animationSpec = tween(1000, delayMillis = 800)) + slideInVertically(animationSpec = tween(1000, delayMillis = 800))
             ) {
                 Text(
-                    text = stringResource(R.string.wrapped_album_listening_time, topAlbum?.timeListened?.div(60000) ?: 0),
+                    text = stringResource(R.string.wrapped_album_play_count, topAlbum?.songCountListened ?: 0),
                     fontSize = 16.sp,
                     color = Color.White.copy(alpha = 0.8f),
                     textAlign = TextAlign.Center
@@ -265,16 +262,16 @@ fun WrappedTop5AlbumsScreen(topAlbums: List<Album>, isVisible: Boolean) {
                 Text(
                     text = stringResource(R.string.wrapped_top_5_albums_title),
                     style = TextStyle(
-                        fontFamily = bbh_bartle,
-                        fontSize = 48.sp,
+                        fontSize = 34.sp,
+                        fontWeight = FontWeight.Bold,
                         color = Color.White,
                         textAlign = TextAlign.Center,
-                        lineHeight = 56.sp
+                        lineHeight = 40.sp
                     )
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Column {
                 topAlbums.forEachIndexed { index, album ->
@@ -284,23 +281,25 @@ fun WrappedTop5AlbumsScreen(topAlbums: List<Album>, isVisible: Boolean) {
                     ) {
                         Row(
                             modifier = Modifier
-                                .padding(vertical = 8.dp),
+                                .padding(vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "${index + 1}",
-                                fontFamily = bbh_bartle,
-                                fontSize = 36.sp,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 30.sp,
                                 color = if (index == 0) BeatPlayGreen else Color.White.copy(alpha = 0.55f),
                                 modifier = Modifier.width(40.dp)
                             )
                             Spacer(modifier = Modifier.width(16.dp))
                             AsyncImage(
-                                model = album.thumbnailUrl,
+                                model = album.thumbnailUrl?.takeIf { it.isNotBlank() },
                                 contentDescription = stringResource(R.string.album_art_for, album.title),
                                 modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(RoundedCornerShape(3.dp)),
+                                    .size(56.dp)
+                                    .clip(RoundedCornerShape(6.dp)),
+                                placeholder = painterResource(R.drawable.app_logo),
+                                error = painterResource(R.drawable.app_logo),
                                 contentScale = ContentScale.Crop
                             )
                             Spacer(modifier = Modifier.width(16.dp))
@@ -313,7 +312,7 @@ fun WrappedTop5AlbumsScreen(topAlbums: List<Album>, isVisible: Boolean) {
                                     maxLines = 1
                                 )
                                 Text(
-                                    text = stringResource(R.string.wrapped_album_listening_time_minutes, album.timeListened?.div(60000) ?: 0),
+                                    text = stringResource(R.string.wrapped_play_count, album.songCountListened ?: 0),
                                     color = Color.White.copy(alpha = 0.7f),
                                     fontSize = 14.sp
                                 )

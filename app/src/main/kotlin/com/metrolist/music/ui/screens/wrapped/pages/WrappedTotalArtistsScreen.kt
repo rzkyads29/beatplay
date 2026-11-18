@@ -26,8 +26,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -40,7 +38,6 @@ import com.metrolist.music.ui.screens.beatplay.NeonPurple
 import com.metrolist.music.ui.screens.wrapped.WrappedConstants
 import com.metrolist.music.ui.screens.wrapped.components.AnimatedDecorativeElement
 import com.metrolist.music.ui.screens.wrapped.components.WrappedEyebrow
-import com.metrolist.music.ui.theme.bbh_bartle
 import kotlin.random.Random
 
 @Composable
@@ -89,10 +86,8 @@ fun WrappedTotalArtistsScreen(
             )
             Spacer(Modifier.height(32.dp))
             BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                val density = LocalDensity.current
                 val baseStyle = MaterialTheme.typography.displayLarge.copy(
                     color = BeatPlayGreen, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
-                    fontFamily = bbh_bartle, drawStyle = Stroke(with(density) { 2.dp.toPx() })
                 )
                 val textStyle = remember(uniqueArtistCount, maxWidth) {
                     val finalText = uniqueArtistCount.toString()

@@ -56,7 +56,7 @@ class WrappedManager(
                 withContext(Dispatchers.IO) {
                     val fromTimestamp = LocalDateTime.of(WrappedConstants.YEAR, 1, 1, 0, 0, 0)
                     val toTimestamp = LocalDateTime.of(WrappedConstants.YEAR, 12, 31, 23, 59, 59)
-                    val allSongs = databaseDao.mostPlayedSongsStats(fromTimestamp, toTimeStamp = toTimestamp, limit = -1).first()
+                    val allSongs = databaseDao.mostPlayedSongsStatsByPlays(fromTimestamp, toTimeStamp = toTimestamp, limit = -1).first()
 
                     val playlistId = UUID.randomUUID().toString()
 
@@ -177,10 +177,11 @@ class WrappedManager(
         val fromTimestamp = LocalDateTime.of(WrappedConstants.YEAR, 1, 1, 0, 0, 0)
         val toTimestamp = LocalDateTime.of(WrappedConstants.YEAR, 12, 31, 23, 59, 59)
 
-        withContext(Dispatchers.IO) {
-            val topSongsDeferred = async { databaseDao.mostPlayedSongsStats(fromTimestamp, toTimeStamp = toTimestamp, limit = 30).first() }
-            val topArtistsDeferred = async { databaseDao.mostPlayedArtists(fromTimestamp, toTimeStamp = toTimestamp, limit = 5).first() }
-            val topAlbumsDeferred = async { databaseDao.mostPlayedAlbums(fromTimestamp, toTimeStamp = toTimestamp, limit = 5).first() }
+        runCatching {
+            withContext(Dispatchers.IO) {
+                val topSongsDeferred = async { databaseDao.mostPlayedSongsStatsByPlays(fromTimestamp, toTimeStamp = toTimestamp, limit = 30).first() }
+            val topArtistsDeferred = async { databaseDao.mostPlayedArtistsByPlays(fromTimestamp, toTimeStamp = toTimestamp, limit = 5).first() }
+            val topAlbumsDeferred = async { databaseDao.mostPlayedAlbumsByPlays(fromTimestamp, toTimeStamp = toTimestamp, limit = 5).first() }
             val uniqueSongCountDeferred = async { databaseDao.getUniqueSongCountInRange(fromTimestamp, toTimestamp).first() }
             val uniqueArtistCountDeferred = async { databaseDao.getUniqueArtistCountInRange(fromTimestamp, toTimestamp).first() }
             val uniqueAlbumCountDeferred = async { databaseDao.getUniqueAlbumCountInRange(fromTimestamp, toTimestamp).first() }
@@ -202,10 +203,25 @@ class WrappedManager(
             val topAlbumsResult = results[2] as List<com.metrolist.music.db.entities.Album>
             @Suppress("UNCHECKED_CAST")
             val topArtistsResult = results[1] as List<Artist>
+
+            // Artist records often only carry an id/name until their page is opened, so their
+            // thumbnail is blank. Show the art of their most played song instead of a hole.
+            val artistImages = topArtistsResult.associate { artist ->
+                val stored = artist.artist.thumbnailUrl
+                artist.id to if (stored.isNullOrBlank()) {
+                    runCatching { databaseDao.artistBestThumbnail(artist.id, fromTimestamp, toTimestamp) }
+                        .getOrNull()
+                        ?.takeIf { it.isNotBlank() }
+                } else {
+                    stored
+                }
+            }
+
             _state.update {
                 it.copy(
                     topSongs = topSongsResult,
                     topArtists = topArtistsResult,
+                    artistImages = artistImages,
                     top5Albums = topAlbumsResult,
                     topAlbum = topAlbumsResult.firstOrNull(),
                     uniqueSongCount = results[3] as Int,
@@ -214,9 +230,13 @@ class WrappedManager(
                     totalMinutes = (results[6] as Long) / 1000 / 60
                 )
             }
+            }
+        }.onFailure { error ->
+            Timber.tag("WrappedManager").e(error, "Failed to prepare Wrapped data")
         }
 
-        generatePlaylistMap()
+        runCatching { generatePlaylistMap() }
+            .onFailure { Timber.tag("WrappedManager").e(it, "Failed to build Wrapped track map") }
         _state.update { it.copy(isDataReady = true) }
         Timber.tag("WrappedManager").d("Wrapped data preparation finished")
     }
