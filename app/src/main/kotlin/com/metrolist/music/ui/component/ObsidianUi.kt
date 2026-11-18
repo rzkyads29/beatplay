@@ -14,11 +14,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -35,10 +38,13 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -127,66 +133,76 @@ fun GlassButton(
     }
 }
 
-/** Six split OTP boxes with auto-advance and paste/autofill. */
+/** Six split OTP boxes with paste/autofill support, backed by a single text field. */
 @Composable
 fun OtpBoxes(
     value: List<String>,
     onValueChange: (List<String>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val requesters = remember { List(6) { FocusRequester() } }
-    LaunchedEffect(Unit) { runCatching { requesters[0].requestFocus() } }
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        repeat(6) { index ->
-            val char = value.getOrElse(index) { "" }
-            Box(
-                Modifier
-                    .size(46.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(ObsidianColors.glassFillStrong)
-                    .border(
-                        1.dp,
-                        if (char.isNotEmpty()) ObsidianColors.violet else ObsidianColors.glassBorderStrong,
-                        RoundedCornerShape(12.dp),
-                    ),
-                contentAlignment = Alignment.Center,
+    val code = value.joinToString("")
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+
+    // Focus once. The old version moved focus between six separate text fields on every
+    // keystroke, which made many keyboards close and reopen while typing.
+    LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
+
+    Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Box(Modifier.widthIn(max = 332.dp).fillMaxWidth()) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                BasicTextField(
-                    value = char,
-                    onValueChange = { raw ->
-                        val digits = raw.filter { it.isDigit() }
-                        if (digits.isEmpty()) {
-                            val next = value.toMutableList().also { it[index] = "" }
-                            onValueChange(next)
-                        } else {
-                            val incoming = if (digits.length > 1 && digits.startsWith(char)) digits.drop(1) else digits
-                            val next = value.toMutableList()
-                            var k = 0
-                            while (k < incoming.length && index + k < 6) {
-                                next[index + k] = incoming[k].toString()
-                                k++
-                            }
-                            onValueChange(next)
-                            val target = (index + incoming.length).coerceAtMost(5)
-                            runCatching { requesters[target].requestFocus() }
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize().focusRequester(requesters[index]),
-                    textStyle = TextStyle(
-                        color = ObsidianColors.textPrimary,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.NumberPassword,
-                        imeAction = if (index == 5) ImeAction.Done else ImeAction.Next,
-                    ),
-                    singleLine = true,
-                    cursorBrush = SolidColor(ObsidianColors.cyan),
-                    decorationBox = { inner -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { inner() } },
-                )
+                repeat(6) { index ->
+                    val char = code.getOrNull(index)?.toString().orEmpty()
+                    val active = index == code.length.coerceAtMost(5)
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .height(52.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(ObsidianColors.glassFillStrong)
+                            .border(
+                                1.dp,
+                                when {
+                                    char.isNotEmpty() -> ObsidianColors.violet
+                                    active -> ObsidianColors.cyan
+                                    else -> ObsidianColors.glassBorderStrong
+                                },
+                                RoundedCornerShape(12.dp),
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = char,
+                            color = ObsidianColors.textPrimary,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
             }
+
+            BasicTextField(
+                value = TextFieldValue(code, selection = TextRange(code.length)),
+                onValueChange = { new ->
+                    val digits = new.text.filter { it.isDigit() }.take(6)
+                    onValueChange(List(6) { digits.getOrNull(it)?.toString() ?: "" })
+                    if (digits.length == 6) keyboard?.hide()
+                },
+                modifier = Modifier.matchParentSize().focusRequester(focusRequester),
+                textStyle = TextStyle(color = Color.Transparent, fontSize = 1.sp),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(onDone = { keyboard?.hide() }),
+                singleLine = true,
+                cursorBrush = SolidColor(Color.Transparent),
+                decorationBox = { inner -> Box(Modifier.fillMaxSize()) { inner() } },
+            )
         }
     }
 }
