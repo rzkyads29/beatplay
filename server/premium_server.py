@@ -491,6 +491,31 @@ def send_email_code(smtp_cfg, to_email, code):
         return False, str(exc)
 
 
+def send_reset_code(smtp_cfg, to_email, code):
+    """Kirim kode reset password 6 digit. Return (ok, error)."""
+    if not smtp_cfg or not smtp_cfg.get("host"):
+        return False, "SMTP belum dikonfigurasi"
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = "Reset password BeatPlay: " + code
+        msg["From"] = smtp_cfg.get("from", "BeatPlay <no-reply@beatplay>")
+        msg["To"] = to_email
+        msg.set_content(
+            "Halo,\n\n"
+            "Kode untuk mereset password akun BeatPlay kamu adalah:\n\n"
+            "    " + code + "\n\n"
+            "Kode ini berlaku 15 menit. Masukkan kode tersebut di aplikasi BeatPlay "
+            "lalu buat password baru.\n\n"
+            "Kalau kamu tidak meminta reset password, abaikan email ini; password lama "
+            "tetap berlaku."
+        )
+        with _open_smtp(smtp_cfg) as s:
+            s.send_message(msg)
+        return True, None
+    except Exception as exc:  # noqa: BLE001
+        return False, str(exc)
+
+
 class PremiumStore:
     """Gmail manual (lifetime) + expiry berbayar (epoch detik)."""
 
@@ -731,6 +756,73 @@ class UserStore:
         if not user:
             return True
         return int(time.time()) - int(user.get("verify_code_sent_at", 0)) >= self.RESEND_INTERVAL
+
+    # ---- password reset (independent code namespace from account verification) ----
+
+    def request_reset_code(self, email):
+        """Buat kode reset password. Return (code, error)."""
+        email = email.strip().lower()
+        with self.lock:
+            user = self.users.get(email)
+            if not user:
+                return None, "not_found"
+            now = int(time.time())
+            if now - int(user.get("reset_code_sent_at", 0)) < self.RESEND_INTERVAL:
+                return None, "rate_limited"
+            salt = secrets.token_hex(16)
+            code = "{:06d}".format(secrets.randbelow(1_000_000))
+            user["reset_code_salt"] = salt
+            # Domain-separated so an account-verification code can never reset a password.
+            user["reset_code_hash"] = self._code_hash(email + "|reset", code, salt)
+            user["reset_code_expires"] = now + self.CODE_TTL
+            user["reset_code_sent_at"] = now
+            user["reset_attempts"] = 0
+            self.save()
+            return code, None
+
+    def _revoke_sessions_for(self, email):
+        email = email.strip().lower()
+        for token in [t for t, s in self.sessions.items() if s.get("email") == email]:
+            self.sessions.pop(token, None)
+
+    def reset_password(self, email, code, new_password):
+        """Verifikasi kode reset lalu ganti password. Return (ok, error)."""
+        email = email.strip().lower()
+        code = "".join(ch for ch in str(code or "") if ch.isdigit())
+        if len(new_password or "") < 8:
+            return False, "kata sandi minimal 8 karakter"
+        with self.lock:
+            user = self.users.get(email)
+            if not user:
+                return False, "kode salah atau kedaluwarsa"
+            now = int(time.time())
+            if int(user.get("reset_code_expires", 0)) < now:
+                return False, "kode kedaluwarsa, minta kode baru"
+            if int(user.get("reset_attempts", 0)) >= self.CODE_MAX_ATTEMPTS:
+                return False, "terlalu banyak percobaan, minta kode baru"
+            user["reset_attempts"] = int(user.get("reset_attempts", 0)) + 1
+            expected = user.get("reset_code_hash", "")
+            salt = user.get("reset_code_salt", "")
+            if len(code) != 6 or not expected or not hmac.compare_digest(
+                self._code_hash(email + "|reset", code, salt), expected
+            ):
+                self.save()
+                return False, "kode salah atau kedaluwarsa"
+            new_salt = secrets.token_hex(16)
+            user["salt"] = new_salt
+            user["password_hash"] = self._hash(new_password, new_salt)
+            # Proving email ownership also verifies the account.
+            user["verified"] = True
+            for key in (
+                "reset_code_hash", "reset_code_salt", "reset_code_expires",
+                "reset_code_sent_at", "reset_attempts",
+                "verify_code_hash", "verify_code_salt", "verify_code_expires",
+                "verify_code_sent_at", "verify_attempts", "verify_token",
+            ):
+                user.pop(key, None)
+            self._revoke_sessions_for(email)
+            self.save()
+            return True, None
 
     def check_password(self, email, password):
         user = self.get(email)
@@ -1340,7 +1432,8 @@ class Handler(BaseHTTPRequestHandler):
                             "/api/admin/notify/test", "/api/admin/smtp/test", "/api/admin/verify",
                             "/api/orders/mock-pay", "/api/orders/create", "/api/orders/proof",
                             "/api/auth/register", "/api/auth/login", "/api/auth/logout",
-                            "/api/auth/verify-code", "/api/auth/resend", "/api/auth/profile"):
+                            "/api/auth/verify-code", "/api/auth/resend", "/api/auth/profile",
+                            "/api/auth/forgot", "/api/auth/reset"):
             return self._send(404, {"error": "not found"})
         needs_body = url.path not in ("/api/orders/mock-pay", "/api/auth/logout")
         raw, data = self._body_json()
@@ -1405,6 +1498,34 @@ class Handler(BaseHTTPRequestHandler):
             token = self.users.create_session(user["email"])
             return self._send(200, {"ok": True, "email": user["email"], "token": token,
                                     "verified": True})
+
+        if url.path == "/api/auth/forgot":
+            email = str(data.get("email", "")).strip().lower()
+            # Always answer ok so the endpoint cannot be used to discover registered emails.
+            response = {"ok": True, "verification": "code"}
+            if not EMAIL_RE.match(email):
+                return self._send(200, response)
+            code, err = self.users.request_reset_code(email)
+            if code is None:
+                # Unknown email or still inside the resend cooldown: answer the same way.
+                return self._send(200, response)
+            if self.smtp_cfg and self.smtp_cfg.get("host"):
+                sent, send_err = send_reset_code(self.smtp_cfg, email, code)
+                if not sent:
+                    return self._send(500, {"error": "gagal mengirim email reset: " + str(send_err)})
+                return self._send(200, response)
+            # No SMTP configured: expose the code so the flow can be tested.
+            response["dev_code"] = code
+            return self._send(200, response)
+
+        if url.path == "/api/auth/reset":
+            email = str(data.get("email", "")).strip().lower()
+            code = str(data.get("code", "")).strip()
+            password = str(data.get("password", ""))
+            ok, err = self.users.reset_password(email, code, password)
+            if not ok:
+                return self._send(400, {"error": err or "kode salah atau kedaluwarsa"})
+            return self._send(200, {"ok": True, "email": email})
 
         if url.path == "/api/auth/login":
             email = str(data.get("email", "")).strip().lower()

@@ -141,6 +141,8 @@ status API mengonfirmasi `success`, ID transaksi cocok, dan `amount` serta
 - `GET /api/auth/me` (header `Authorization: Bearer <token>`) -> `{email, verified, premium, expiry?}`
 - `POST /api/auth/logout` (header `Authorization: Bearer <token>`) -> `{ok}`
 - `POST /api/auth/resend` `{"email"}` -> kirim ulang kode verifikasi (SMTP wajib); tanpa SMTP mengembalikan `dev_code`
+- `POST /api/auth/forgot` `{"email"}` -> kirim kode reset password ke email (SMTP wajib). Selalu membalas `{ok:true, verification:"code"}` agar tidak bisa dipakai menebak email terdaftar; tanpa SMTP mengembalikan `dev_code`
+- `POST /api/auth/reset` `{"email","code","password"}` -> verifikasi kode reset lalu ganti password (kode 6 digit, TTL 15 menit, maks 6 percobaan). Sesi lama dicabut, akun otomatis terverifikasi
 - `GET /api/auth/verify?token=...` -> aktifkan akun + link premium lama berbasis Gmail (kalau ada)
 
 **Mengaktifkan kode verifikasi email (SMTP):** isi `smtp_config.json` (lihat `smtp_config.json.example`) **atau** variabel lingkungan `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_USE_TLS`, `SMTP_USE_SSL` di `/etc/beatplay-premium.env`. Env menang atas file. Port 587 memakai STARTTLS (`SMTP_USE_TLS=true`); port 465 memakai SMTPS (`SMTP_USE_SSL=true`, `SMTP_USE_TLS=false`). Setelah diisi, restart `beatplay-premium` dan log akan menampilkan `SMTP aktif: ...`.
