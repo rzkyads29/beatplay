@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -79,6 +80,8 @@ import com.metrolist.music.constants.PremiumExpiryKey
 import com.metrolist.music.constants.PremiumServerUrlKey
 import com.metrolist.music.constants.SongsSinceAdKey
 import com.metrolist.music.db.AccountDatabase
+import com.metrolist.music.db.databaseRouter
+import com.metrolist.music.playback.MusicService
 import com.metrolist.music.premium.PremiumApi
 import com.metrolist.music.premium.PremiumAuthException
 import com.metrolist.music.premium.clearBeatPlaySession
@@ -92,7 +95,7 @@ import com.metrolist.music.ui.component.OtpBoxes
 import com.metrolist.music.ui.theme.ObsidianColors
 import com.metrolist.music.ui.theme.obsidianGradient
 import com.metrolist.music.utils.rememberPreference
-import com.metrolist.music.utils.restartAppForAccountSwitch
+import com.metrolist.music.utils.relaunchUi
 import com.metrolist.music.utils.safeDataStoreEdit
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -215,10 +218,13 @@ fun BeatPlayAuthScreen(navController: NavController) {
             prefs[BeatPlayAccountEmailKey] = email
             prefs[BeatPlayAuthTokenKey] = token
         }
-        // A different account has its own database; reopen it in a fresh process. Signing
-        // into the account whose DB is already open needs no restart.
+        // A different account has its own database: swap it in-process and relaunch the UI so
+        // every flow binds to the new account's data (no process kill, which Android blocks).
         if (AccountDatabase.needsSwitch(email)) {
-            restartAppForAccountSwitch(context)
+            runCatching { context.stopService(Intent(context, MusicService::class.java)) }
+            if (databaseRouter(context).switchTo(email)) {
+                relaunchUi(context)
+            }
         }
     }
 

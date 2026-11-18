@@ -14,6 +14,10 @@ import android.content.Context
 import com.metrolist.music.constants.BeatPlayAccountEmailKey
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import java.io.File
 import java.security.MessageDigest
 
@@ -92,3 +96,15 @@ object AccountDatabase {
         }
     }
 }
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+internal interface AccountDatabaseEntryPoint {
+    fun router(): DatabaseRouter
+}
+
+/** Obtain the database router from a composable without constructor injection. */
+fun databaseRouter(context: Context): DatabaseRouter =
+    EntryPointAccessors
+        .fromApplication(context.applicationContext, AccountDatabaseEntryPoint::class.java)
+        .router()

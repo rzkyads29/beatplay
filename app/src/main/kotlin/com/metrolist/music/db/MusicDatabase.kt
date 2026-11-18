@@ -55,23 +55,23 @@ import java.util.Date
 import java.util.Locale
 
 class MusicDatabase(
-    private val delegate: InternalDatabase,
-) : DatabaseDao by delegate.dao {
+    private val router: DatabaseRouter,
+) : DatabaseDao by router.dao {
     val speedDialDao: SpeedDialDao
-        get() = delegate.speedDialDao
+        get() = router.speedDialDao
 
     val openHelper: SupportSQLiteOpenHelper
-        get() = delegate.openHelper
+        get() = router.openHelper
 
     fun query(block: MusicDatabase.() -> Unit) =
-        with(delegate) {
+        with(router.current) {
             queryExecutor.execute {
                 block(this@MusicDatabase)
             }
         }
 
     fun transaction(block: MusicDatabase.() -> Unit) =
-        with(delegate) {
+        with(router.current) {
             transactionExecutor.execute {
                 runInTransaction {
                     block(this@MusicDatabase)
@@ -80,11 +80,11 @@ class MusicDatabase(
         }
 
     suspend fun withTransaction(block: suspend MusicDatabase.() -> Unit) =
-        delegate.withTransaction {
+        router.current.withTransaction {
             block(this@MusicDatabase)
         }
 
-    fun close() = delegate.close()
+    fun close() = router.closeActive()
 }
 
 @Database(
@@ -230,8 +230,7 @@ abstract class InternalDatabase : RoomDatabase() {
             return builder.build()
         }
 
-        fun newInstance(context: Context): MusicDatabase =
-            MusicDatabase(delegate = build(context))
+        fun newInstance(context: Context): MusicDatabase = MusicDatabase(DatabaseRouter(context))
 
         fun newInternalDatabaseInstance(context: Context, dbName: String = DB_NAME): InternalDatabase =
             build(context, dbName)

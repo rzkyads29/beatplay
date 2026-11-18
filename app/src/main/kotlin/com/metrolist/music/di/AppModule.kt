@@ -13,8 +13,8 @@ import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.NoOpCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import com.metrolist.music.constants.MaxSongCacheSizeKey
-import com.metrolist.music.db.AccountDatabase
-import com.metrolist.music.db.InternalDatabase
+import com.metrolist.music.db.DatabaseDao
+import com.metrolist.music.db.DatabaseRouter
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.listentogether.ListenTogetherClient
 import com.metrolist.music.listentogether.ListenTogetherManager
@@ -44,24 +44,14 @@ object AppModule {
     @Singleton
     @Provides
     fun provideDao(
-        database: InternalDatabase,
-    ) = database.dao
-
-    @Singleton
-    @Provides
-    fun provideInternalDatabase(
-        @ApplicationContext context: Context,
-    ): InternalDatabase {
-        val email = AccountDatabase.signedInEmail(context)
-        val dbName = AccountDatabase.prepare(context, AccountDatabase.nameFor(email))
-        return InternalDatabase.newInternalDatabaseInstance(context, dbName)
-    }
+        database: MusicDatabase,
+    ): DatabaseDao = database
 
     @Singleton
     @Provides
     fun provideDatabase(
-        internalDatabase: InternalDatabase,
-    ): MusicDatabase = MusicDatabase(internalDatabase)
+        router: DatabaseRouter,
+    ): MusicDatabase = MusicDatabase(router)
 
     @Singleton
     @Provides
