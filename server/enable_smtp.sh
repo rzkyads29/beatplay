@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Aktifkan kode verifikasi email BeatPlay lewat SMTP domain (adminbeat.my.id).
+# Aktifkan kode verifikasi email BeatPlay lewat SMTP (default: Gmail + App Password).
 #
 # Jalankan di VPS sebagai user yang punya sudo:
 #   chmod +x enable_smtp.sh
@@ -16,27 +16,33 @@ SERVICE="${SERVICE:-beatplay-premium}"
 # Pakai sudo hanya kalau bukan root, supaya skrip jalan di `sudo -i` maupun sebagai user biasa.
 if [ "$(id -u)" -eq 0 ]; then SUDO=""; else SUDO="sudo"; fi
 
-default_host="mail.adminbeat.my.id"
-default_user="no-reply@adminbeat.my.id"
-default_from="BeatPlay <no-reply@adminbeat.my.id>"
+default_host="smtp.gmail.com"
+default_port="465"
+default_from_name="BeatPlay"
 
 read -rp "SMTP host [$default_host]: " SMTP_HOST
 SMTP_HOST="${SMTP_HOST:-$default_host}"
 
-read -rp "SMTP port (465 = SSL, 587 = STARTTLS) [465]: " SMTP_PORT
-SMTP_PORT="${SMTP_PORT:-465}"
+read -rp "SMTP port (465 = SSL, 587 = STARTTLS) [$default_port]: " SMTP_PORT
+SMTP_PORT="${SMTP_PORT:-$default_port}"
 
-read -rp "SMTP username [$default_user]: " SMTP_USERNAME
-SMTP_USERNAME="${SMTP_USERNAME:-$default_user}"
-
-read -rsp "SMTP password: " SMTP_PASSWORD; echo
-if [ -z "${SMTP_PASSWORD}" ]; then
-  echo "Password kosong, dibatalkan." >&2
+read -rp "Alamat Gmail lengkap (contoh: nama@gmail.com): " SMTP_USERNAME
+if [ -z "${SMTP_USERNAME}" ]; then
+  echo "Alamat Gmail wajib diisi, dibatalkan." >&2
   exit 1
 fi
 
-read -rp "Alamat pengirim (From) [$default_from]: " SMTP_FROM
-SMTP_FROM="${SMTP_FROM:-$default_from}"
+read -rsp "App Password Gmail (16 karakter, spasi boleh): " SMTP_PASSWORD; echo
+# App Password sering ditampilkan dengan spasi; Gmail butuh tanpa spasi.
+SMTP_PASSWORD="${SMTP_PASSWORD// /}"
+if [ -z "${SMTP_PASSWORD}" ]; then
+  echo "App Password kosong, dibatalkan." >&2
+  exit 1
+fi
+
+read -rp "Nama pengirim [$default_from_name]: " SMTP_FROM_NAME
+SMTP_FROM_NAME="${SMTP_FROM_NAME:-$default_from_name}"
+SMTP_FROM="${SMTP_FROM_NAME} <${SMTP_USERNAME}>"
 
 if [ "$SMTP_PORT" = "465" ]; then
   SMTP_USE_TLS=false

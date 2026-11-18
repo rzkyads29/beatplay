@@ -147,6 +147,17 @@ status API mengonfirmasi `success`, ID transaksi cocok, dan `amount` serta
 
 Cara tercepat di VPS: jalankan `./enable_smtp.sh` (meminta host/port/username/password lalu menulis env + restart). Uji kirim: `POST /api/admin/smtp/test` dengan header `X-Admin-Token` dan body `{"to":"email@contoh.com"}`.
 
+**Panduan Gmail (paling cepat, tanpa ubah DNS):**
+1. Aktifkan Verifikasi 2 Langkah di akun Google.
+2. Buka https://myaccount.google.com/apppasswords → buat App Password (16 karakter). Ini **bukan** password Gmail biasa.
+3. Di VPS: `sudo /opt/beatplay/server/enable_smtp.sh`, lalu:
+   - host `smtp.gmail.com` (Enter), port `465` (Enter)
+   - alamat Gmail lengkap, mis. `nama@gmail.com`
+   - App Password (spasi boleh, otomatis dibuang)
+   - nama pengirim (Enter = `BeatPlay`)
+4. Cek `journalctl -u beatplay-premium -n 20 --no-pager | grep -i smtp` → harus `SMTP aktif: smtp.gmail.com`.
+5. `From` akan menjadi `BeatPlay <nama@gmail.com>`. Kalau ingin pengirim `@adminbeat.my.id`, perlu mailbox domain atau provider transaksional (Brevo/Resend) + record DNS.
+
 Password disimpan dengan scrypt (salt acak per user). Session token acak 256-bit, TTL 30 hari, disimpan di `sessions.json`. Status premium lama berbasis Gmail di `premium_emails.json` otomatis di-link ke akun BeatPlay saat user dengan email itu mendaftar/verifikasi. Dashboard admin di `/` menampilkan daftar akun BeatPlay beserta tombol **Verifikasi** dan **Cabut**.
 
 File runtime (`orders.json`, `premium_expiry.json`, `users.json`, `sessions.json`, `tripay_config.json`, `smtp_config.json`) di-gitignore.
