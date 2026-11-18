@@ -44,6 +44,9 @@ import com.metrolist.music.ui.screens.recognition.RecognitionHistoryScreen
 import com.metrolist.music.ui.screens.recognition.RecognitionScreen
 import com.metrolist.music.ui.screens.search.OnlineSearchResult
 import com.metrolist.music.ui.screens.search.SearchScreen
+import com.metrolist.music.ui.screens.social.ScanProfileScreen
+import com.metrolist.music.ui.screens.social.UserPlaylistDetailScreen
+import com.metrolist.music.ui.screens.social.UserPlaylistsScreen
 import com.metrolist.music.ui.screens.settings.AboutScreen
 import com.metrolist.music.ui.screens.settings.AiSettings
 import com.metrolist.music.ui.screens.settings.AndroidAutoSettings
@@ -385,6 +388,39 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable("beatplay_code") {
         BeatPlayCodeScreen(navController)
+    }
+
+    composable("scan_profile") {
+        ScanProfileScreen(
+            onCode = { code ->
+                navController.navigate("user_playlists/$code") { launchSingleTop = true }
+            },
+            onClose = { navController.navigateUp() },
+        )
+    }
+
+    composable(
+        route = "user_playlists/{code}",
+        arguments = listOf(navArgument("code") { type = NavType.StringType }),
+    ) { entry ->
+        val code = entry.arguments?.getString("code").orEmpty()
+        UserPlaylistsScreen(
+            code = code,
+            onOpenPlaylist = { playlistId ->
+                navController.navigate("user_playlist/$playlistId") { launchSingleTop = true }
+            },
+            onClose = { navController.navigateUp() },
+        )
+    }
+
+    composable(
+        route = "user_playlist/{playlistId}",
+        arguments = listOf(navArgument("playlistId") { type = NavType.StringType }),
+    ) { entry ->
+        UserPlaylistDetailScreen(
+            playlistId = entry.arguments?.getString("playlistId").orEmpty(),
+            onClose = { navController.navigateUp() },
+        )
     }
 
     composable("settings/youtube_account") {

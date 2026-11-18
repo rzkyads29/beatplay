@@ -268,4 +268,20 @@
     <string name="use_login_for_browse">Login untuk menjelajahi konten</string>
     <string name="use_login_for_browse_desc">Ini dapat memengaruhi konten yang Anda lihat dan misalnya menampilkan album khusus premium jika Anda login dengan akun Premium</string>
     <string name="action_login">Masuk</string>
+
+    <!-- BeatPlay sosial: scan kode profil + playlist publik -->
+    <string name="scan_profile_code">Scan kode profil</string>
+    <string name="scan_profile_permission">Akses kamera diperlukan untuk memindai kode profil BeatPlay.</string>
+    <string name="scan_profile_grant">Izinkan kamera</string>
+    <string name="scan_profile_hint">Arahkan kamera ke QR code profil BeatPlay</string>
+    <string name="social_playlists_title">Playlist</string>
+    <string name="social_loading">Memuat…</string>
+    <string name="social_login_required">Masuk ke akun BeatPlay dulu</string>
+    <string name="social_code_label">Kode BeatPlay %1$s</string>
+    <string name="social_no_playlists">Belum ada playlist yang dibagikan</string>
+    <string name="social_song_count">%1$d lagu</string>
+    <string name="social_play_count">%1$d kali diputar</string>
+    <string name="social_like">Sukai playlist</string>
+    <string name="social_like_count">%1$d suka</string>
+    <string name="social_by">oleh %1$s</string>
 </resources>

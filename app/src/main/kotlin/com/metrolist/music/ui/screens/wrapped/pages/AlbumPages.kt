@@ -38,7 +38,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -56,6 +58,7 @@ import com.metrolist.music.ui.screens.wrapped.WrappedConstants
 import com.metrolist.music.ui.screens.wrapped.components.AnimatedBackground
 import com.metrolist.music.ui.screens.wrapped.components.ShapeType
 import com.metrolist.music.ui.screens.wrapped.components.WrappedEyebrow
+import com.metrolist.music.ui.theme.bbh_bartle
 import kotlinx.coroutines.delay
 
 @Composable
@@ -103,10 +106,13 @@ fun WrappedTotalAlbumsScreen(uniqueAlbumCount: Int, isVisible: Boolean) {
             Spacer(Modifier.height(32.dp))
 
             BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                val density = LocalDensity.current
                 val baseStyle = MaterialTheme.typography.displayLarge.copy(
                     color = BeatPlayGreen,
                     fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    fontFamily = bbh_bartle,
+                    drawStyle = Stroke(with(density) { 2.dp.toPx() })
                 )
 
                 val textStyle = remember(uniqueAlbumCount, maxWidth) {
@@ -175,11 +181,11 @@ fun WrappedTopAlbumScreen(topAlbum: Album?, isVisible: Boolean) {
                 Text(
                     text = stringResource(R.string.wrapped_top_album_title),
                     style = TextStyle(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 26.sp,
+                        fontFamily = bbh_bartle,
+                        fontSize = 34.sp,
                         color = Color.White,
                         textAlign = TextAlign.Center,
-                        lineHeight = 32.sp
+                        lineHeight = 42.sp
                     )
                 )
             }
@@ -262,11 +268,11 @@ fun WrappedTop5AlbumsScreen(topAlbums: List<Album>, isVisible: Boolean) {
                 Text(
                     text = stringResource(R.string.wrapped_top_5_albums_title),
                     style = TextStyle(
-                        fontSize = 34.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontFamily = bbh_bartle,
+                        fontSize = 40.sp,
                         color = Color.White,
                         textAlign = TextAlign.Center,
-                        lineHeight = 40.sp
+                        lineHeight = 48.sp
                     )
                 )
             }
@@ -286,8 +292,8 @@ fun WrappedTop5AlbumsScreen(topAlbums: List<Album>, isVisible: Boolean) {
                         ) {
                             Text(
                                 text = "${index + 1}",
-                                fontWeight = FontWeight.Black,
-                                fontSize = 30.sp,
+                                fontFamily = bbh_bartle,
+                                fontSize = 32.sp,
                                 color = if (index == 0) BeatPlayGreen else Color.White.copy(alpha = 0.55f),
                                 modifier = Modifier.width(40.dp)
                             )

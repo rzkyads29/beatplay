@@ -1402,9 +1402,10 @@ class MusicService :
                     savePlayerStateToDisk()
                 }
                 val currentMetadata = player.currentMediaItem?.metadata
-                if (currentMetadata?.isEpisode == true && player.isPlaying && player.currentPosition > 0) {
-                    previousEpisodePosition = player.currentPosition
-                    saveEpisodePosition(currentMetadata.id, player.currentPosition)
+                if (currentMetadata != null && player.isPlaying && player.currentPosition > 0) {
+                    previousPositionId = currentMetadata.id
+                    previousPositionMs = player.currentPosition
+                    savePlaybackPosition(currentMetadata.id, player.currentPosition)
                 }
             }
         }
@@ -2759,41 +2760,48 @@ class MusicService :
     }
 
     private var previousMediaItemIndex = C.INDEX_UNSET
-    private var previousEpisodeId: String? = null
 
     // Tracks the mediaId that was playing immediately before the current
     // onMediaItemTransition call, so we can decide whether IT finished
     // naturally (and is therefore safe to mark as fully cached).
     private var lastTransitionedMediaId: String? = null
-    private var previousEpisodePosition: Long = 0L
+    private var previousPositionId: String? = null
+    private var previousPositionMs: Long = 0L
 
     /**
-     * Save podcast episode playback position to database.
-     * Only saves if the item is an episode and position is meaningful (> 3 seconds).
+     * Save the playback position of a track to the database. Unlike the old
+     * episode-only helper this applies to every track (songs included), so a track can be
+     * resumed where it was left even after its audio cache was cleared. Skips positions
+     * below 3 seconds because they are not meaningful.
      */
-    private fun saveEpisodePosition(
-        episodeId: String,
+    private fun savePlaybackPosition(
+        mediaId: String?,
         positionMs: Long,
     ) {
-        if (positionMs < 3000) return // Don't save if less than 3 seconds played
+        if (mediaId.isNullOrBlank() || positionMs < 3000) return
         scope.launch(Dispatchers.IO + SilentHandler) {
-            database.updatePlaybackPosition(episodeId, positionMs)
-            Timber.tag(TAG).d("Saved episode position: $episodeId at ${positionMs}ms")
+            database.updatePlaybackPosition(mediaId, positionMs)
+            Timber.tag(TAG).d("Saved playback position: $mediaId at ${positionMs}ms")
         }
     }
 
     /**
-     * Restore podcast episode playback position from database.
-     * Seeks to saved position if available.
+     * Restore the saved playback position of a track from the database.
+     * Skips restoring when the track is (almost) finished so a replay starts at the top.
      */
-    private fun restoreEpisodePosition(episodeId: String) {
+    private fun restorePlaybackPosition(mediaId: String) {
         scope.launch(Dispatchers.IO + SilentHandler) {
-            val savedPosition = database.getPlaybackPosition(episodeId)
+            val savedPosition = database.getPlaybackPosition(mediaId)
             if (savedPosition != null && savedPosition > 0) {
                 withContext(Dispatchers.Main) {
-                    if (player.currentMediaItem?.mediaId == episodeId) {
-                        player.seekTo(savedPosition)
-                        Timber.tag(TAG).d("Restored episode position: $episodeId to ${savedPosition}ms")
+                    if (player.currentMediaItem?.mediaId == mediaId) {
+                        val total = player.duration
+                        if (total <= 0 || savedPosition < total - 5000) {
+                            player.seekTo(savedPosition)
+                            Timber.tag(TAG).d("Restored playback position: $mediaId to ${savedPosition}ms")
+                        } else {
+                            player.seekTo(0)
+                        }
                     }
                 }
             }
@@ -2847,20 +2855,29 @@ class MusicService :
         retryJob = null
         updateInitialBufferRecovery(player.playbackState)
 
-        previousEpisodeId?.let { episodeId ->
-            if (previousEpisodePosition > 0) {
-                saveEpisodePosition(episodeId, previousEpisodePosition)
+        // Persist where the outgoing track stopped. A track that finished on its own is
+        // cleared instead, so replaying it starts from the beginning.
+        val finishedNaturally =
+            reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
+                reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT
+        previousPositionId?.let { previousId ->
+            if (finishedNaturally) {
+                scope.launch(Dispatchers.IO + SilentHandler) {
+                    database.updatePlaybackPosition(previousId, null)
+                }
+            } else if (previousPositionMs > 0) {
+                savePlaybackPosition(previousId, previousPositionMs)
             }
         }
-        previousEpisodeId = null
-        previousEpisodePosition = 0L
+        previousPositionId = null
+        previousPositionMs = 0L
 
         val newMetadata = mediaItem?.metadata
-        if (newMetadata?.isEpisode == true) {
-            previousEpisodeId = newMetadata.id
+        if (newMetadata != null) {
+            previousPositionId = newMetadata.id
             scope.launch {
                 delay(100)
-                restoreEpisodePosition(newMetadata.id)
+                restorePlaybackPosition(newMetadata.id)
             }
         }
 
@@ -3091,9 +3108,10 @@ class MusicService :
 
         if (!playWhenReady) {
             val currentMetadata = player.currentMediaItem?.metadata
-            if (currentMetadata?.isEpisode == true && player.currentPosition > 0) {
-                saveEpisodePosition(currentMetadata.id, player.currentPosition)
-                previousEpisodePosition = player.currentPosition
+            if (currentMetadata != null && player.currentPosition > 0) {
+                savePlaybackPosition(currentMetadata.id, player.currentPosition)
+                previousPositionId = currentMetadata.id
+                previousPositionMs = player.currentPosition
             }
         }
 
@@ -4805,7 +4823,7 @@ class MusicService :
         }
 
         val currentMetadata = player.currentMediaItem?.metadata
-        if (currentMetadata?.isEpisode == true && player.currentPosition > 0) {
+        if (currentMetadata != null && player.currentPosition > 0) {
             runBlocking(Dispatchers.IO) {
                 database.updatePlaybackPosition(currentMetadata.id, player.currentPosition)
             }

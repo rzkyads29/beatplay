@@ -255,6 +255,128 @@ class PremiumApi(
             email = o["email"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content.orEmpty(),
         )
 
+    // ---- Public playlists (share + like + play count) ----
+
+    /** Uploads the caller's playlists (JSON array string) to their BeatPlay account. */
+    suspend fun syncPlaylists(
+        serverUrl: String,
+        token: String,
+        playlistsJson: String,
+    ): Int {
+        val base = serverUrl.trim().trimEnd('/')
+        val payload = "{\"playlists\":$playlistsJson}"
+        val (status, text) = retrying(onlyIfNotSent = true) {
+            val res = client.post("$base/api/playlists/sync") {
+                header("Authorization", "Bearer $token")
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }
+            res.status.value to res.bodyAsText()
+        }
+        if (status == 401) throw PremiumAuthException(parseError(text))
+        check(status == 200) { parseError(text) }
+        return Json.parseToJsonElement(text).jsonObject["count"]?.jsonPrimitive?.int ?: 0
+    }
+
+    /** Public playlists of the account that owns [code], plus the owner profile. */
+    suspend fun userPlaylists(
+        serverUrl: String,
+        code: String,
+        token: String? = null,
+    ): PublicProfilePlaylists {
+        val base = serverUrl.trim().trimEnd('/')
+        val clean = code.trim().uppercase().filter { it.isLetterOrDigit() }
+        val (status, text) = retrying {
+            val res = client.get("$base/api/user/${java.net.URLEncoder.encode(clean, "UTF-8")}/playlists") {
+                if (!token.isNullOrBlank()) header("Authorization", "Bearer $token")
+            }
+            res.status.value to res.bodyAsText()
+        }
+        if (status == 404) throw IllegalArgumentException("Kode tidak ditemukan")
+        check(status == 200) { parseError(text) }
+        val root = Json.parseToJsonElement(text).jsonObject
+        val profile = parseProfile(root["profile"]?.jsonObject ?: JsonObject(emptyMap()))
+        val lists = root["playlists"]?.jsonArray.orEmpty().map { parsePublicPlaylist(it.jsonObject) }
+        return PublicProfilePlaylists(profile, lists)
+    }
+
+    /** Full detail (songs) of a published playlist. */
+    suspend fun playlistDetail(
+        serverUrl: String,
+        playlistId: String,
+        token: String? = null,
+    ): PublicPlaylistDetail {
+        val base = serverUrl.trim().trimEnd('/')
+        val (status, text) = retrying {
+            val res = client.get("$base/api/playlist/${java.net.URLEncoder.encode(playlistId, "UTF-8")}") {
+                if (!token.isNullOrBlank()) header("Authorization", "Bearer $token")
+            }
+            res.status.value to res.bodyAsText()
+        }
+        check(status == 200) { parseError(text) }
+        val root = Json.parseToJsonElement(text).jsonObject
+        val songs = root["songs"]?.jsonArray.orEmpty().map { element ->
+            val o = element.jsonObject
+            PublicPlaylistSong(
+                id = o["id"]?.jsonPrimitive?.content.orEmpty(),
+                title = o["title"]?.jsonPrimitive?.content.orEmpty(),
+                artist = o["artist"]?.jsonPrimitive?.content.orEmpty(),
+                thumbnailUrl = o["thumbnail"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content,
+                duration = o["duration"]?.jsonPrimitive?.int ?: 0,
+            )
+        }
+        val ownerName = root["owner"]?.jsonObject?.get("name")?.jsonPrimitive?.content.orEmpty()
+        return PublicPlaylistDetail(parsePublicPlaylist(root), songs, ownerName)
+    }
+
+    /** Toggles the like for [playlistId]; returns (likes, liked). */
+    suspend fun likePlaylist(
+        serverUrl: String,
+        token: String,
+        playlistId: String,
+    ): Pair<Int, Boolean> {
+        val base = serverUrl.trim().trimEnd('/')
+        val payload = "{\"id\":\"${esc(playlistId)}\"}"
+        val (status, text) = retrying(onlyIfNotSent = true) {
+            val res = client.post("$base/api/playlist/like") {
+                header("Authorization", "Bearer $token")
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }
+            res.status.value to res.bodyAsText()
+        }
+        if (status == 401) throw PremiumAuthException(parseError(text))
+        check(status == 200) { parseError(text) }
+        val root = Json.parseToJsonElement(text).jsonObject
+        return (root["likes"]?.jsonPrimitive?.int ?: 0) to (root["liked"]?.jsonPrimitive?.booleanOrNull == true)
+    }
+
+    /** Registers one play of [playlistId] and returns the new play count. */
+    suspend fun playPlaylist(serverUrl: String, playlistId: String): Int {
+        val base = serverUrl.trim().trimEnd('/')
+        val payload = "{\"id\":\"${esc(playlistId)}\"}"
+        val (status, text) = retrying(onlyIfNotSent = true) {
+            val res = client.post("$base/api/playlist/play") {
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }
+            res.status.value to res.bodyAsText()
+        }
+        check(status == 200) { parseError(text) }
+        return Json.parseToJsonElement(text).jsonObject["plays"]?.jsonPrimitive?.int ?: 0
+    }
+
+    private fun parsePublicPlaylist(o: JsonObject): PublicPlaylist =
+        PublicPlaylist(
+            id = o["id"]?.jsonPrimitive?.content.orEmpty(),
+            name = o["name"]?.jsonPrimitive?.content.orEmpty(),
+            cover = o["cover"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content,
+            songCount = o["songCount"]?.jsonPrimitive?.int ?: 0,
+            likes = o["likes"]?.jsonPrimitive?.int ?: 0,
+            liked = o["liked"]?.jsonPrimitive?.booleanOrNull == true,
+            plays = o["plays"]?.jsonPrimitive?.int ?: 0,
+        )
+
     suspend fun logout(serverUrl: String, token: String) {
         val base = serverUrl.trim().trimEnd('/')
         runCatching {
@@ -429,4 +551,35 @@ data class ProfileInfo(
     val avatarUrl: String?,
     val premium: Boolean,
     val email: String = "",
+)
+
+/** One published playlist shown on a public profile. */
+data class PublicPlaylist(
+    val id: String,
+    val name: String,
+    val cover: String?,
+    val songCount: Int,
+    val likes: Int,
+    val liked: Boolean,
+    val plays: Int,
+)
+
+/** A song inside a published playlist. */
+data class PublicPlaylistSong(
+    val id: String,
+    val title: String,
+    val artist: String,
+    val thumbnailUrl: String?,
+    val duration: Int,
+)
+
+data class PublicPlaylistDetail(
+    val playlist: PublicPlaylist,
+    val songs: List<PublicPlaylistSong>,
+    val ownerName: String,
+)
+
+data class PublicProfilePlaylists(
+    val profile: ProfileInfo,
+    val playlists: List<PublicPlaylist>,
 )

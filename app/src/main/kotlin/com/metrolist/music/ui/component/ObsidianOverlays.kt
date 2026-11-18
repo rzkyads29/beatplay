@@ -104,8 +104,10 @@ fun ObsidianProfileDrawer(
     DisposableEffect(api) { onDispose { api.close() } }
     val loggedIn = bpToken.isNotBlank() && bpEmail.isNotBlank()
 
-    LaunchedEffect(loggedIn) {
-        if (loggedIn && (bpCode.isBlank() || bpName.isBlank())) {
+    // Keyed on the account identity (not just "logged in") so switching BeatPlay
+    // accounts refreshes the name/avatar/code shown here without opening the profile page.
+    LaunchedEffect(bpToken, bpEmail) {
+        if (loggedIn) {
             runCatching { api.me(serverPref.trim().trimEnd('/'), bpToken) }
                 .onSuccess {
                     bpName = it.name ?: bpName

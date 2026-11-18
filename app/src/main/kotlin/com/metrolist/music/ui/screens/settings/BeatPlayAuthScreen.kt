@@ -94,6 +94,8 @@ import com.metrolist.music.ui.component.GradientButton
 import com.metrolist.music.ui.component.OtpBoxes
 import com.metrolist.music.ui.theme.ObsidianColors
 import com.metrolist.music.ui.theme.obsidianGradient
+import com.metrolist.music.utils.dataStore
+import com.metrolist.music.utils.get
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.relaunchUi
 import com.metrolist.music.utils.safeDataStoreEdit
@@ -214,13 +216,35 @@ fun BeatPlayAuthScreen(navController: NavController) {
         authEmail = email
         authToken = token
         showEmailForm = false
+        val switching = AccountDatabase.needsSwitch(email)
         context.safeDataStoreEdit { prefs ->
             prefs[BeatPlayAccountEmailKey] = email
             prefs[BeatPlayAuthTokenKey] = token
+            if (switching) {
+                // Drop the previous account's cached profile so nothing shows the old name,
+                // avatar or follow code while the new one is being fetched.
+                prefs.remove(BeatPlayAccountNameKey)
+                prefs.remove(BeatPlayAvatarUrlKey)
+                prefs.remove(BeatPlayFollowCodeKey)
+            }
+        }
+        if (switching) {
+            // Prime the new profile before the relaunch so the profile drawer is correct on
+            // the very first frame instead of showing the previous account.
+            runCatching {
+                val server = context.dataStore[PremiumServerUrlKey] ?: DEFAULT_PREMIUM_SERVER_URL
+                api.me(server.trim().trimEnd('/'), token)
+            }.onSuccess { profile ->
+                context.safeDataStoreEdit { prefs ->
+                    profile.name?.let { prefs[BeatPlayAccountNameKey] = it }
+                    profile.followCode?.let { prefs[BeatPlayFollowCodeKey] = it }
+                    prefs[BeatPlayAvatarUrlKey] = profile.avatarUrl ?: ""
+                }
+            }
         }
         // A different account has its own database: swap it in-process and relaunch the UI so
         // every flow binds to the new account's data (no process kill, which Android blocks).
-        if (AccountDatabase.needsSwitch(email)) {
+        if (switching) {
             runCatching { context.stopService(Intent(context, MusicService::class.java)) }
             if (databaseRouter(context).switchTo(email)) {
                 relaunchUi(context)

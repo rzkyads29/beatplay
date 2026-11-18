@@ -48,6 +48,7 @@ import com.metrolist.music.ui.screens.wrapped.WrappedConstants
 import com.metrolist.music.ui.screens.wrapped.components.AnimatedBackground
 import com.metrolist.music.ui.screens.wrapped.components.ShapeType
 import com.metrolist.music.ui.screens.wrapped.components.WrappedEyebrow
+import com.metrolist.music.ui.theme.bbh_bartle
 import kotlinx.coroutines.delay
 
 @Composable
@@ -78,9 +79,8 @@ fun WrappedTop5SongsScreen(topSongs: List<SongWithStats>, isVisible: Boolean) {
             ) {
                 Text(
                     text = stringResource(id = R.string.wrapped_top_5_songs_title),
-                    fontSize = 34.sp,
-                    lineHeight = 40.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 40.sp,
+                    lineHeight = 48.sp,
                     color = Color.White,
                     textAlign = TextAlign.Center
                 )
@@ -101,8 +101,8 @@ fun WrappedTop5SongsScreen(topSongs: List<SongWithStats>, isVisible: Boolean) {
                         ) {
                             Text(
                                 text = "${index + 1}",
-                                fontWeight = FontWeight.Black,
-                                fontSize = 30.sp,
+                                fontFamily = bbh_bartle,
+                                fontSize = 32.sp,
                                 color = if (index == 0) BeatPlayGreen else Color.White.copy(alpha = 0.55f),
                                 modifier = Modifier.width(40.dp)
                             )

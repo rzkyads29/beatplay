@@ -68,9 +68,10 @@ import com.metrolist.music.constants.IsPremiumKey
 import com.metrolist.music.constants.PremiumServerUrlKey
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.premium.PremiumApi
+import com.metrolist.music.premium.publishLocalPlaylists
 import com.metrolist.music.ui.theme.ObsidianColors
 import com.metrolist.music.utils.rememberPreference
-
+import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BeatPlayProfileScreen(navController: NavController) {
@@ -108,6 +109,8 @@ fun BeatPlayProfileScreen(navController: NavController) {
 
     var showEdit by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
+    var publishing by remember { mutableStateOf(false) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     LaunchedEffect(authToken) {
         if (authToken.isNotBlank()) {
@@ -276,6 +279,53 @@ fun BeatPlayProfileScreen(navController: NavController) {
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                     )
+                    Row(
+                        Modifier
+                            .clip(CircleShape)
+                            .clickable {
+                                scope.launch {
+                                    publishing = true
+                                    runCatching {
+                                        publishLocalPlaylists(
+                                            databaseDao = database,
+                                            api = api,
+                                            serverUrl = serverPref.trim().trimEnd('/'),
+                                            token = authToken,
+                                        )
+                                    }
+                                        .onSuccess {
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                "Playlist dipublikasikan ($it)",
+                                                android.widget.Toast.LENGTH_SHORT,
+                                            ).show()
+                                        }
+                                        .onFailure {
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                it.message ?: "Gagal mempublikasikan",
+                                                android.widget.Toast.LENGTH_SHORT,
+                                            ).show()
+                                        }
+                                    publishing = false
+                                }
+                            }
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.share),
+                            contentDescription = null,
+                            tint = ObsidianColors.slate400,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text(
+                            if (publishing) "Mengunggah..." else "Publikasikan",
+                            color = ObsidianColors.slate400,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
                     Row(
                         Modifier
                             .clip(CircleShape)

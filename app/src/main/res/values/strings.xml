@@ -343,4 +343,20 @@
     <string name="new_version_available">New version available</string>
     <string name="translation_models">Translation Models</string>
     <string name="clear_translation_models">Clear translation models</string>
+
+    <!-- BeatPlay social: profile QR scan + public playlists -->
+    <string name="scan_profile_code">Scan profile code</string>
+    <string name="scan_profile_permission">Camera access is needed to scan a BeatPlay profile code.</string>
+    <string name="scan_profile_grant">Allow camera</string>
+    <string name="scan_profile_hint">Point the camera at a BeatPlay profile QR code</string>
+    <string name="social_playlists_title">Playlists</string>
+    <string name="social_loading">Loading…</string>
+    <string name="social_login_required">Sign in to your BeatPlay account first</string>
+    <string name="social_code_label">BeatPlay code %1$s</string>
+    <string name="social_no_playlists">No playlists shared yet</string>
+    <string name="social_song_count">%1$d songs</string>
+    <string name="social_play_count">%1$d plays</string>
+    <string name="social_like">Like playlist</string>
+    <string name="social_like_count">%1$d likes</string>
+    <string name="social_by">by %1$s</string>
 </resources>

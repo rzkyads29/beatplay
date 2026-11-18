@@ -40,6 +40,7 @@ fun BoxScope.HideOnScrollFAB(
     @DrawableRes icon: Int,
     onClick: () -> Unit,
     onRecognitionClick: (() -> Unit)? = null,
+    onScanProfileClick: (() -> Unit)? = null,
 ) {
     AnimatedVisibility(
         visible = visible && lazyListState.isScrollingUp(),
@@ -57,6 +58,21 @@ fun BoxScope.HideOnScrollFAB(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(16.dp)
         ) {
+            if (onScanProfileClick != null) {
+                SmallFloatingActionButton(
+                    onClick = onScanProfileClick,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.qr_code_scanner),
+                        contentDescription = stringResource(R.string.scan_profile_code),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
             if (onRecognitionClick != null) {
                 SmallFloatingActionButton(
                     onClick = onRecognitionClick,

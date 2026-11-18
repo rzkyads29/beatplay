@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.wrapped
 
+import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
@@ -45,6 +46,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.metrolist.music.LocalNavController
 import com.metrolist.music.R
+import com.metrolist.music.ui.screens.wrapped.WrappedConstants
 import com.metrolist.music.ui.screens.beatplay.BeatPlayAuraBackground
 import com.metrolist.music.ui.screens.wrapped.pages.ConclusionPage
 import com.metrolist.music.ui.screens.wrapped.pages.PlaylistPage
@@ -108,6 +110,7 @@ fun WrappedScreen() {
 @Composable
 fun WrappedScreenContent() {
     val navController = LocalNavController.current
+    val context = LocalContext.current
     val onClose: () -> Unit = {
         navController.previousBackStackEntry?.savedStateHandle?.set("wrapped_seen", true)
         navController.popBackStack()
@@ -181,6 +184,27 @@ fun WrappedScreenContent() {
     val pagerState = rememberPagerState(pageCount = { screens.size })
     val state by manager.state.collectAsStateWithLifecycle()
     val isMuted by audioService.isMuted.collectAsStateWithLifecycle()
+    val onShare: () -> Unit = {
+        val summary = buildString {
+            val s = state
+            appendLine("BeatPlay Wrapped ${WrappedConstants.YEAR}")
+            appendLine("🎧 ${s.totalMinutes} menit mendengarkan")
+            s.topSongs.firstOrNull()?.let {
+                appendLine("🎵 Lagu teratas: ${it.title} · ${it.songCountListened}× diputar")
+            }
+            s.topArtists.firstOrNull()?.let {
+                appendLine("🎤 Artis teratas: ${it.artist.name} · ${it.songCount}× diputar")
+            }
+            s.topAlbum?.let { appendLine("💿 Album teratas: ${it.title}") }
+            appendLine("🎼 ${s.uniqueSongCount} lagu • ${s.uniqueArtistCount} artis • ${s.totalAlbums} album")
+            append("Dengarkan di BeatPlay 🎶")
+        }
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, summary)
+        }
+        context.startActivity(Intent.createChooser(intent, context.getString(R.string.share)))
+    }
     val messagePair =
         rememberSaveable(state.totalMinutes, saver = messagePairSaver) {
             WrappedRepository.getMessage(state.totalMinutes)
@@ -212,6 +236,13 @@ fun WrappedScreenContent() {
                     IconButton(onClick = { audioService.toggleMute() }) {
                         val icon = if (isMuted) R.drawable.volume_off else R.drawable.volume_up
                         Icon(painterResource(icon), "Mute", tint = Color.White)
+                    }
+                    IconButton(onClick = onShare) {
+                        Icon(
+                            painterResource(R.drawable.share),
+                            stringResource(R.string.share),
+                            tint = Color.White,
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),

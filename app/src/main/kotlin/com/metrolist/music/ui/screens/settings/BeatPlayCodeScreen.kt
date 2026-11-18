@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -92,6 +93,26 @@ private fun prettyCode(code: String): String =
 
 private fun followUrl(base: String, code: String): String =
     base.trim().trimEnd('/') + "/f/" + code.uppercase()
+
+/** Renders [text] as a QR bitmap so another BeatPlay device can scan this card. */
+private fun generateQrBitmap(text: String, size: Int = 560): android.graphics.Bitmap? =
+    runCatching {
+        val matrix = com.google.zxing.MultiFormatWriter().encode(
+            text,
+            com.google.zxing.BarcodeFormat.QR_CODE,
+            size,
+            size,
+        )
+        val bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+        val black = android.graphics.Color.BLACK
+        val white = android.graphics.Color.WHITE
+        for (x in 0 until size) {
+            for (y in 0 until size) {
+                bitmap.setPixel(x, y, if (matrix.get(x, y)) black else white)
+            }
+        }
+        bitmap
+    }.getOrNull()
 
 @Composable
 fun BeatPlayCodeScreen(navController: NavController) {
@@ -259,6 +280,12 @@ fun BeatPlayCodeScreen(navController: NavController) {
                         name = name.ifBlank { authEmail.substringBefore("@") },
                         code = followCode,
                         avatarUrl = avatarUrl,
+                        qrBitmap =
+                            remember(followCode, serverPref) {
+                                followCode.takeIf { it.isNotBlank() }?.let {
+                                    generateQrBitmap(followUrl(serverPref, it))
+                                }
+                            },
                     )
                 }
                 GradientButton(
@@ -414,6 +441,7 @@ private fun BeatPlayCodeCard(
     name: String,
     code: String,
     avatarUrl: String,
+    qrBitmap: android.graphics.Bitmap? = null,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -491,10 +519,16 @@ private fun BeatPlayCodeCard(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(18.dp))
                     .background(ObsidianColors.elegantWhite)
-                    .padding(vertical = 22.dp, horizontal = 8.dp),
+                    .padding(vertical = 16.dp, horizontal = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                if (code.isBlank()) {
+                if (qrBitmap != null) {
+                    Image(
+                        bitmap = qrBitmap.asImageBitmap(),
+                        contentDescription = "QR code profil BeatPlay",
+                        modifier = Modifier.size(190.dp),
+                    )
+                } else if (code.isBlank()) {
                     Text(
                         text = "Memuat kode...",
                         style = MaterialTheme.typography.bodySmall,

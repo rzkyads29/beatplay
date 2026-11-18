@@ -319,6 +319,7 @@ fun SearchScreen(
                     lazyListState = lazyListState,
                     icon = R.drawable.mic,
                     onClick = { navController.navigate("recognition") },
+                    onScanProfileClick = { navController.navigate("scan_profile") },
                 )
             }
         }
