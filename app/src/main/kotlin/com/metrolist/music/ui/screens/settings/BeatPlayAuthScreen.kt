@@ -78,6 +78,7 @@ import com.metrolist.music.constants.PremiumEmailKey
 import com.metrolist.music.constants.PremiumExpiryKey
 import com.metrolist.music.constants.PremiumServerUrlKey
 import com.metrolist.music.constants.SongsSinceAdKey
+import com.metrolist.music.db.AccountDatabase
 import com.metrolist.music.premium.PremiumApi
 import com.metrolist.music.premium.PremiumAuthException
 import com.metrolist.music.premium.clearBeatPlaySession
@@ -91,6 +92,7 @@ import com.metrolist.music.ui.component.OtpBoxes
 import com.metrolist.music.ui.theme.ObsidianColors
 import com.metrolist.music.ui.theme.obsidianGradient
 import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.utils.restartAppForAccountSwitch
 import com.metrolist.music.utils.safeDataStoreEdit
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -212,6 +214,11 @@ fun BeatPlayAuthScreen(navController: NavController) {
         context.safeDataStoreEdit { prefs ->
             prefs[BeatPlayAccountEmailKey] = email
             prefs[BeatPlayAuthTokenKey] = token
+        }
+        // A different account has its own database; reopen it in a fresh process. Signing
+        // into the account whose DB is already open needs no restart.
+        if (AccountDatabase.needsSwitch(email)) {
+            restartAppForAccountSwitch(context)
         }
     }
 

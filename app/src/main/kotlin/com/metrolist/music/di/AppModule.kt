@@ -13,6 +13,7 @@ import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.NoOpCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import com.metrolist.music.constants.MaxSongCacheSizeKey
+import com.metrolist.music.db.AccountDatabase
 import com.metrolist.music.db.InternalDatabase
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.listentogether.ListenTogetherClient
@@ -50,7 +51,11 @@ object AppModule {
     @Provides
     fun provideInternalDatabase(
         @ApplicationContext context: Context,
-    ): InternalDatabase = InternalDatabase.newInternalDatabaseInstance(context)
+    ): InternalDatabase {
+        val email = AccountDatabase.signedInEmail(context)
+        val dbName = AccountDatabase.prepare(context, AccountDatabase.nameFor(email))
+        return InternalDatabase.newInternalDatabaseInstance(context, dbName)
+    }
 
     @Singleton
     @Provides
