@@ -127,7 +127,9 @@ Project layout:
 
 ## Limitations
 
-Not available on desktop yet: Google sign-in through a web page, account sync of likes/playlists back to YouTube, equalizer, crossfade, song recognition, widgets, Discord rich presence, Chromecast.
+Not available on desktop yet: Google sign-in through a web page (paste your YouTube Music cookie instead), account sync of likes/playlists back to YouTube, song recognition, widgets, Chromecast.
+
+Equalizer, crossfade, gapless playback, Listen Together, Discord Rich Presence and the year-in-review Recap are all available on desktop — this list was previously out of date.
 
 Some tracks may be unavailable because of YouTube client restrictions, regional rules or authentication requirements. Stream extraction uses direct URLs supported by VLC. It intentionally does not advertise SABR or bounded-range playback support. Downloads can use bounded ranges. The interface is currently English. Windows installers are unsigned, so SmartScreen may display a warning.
 

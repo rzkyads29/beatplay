@@ -1,6 +1,7 @@
 package com.utaloom.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -26,7 +27,6 @@ import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -72,7 +72,7 @@ fun TogetherScreen() {
         }
         st.message?.let { msg ->
             item {
-                Card {
+                Panel {
                     Row(Modifier.fillMaxWidth().padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(msg, Modifier.weight(1f))
                         IconButton(ListenTogether::clearMessage) { Icon(Icons.Default.Close, "Dismiss") }
@@ -114,7 +114,7 @@ private fun JoinCard(st: TogetherState, savedName: String) {
     var code by remember { mutableStateOf("") }
     val busy = st.waitingApproval || st.connection == Connection.CONNECTING
     val validName = name.isNotBlank() && name.trim().length <= 32
-    Card(Modifier.widthIn(max = 560.dp).fillMaxWidth()) {
+    Panel(Modifier.widthIn(max = 560.dp).fillMaxWidth()) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(name, { name = it.take(32) }, label = { Text("Your name") }, singleLine = true, modifier = Modifier.fillMaxWidth(), enabled = !busy)
             Button({ ListenTogether.createRoom(name.trim()) }, enabled = validName && !busy, modifier = Modifier.fillMaxWidth()) { Text("Create room") }
@@ -153,7 +153,7 @@ private fun JoinCard(st: TogetherState, savedName: String) {
 @Composable
 private fun RoomCard(st: TogetherState) {
     val clipboard = LocalClipboardManager.current
-    Card(Modifier.widthIn(max = 560.dp).fillMaxWidth()) {
+    Panel(Modifier.widthIn(max = 560.dp).fillMaxWidth()) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(if (st.role == Role.HOST) "You are hosting" else "You are listening along", style = MaterialTheme.typography.titleMedium)
             FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -232,7 +232,7 @@ private fun Logs(logs: List<String>) {
         if (open) {
             val list = rememberLazyListState()
             LaunchedEffect(logs.size) { if (logs.isNotEmpty()) list.scrollToItem(logs.lastIndex) }
-            Card(Modifier.fillMaxWidth()) {
+            Panel(Modifier.fillMaxWidth()) {
                 SelectionContainer {
                     VScrollColumn(Modifier.fillMaxWidth().heightIn(max = 280.dp).padding(12.dp), state = list) {
                         items(logs) { Text(it, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace) }
@@ -244,10 +244,16 @@ private fun Logs(logs: List<String>) {
 }
 
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) = Card(Modifier.widthIn(max = 760.dp).fillMaxWidth()) {
+private fun Section(title: String, content: @Composable () -> Unit) = Panel(Modifier.widthIn(max = 760.dp).fillMaxWidth()) {
     Column(Modifier.padding(16.dp)) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
         content()
     }
+}
+
+/** Frosted Obsidian panel replacing the default flat Material Card for a consistent glass look. */
+@Composable
+private fun Panel(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Box(modifier.glassPanel()) { content() }
 }
