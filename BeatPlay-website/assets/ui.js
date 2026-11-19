@@ -350,7 +350,24 @@
     }, { passive: true });
   }
 
-  /* ---- deteksi platform di halaman unduh -------------------------------
-   * Ditangani di download.html (inline, sebelum render pertama). Logika hanya
-   * boleh punya satu sumber supaya tidak balapan. */
+  /* ---- reveal on scroll (semua halaman) --------------------------------- */
+  // Satu sumber untuk beranda, halaman unduh, dan halaman kontak.
+  if (document.querySelector("[data-reveal]") && !document.documentElement.dataset.revealBound) {
+    document.documentElement.dataset.revealBound = "1";
+    const items = document.querySelectorAll("[data-reveal]");
+    const reduce = reduceMotion;
+    if (reduce || !("IntersectionObserver" in window)) {
+      items.forEach((el) => el.classList.add("in"));
+    } else {
+      const io = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("in");
+            io.unobserve(entry.target);
+          }
+        }
+      }, { threshold: 0.08, rootMargin: "0px 0px -36px 0px" });
+      items.forEach((el) => io.observe(el));
+    }
+  }
 })();

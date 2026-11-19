@@ -580,3 +580,127 @@ html{scroll-padding-top:82px}
 @media(prefers-reduced-motion:reduce){
   .faq-item summary::after{transition:none}
 }
+/* ---- sections: roadmap, instalasi, arsip versi, kontak --------------- */
+/* ---- roadmap ----------------------------------------------------------- */
+.roadmap{display:grid;gap:0;margin:0;padding:0;list-style:none;counter-increment:none;
+  border-top:1px solid var(--line)}
+.roadmap li{position:relative;display:grid;gap:6px;padding:clamp(18px,2.6vw,26px) 0 0 34px;
+  border-bottom:1px solid var(--line)}
+.roadmap li::before{content:"";position:absolute;left:0;top:16px;bottom:0;width:1px;
+  background:var(--line)}
+.roadmap li::after{content:"";position:absolute;left:-4px;top:14px;width:9px;height:9px;
+  border:1px solid var(--line-3);background:var(--bg);border-radius:50%}
+.roadmap li.done::after{background:var(--accent);border-color:var(--accent)}
+.roadmap li.doing::after{background:var(--ok);border-color:var(--ok)}
+.roadmap li.next::after{border-color:var(--faint)}
+.rm-head{display:flex;align-items:baseline;gap:10px 14px;flex-wrap:wrap}
+.rm-state{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--faint);border:1px solid var(--line);padding:2px 7px}
+.roadmap li.done .rm-state{color:var(--ink);border-color:var(--line-2)}
+.roadmap li.doing .rm-state{color:var(--ok);border-color:var(--ok)}
+.rm-title{margin:0;font-size:17px}
+.rm-ver{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--faint)}
+.roadmap li p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.62;max-width:62ch}
+
+/* ---- instalasi bergambar ------------------------------------------------ */
+.inst-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.inst-card{position:relative;border:1px solid var(--line);background:var(--panel);
+  padding:clamp(18px,2.4vw,26px)}
+.inst-card .num{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--faint)}
+.inst-card h3{margin:6px 0 14px}
+.inst-steps{list-style:none;margin:0 0 18px;padding:0;display:grid;gap:12px}
+.inst-steps li{display:grid;gap:3px}
+.inst-steps b{font-size:14px;color:var(--ink)}
+.inst-steps span{color:var(--muted);font-size:12.5px;line-height:1.6}
+.inst-shot{margin:0;border:1px solid var(--line);background:var(--bg)}
+.inst-shot img{width:100%;display:block;border-bottom:1px solid var(--line)}
+.inst-shot figcaption{display:flex;align-items:center;gap:10px;padding:10px 13px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.inst-shot figcaption::before{content:"";width:6px;height:6px;background:var(--accent);flex:none}
+.inst-phone{max-width:280px;margin:0 auto}
+
+/* ---- arsip versi -------------------------------------------------------- */
+.arch{display:grid;gap:14px}
+.arch-block{border:1px solid var(--line);background:var(--panel)}
+.arch-block summary{display:flex;align-items:center;gap:14px;cursor:pointer;list-style:none;
+  padding:16px 18px;font-size:15px;color:var(--ink);transition:background .18s}
+.arch-block summary::-webkit-details-marker{display:none}
+.arch-block summary:hover{background:rgba(255,255,255,.03)}
+.arch-block summary::after{content:"+";margin-left:auto;font-family:var(--mono);font-size:20px;
+  color:var(--muted);transition:transform .22s}
+.arch-block[open] summary::after{transform:rotate(45deg)}
+.arch-block summary b{font-weight:600}
+.arch-count{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--faint);border:1px solid var(--line);padding:2px 7px}
+.arch-list{list-style:none;margin:0;padding:0 18px 14px;display:grid;gap:0}
+.arch-list li{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;
+  padding:11px 0;border-top:1px solid var(--line)}
+.arch-meta{display:flex;align-items:baseline;gap:10px;min-width:150px}
+.arch-meta b{font-family:var(--mono);font-size:13px;color:var(--ink)}
+.arch-meta span{font-family:var(--mono);font-size:10px;color:var(--faint)}
+.arch-files{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--muted);
+  text-transform:uppercase;flex:1}
+.arch-list .btn{padding:7px 12px;font-size:10px}
+
+/* ---- halaman kontak ----------------------------------------------------- */
+.contact-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:clamp(38px,5vw,64px)}
+.contact-card{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);
+  background:var(--panel);padding:clamp(20px,2.6vw,28px);transition:border-color .2s,background .2s}
+.contact-card:hover{border-color:var(--line-3);background:rgba(255,255,255,.03)}
+.contact-card .ic{width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--line-2)}
+.contact-card .ic svg{width:18px;height:18px}
+.contact-card h3{margin:4px 0 0}
+.contact-card p{margin:0;color:var(--muted);font-size:13px;line-height:1.6}
+.mono-line{font-family:var(--mono);font-size:12px;color:var(--ink);overflow-wrap:anywhere}
+.go{margin-top:auto;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted)}
+.contact-card:hover .go{color:var(--ink)}
+
+.fb-section{padding:clamp(38px,5vw,64px) 0;border-top:1px solid var(--line)}
+.fb-form{margin-top:26px}
+.fb-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fb-field{display:grid;gap:8px}
+.fb-field.full{grid-column:1 / -1}
+.fb-field span{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted)}
+.fb-field input,.fb-field select,.fb-field textarea{width:100%;padding:12px 14px;
+  border:1px solid var(--line-2);background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:14.5px;transition:border-color .18s}
+.fb-field input:focus,.fb-field select:focus,.fb-field textarea:focus{outline:none;border-color:var(--ink)}
+.fb-field input[aria-invalid="true"],.fb-field select[aria-invalid="true"],.fb-field textarea[aria-invalid="true"]{
+  border-color:rgba(248,113,113,.6)}
+.fb-field textarea{resize:vertical;min-height:110px}
+.fb-field select{appearance:none;-webkit-appearance:none;cursor:pointer}
+.fb-field select option{background:var(--panel)}
+.fb-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px}
+.fb-note{font-size:12px;color:var(--muted);line-height:1.55;flex:1;min-width:220px}
+.fb-note.warn{color:#fca5a5}
+
+.privacy{padding:clamp(38px,5vw,64px) 0 0;border-top:1px solid var(--line)}
+.priv-grid{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line)}
+.priv-cell{padding:clamp(18px,2.2vw,26px);border-right:1px solid var(--line)}
+.priv-cell:last-child{border-right:0}
+.priv-cell .k{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--faint)}
+.priv-cell .v{margin:8px 0 6px;font-size:19px;font-weight:700;letter-spacing:-.01em}
+.priv-cell p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.6}
+
+@media(max-width:1080px){
+  .priv-grid{grid-template-columns:repeat(2,1fr)}
+  .priv-cell:nth-child(2n){border-right:0}
+  .priv-cell:nth-child(-n+2){border-bottom:1px solid var(--line)}
+}
+@media(max-width:820px){
+  .inst-grid{grid-template-columns:1fr}
+  .contact-grid{grid-template-columns:1fr}
+  .arch-meta{min-width:0;flex:1}
+}
+@media(max-width:560px){
+  .fb-grid{grid-template-columns:1fr}
+  .priv-grid{grid-template-columns:1fr}
+  .priv-cell{border-right:0;border-bottom:1px solid var(--line)}
+  .priv-cell:last-child{border-bottom:0}
+  .fb-actions .btn{width:100%}
+}
