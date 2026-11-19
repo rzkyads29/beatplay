@@ -37,6 +37,7 @@ import androidx.compose.ui.window.PopupProperties
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
 import coil3.compose.setSingletonImageLoaderFactory
+import coil3.memory.MemoryCache
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.ImageRequest
 import com.utaloom.data.PlaylistImports
@@ -51,6 +52,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+
+/** Hard ceiling for decoded-artwork RAM. Keeps a long library scroll from ballooning memory. */
+private const val IMAGE_CACHE_BYTES = 96L * 1024 * 1024
 
 /** Restore the shared YouTube session after the platform has initialized its data directory. */
 fun applySession() {
@@ -121,7 +125,14 @@ fun BeatPlayApp(vlcError: String? = null, fullscreen: Boolean, onFullscreenChang
         }
     }
 
-    setSingletonImageLoaderFactory { ctx -> ImageLoader.Builder(ctx).components { add(KtorNetworkFetcherFactory()) }.build() }
+    // Cap the in-memory image cache instead of letting Coil take its default (~25% of the JVM
+    // heap), so a long library scroll does not balloon RAM on low-memory machines.
+    setSingletonImageLoaderFactory { ctx ->
+        ImageLoader.Builder(ctx)
+            .components { add(KtorNetworkFetcherFactory()) }
+            .memoryCache { MemoryCache.Builder().maxSizeBytes(IMAGE_CACHE_BYTES).build() }
+            .build()
+    }
 
     val ctx = LocalPlatformContext.current
     LaunchedEffect(player.current?.thumbnail, settings.dynamicColor) {
