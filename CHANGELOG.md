@@ -1,5 +1,27 @@
 # Changelog
 
+## [v1.5.21] - 2026-11-19
+
+* test(fullscreen): seed a session and skip when the player UI is unreachable (b76a4fa)
+* web: desain ulang landing page (dark brutalist) + screenshot asli (566d4c5)
+* web(brand): fix logo alt text and rebuild the deploy archive with the new mark (278efa2)
+* ui(brand): replace the desktop/web icon with the sound-wave + play mark (bcb2b00)
+* ui(desktop): require login, add email verification for password reset, fix invisible accent-button text (70cf05e)
+* ui(stats): align top-artists rows with the glass language (56553f8)
+* ui(together): align Listen Together cards with the Obsidian glass language (51d0d9c)
+* perf(ui): cap the in-memory image cache (2b7df11)
+* feat(server): public playlists with likes and play counts (17c7a32)
+* feat(auth): password reset via emailed 6-digit code (529a83a)
+* docs(server): Gmail App Password quickstart for email verification (26fe800)
+* chore(server): make enable_smtp.sh work when run as root (7271de2)
+* feat(auth): enable emailed verification codes via SMTP (0c782d7)
+* style(ui): flat elegant white surfaces and square avatar crop (705413f)
+* redesign: elegant-white palette + BeatPlay profile, follow code and server profile API (a61fdee)
+* feat(auth): email-only BeatPlay accounts with 6-digit code verification (cef46f5)
+* style(ui): span accent gradients per element and add a Premium hero (d6160f2)
+* feat(ui): Deep Obsidian glassmorphism redesign (f14a5e4)
+* docs(web): downloads point at v1.5.20 desktop (stale server address fix) (3f16c3a)
+
 ## [v1.5.20] - 2026-11-15
 
 * fix(premium): repair a stale server address on every launch (407488d)
