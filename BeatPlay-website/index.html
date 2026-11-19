@@ -7,8 +7,9 @@
 <title>BeatPlay — Musik favoritmu. Dengan caramu.</title>
 <meta name="description" content="BeatPlay: pemutar YouTube Music untuk Windows, Linux, dan Android. Automix tanpa jeda antar lagu, lirik sinkron, offline, Listen Together, dan Premium.">
 <meta name="theme-color" content="#050505">
-<link rel="icon" href="img/logo-128.png">
-<link rel="icon" href="img/favicon-32.png" sizes="32x32">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="img/logo-128.png?v=83cf9c28">
+<link rel="icon" href="img/favicon-32.png?v=3525d714" sizes="32x32">
 <meta property="og:type" content="website">
 <meta property="og:title" content="BeatPlay — Musik favoritmu. Dengan caramu.">
 <meta property="og:description" content="Pemutar YouTube Music untuk Windows, Linux, dan Android. Automix, lirik sinkron, offline.">
@@ -16,9 +17,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="assets/site.css">
-<script src="assets/particles.js" defer></script>
-<script src="assets/ui.js" defer></script>
+<link rel="stylesheet" href="assets/site.css?v=7e9588ba">
+<script src="assets/particles.js?v=72e63b41" defer></script>
+<script src="assets/ui.js?v=418eaebd" defer></script>
 </head>
 <body id="top">
 <div class="bg-glow" aria-hidden="true"></div>
@@ -28,10 +29,10 @@
 
 <header class="topbar">
 <div class="wrap">
-<a class="brand" href="#top"><img src="img/logo-128.png" alt="BeatPlay"><span class="bt">BEAT</span><span class="bp">PLAY</span></a>
+<a class="brand" href="#top"><img src="img/logo-128.png?v=83cf9c28" alt="BeatPlay"><span class="bt">BEAT</span><span class="bp">PLAY</span></a>
 <span class="sp"></span>
 <nav class="navlinks" id="nav-main" aria-label="Navigasi utama">
-<a href="#fitur">Fitur</a><a href="#tampilan">Tampilan</a><a href="#premium">Harga</a><a href="download.html">Unduh</a>
+<a href="#fitur">Fitur</a><a href="#changelog">Baru</a><a href="#banding">Banding</a><a href="#tampilan">Tampilan</a><a href="#premium">Harga</a><a href="#faq">FAQ</a><a href="download.html">Unduh</a>
 </nav>
 <a class="btn sm" href="download.html">Unduh</a>
 <button class="navtoggle" type="button" aria-label="Buka navigasi" aria-expanded="false" aria-controls="nav-main"><span aria-hidden="true"></span></button>
@@ -59,7 +60,7 @@
 <div class="hero-visual" data-reveal style="--d:.1s">
 <figure class="frame">
 <div class="winbar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="name">beatplay.exe</span><span class="tag">v1.5.21</span></div>
-<img src="img/shots/desktop-home.webp" alt="BeatPlay di desktop dengan pencarian lagu dan panel lirik" width="1534" height="786" fetchpriority="high" decoding="async">
+<img src="img/shots/desktop-home.webp?v=309fee0f" alt="BeatPlay di desktop dengan pencarian lagu dan panel lirik" width="1534" height="786" fetchpriority="high" decoding="async">
 </figure>
 </div>
 </div>
@@ -147,11 +148,79 @@
 </div>
 </section>
 
+<section id="changelog" class="section">
+<div class="wrap">
+<div class="section-head" data-reveal>
+<p class="eyebrow">02 <span class="sep">/</span> Apa yang baru</p>
+<h2 class="h2">Selalu ada yang baru.<br><span class="out">Tiap versi.</span></h2>
+<p class="lead">Setiap rilis kami tulis terbuka di GitHub. Dua yang terbaru:</p>
+</div>
+
+<ol class="releases" data-reveal>
+<li class="rel">
+<div class="rel-head"><h3 class="rel-tag">v1.5.21</h3><span class="rel-date">19 Nov 2026</span><span class="rel-badge">Windows &amp; Linux</span></div>
+<ul class="rel-list">
+<li><b>Automix.</b> Akhir lagu membaur ke awal lagu berikutnya dalam dua detik, tanpa heningan dan tanpa potongan.</li>
+<li><b>Akun BeatPlay berbasis email.</b> Daftar hanya dengan email, verifikasi lewat kode 6 digit, termasuk untuk reset kata sandi.</li>
+<li><b>Tampilan elegan dan bersih.</b> Permukaan putih-flat, avatar dipotong persegi, dan kartu Listen Together serta artis teratas ikut diselaraskan.</li>
+<li><b>Playlist publik.</b> Bagikan playlist milikmu; jumlah suka dan jumlah putar tampil untuk umum.</li>
+<li><b>Lebih hemat memori.</b> Cache gambar di memori kini berbatas, jadi pemakaian RAM lebih stabil saat lama dipakai.</li>
+</ul>
+<p class="rel-files"><b>Berkas:</b> beatplay-1.5.21.msi (146,8 MB) · beatplay_1.5.21_amd64.deb (96,5 MB) · beatplay-1.5.21-1.x86_64.rpm (96,6 MB)</p>
+</li>
+
+<li class="rel">
+<div class="rel-head"><h3 class="rel-tag">Android 1.5.5</h3><span class="rel-date">19 Nov 2026</span><span class="rel-badge">Android</span></div>
+<ul class="rel-list">
+<li><b>Wrapped 2026.</b> Rekap lagu, artis, dan genre favoritmu sepanjang tahun, lengkap dengan halaman cerita yang bisa dibagikan.</li>
+<li><b>Antarmuka baru.</b> Navigasi lima tab, bar bawah bergaya kaca, dan mini player bulat.</li>
+<li><b>Alur akun baru.</b> Layar selamat datang, kode verifikasi satu kolom, dan reset kata sandi lewat kode email.</li>
+<li><b>Per akun.</b> Ganti akun tanpa memuat ulang; lagu dilanjutkan dari posisi terakhir.</li>
+<li><b>Playlist publik, pindai QR, penyegaran profil,</b> plus perbaikan header playlist dan antrean.</li>
+</ul>
+<p class="rel-files"><b>Berkas:</b> BeatPlay-1.5.5-android.apk (33,5 MB) · Android 8.0+ (minSdk 26)</p>
+</li>
+</ol>
+
+<p class="section-foot" data-reveal>
+<a class="btn sec" href="https://github.com/rzkyads29/beatplay/releases">Semua rilis di GitHub</a>
+<a class="btn sec" href="https://github.com/rzkyads29/beatplay/commits/main/">Riwayat perubahan lengkap</a>
+</p>
+</div>
+</section>
+
+<section id="banding" class="section">
+<div class="wrap">
+<div class="section-head" data-reveal>
+<p class="eyebrow">03 <span class="sep">/</span> Bandingkan</p>
+<h2 class="h2">Apa bedanya dengan<br><span class="out">aplikasi resmi?</span></h2>
+<p class="lead">BeatPlay adalah pemutar independen untuk musik publik YouTube Music. Berikut perbandingan jujurnya.</p>
+</div>
+
+<div class="tbl-wrap" data-reveal>
+<table class="cmp">
+<caption class="sr-only">Perbandingan BeatPlay dan aplikasi YouTube Music resmi</caption>
+<colgroup><col style="width:26%"><col style="width:38%"><col style="width:36%"></colgroup>
+<thead><tr><th scope="col">Fitur</th><th scope="col">BeatPlay</th><th scope="col">Aplikasi YouTube Music resmi</th></tr></thead>
+<tbody>
+<tr><th scope="row">Buat akun</th><td>Akun BeatPlay sendiri, cuma email + kode 6 digit</td><td>Butuh akun Google</td></tr>
+<tr><th scope="row">Iklan</th><td>Akun gratis tetap tanpa iklan audio di antara lagu</td><td>Akun gratis diputar iklan</td></tr>
+<tr><th scope="row">Offline</th><td>Simpan lagu & playlist ke perangkat</td><td>Tersedia untuk akun berbayar</td></tr>
+<tr><th scope="row">Tema aplikasi</th><td>Mengikuti warna album yang diputar</td><td>Tema terbatas</td></tr>
+<tr><th scope="row">Automix</th><td>Menggabung akhir & awal lagu tanpa jeda</td><td>Tidak ada</td></tr>
+<tr><th scope="row">Lagu YouTube biasa</th><td>Bisa diputar, lirik sinkron bawaan</td><td>Hanya lewat aplikasi YouTube</td></tr>
+<tr><th scope="row">Harga</th><td>Gratis selamanya. Premium Rp20rb/bulan</td><td>Gratis (dengan iklan) atau berlangganan</td></tr>
+<tr><th scope="row">Bersumber dari</th><td>Publik YouTube Music, diputar ulang oleh BeatPlay</td><td>Katalog resmi YouTube Music</td></tr>
+</tbody>
+</table>
+</div>
+<p class="note" data-reveal><b>Catatan:</b> BeatPlay tidak berafiliasi dengan Google atau YouTube. Jika kamu mengandalkan fitur berbayar resmi seperti stasiun personal atau lirik berbayar, aplikasi resmi tetap pilihan terbaik.</p>
+</div>
+</section>
 <section id="tampilan" class="section">
 <div class="wrap">
 <div class="section-head" data-reveal>
-<p class="eyebrow">02 <span class="sep">/</span> Tampilan asli</p>
-<h2 class="h2">Terlihat bagus.<br>Terasa lebih bagus.</h2>
+<p class="eyebrow">04 <span class="sep">/</span> Tampilan asli</p><h2 class="h2">Terlihat bagus.<br>Terasa lebih bagus.</h2>
 <p class="lead">Tangkapan layar langsung dari aplikasinya — versi desktop dan Android, dengan gaya yang sama.</p>
 </div>
 
@@ -162,24 +231,24 @@
 
 <div class="pane on" id="pane-desktop" data-reveal>
 <div class="lead-shot">
-<figure class="shot"><img src="img/shots/desktop-home.webp" alt="Beranda BeatPlay di desktop" width="1534" height="786" loading="lazy" decoding="async"><figcaption>Beranda — pencarian &amp; lirik</figcaption></figure>
-<figure class="shot"><img src="img/shots/desktop-lyrics.webp" alt="Lirik layar penuh BeatPlay di desktop" width="1534" height="786" loading="lazy" decoding="async"><figcaption>Lirik layar penuh</figcaption></figure>
+<figure class="shot"><img src="img/shots/desktop-home.webp?v=309fee0f" alt="Beranda BeatPlay di desktop" width="1534" height="786" loading="lazy" decoding="async"><figcaption>Beranda — pencarian &amp; lirik</figcaption></figure>
+<figure class="shot"><img src="img/shots/desktop-lyrics.webp?v=c9bab96e" alt="Lirik layar penuh BeatPlay di desktop" width="1534" height="786" loading="lazy" decoding="async"><figcaption>Lirik layar penuh</figcaption></figure>
 </div>
 <div class="shots" style="margin-top:16px">
-<figure class="shot"><img src="img/shots/desktop-auth.webp" alt="Layar mulai BeatPlay desktop" width="1534" height="790" loading="lazy" decoding="async"><figcaption>Masuk &amp; daftar</figcaption></figure>
-<figure class="shot"><img src="img/shots/desktop-email.webp" alt="Layar isi email BeatPlay desktop" width="1534" height="786" loading="lazy" decoding="async"><figcaption>Isi email</figcaption></figure>
-<figure class="shot"><img src="img/shots/desktop-password.webp" alt="Layar kata sandi BeatPlay desktop" width="1534" height="792" loading="lazy" decoding="async"><figcaption>Kata sandi</figcaption></figure>
+<figure class="shot"><img src="img/shots/desktop-auth.webp?v=1fea9785" alt="Layar mulai BeatPlay desktop" width="1534" height="790" loading="lazy" decoding="async"><figcaption>Masuk &amp; daftar</figcaption></figure>
+<figure class="shot"><img src="img/shots/desktop-email.webp?v=0d9244f3" alt="Layar isi email BeatPlay desktop" width="1534" height="786" loading="lazy" decoding="async"><figcaption>Isi email</figcaption></figure>
+<figure class="shot"><img src="img/shots/desktop-password.webp?v=28be242a" alt="Layar kata sandi BeatPlay desktop" width="1534" height="792" loading="lazy" decoding="async"><figcaption>Kata sandi</figcaption></figure>
 </div>
 </div>
 
 <div class="pane" id="pane-android">
 <div class="phones">
-<figure class="phone"><img src="img/shots/android-home.webp" alt="Beranda BeatPlay di Android" width="720" height="1600" loading="lazy" decoding="async"><figcaption class="ph-label">Beranda</figcaption></figure>
-<figure class="phone"><img src="img/shots/android-lyrics.webp" alt="Lirik BeatPlay di Android" width="720" height="1600" loading="lazy" decoding="async"><figcaption class="ph-label">Lirik</figcaption></figure>
-<figure class="phone"><img src="img/shots/android-auth.webp" alt="Layar masuk BeatPlay Android" width="1080" height="2400" loading="lazy" decoding="async"><figcaption class="ph-label">Masuk</figcaption></figure>
-<figure class="phone"><img src="img/shots/android-register.webp" alt="Daftar BeatPlay Android" width="1080" height="2400" loading="lazy" decoding="async"><figcaption class="ph-label">Daftar</figcaption></figure>
-<figure class="phone"><img src="img/shots/android-verify.webp" alt="Verifikasi email BeatPlay Android" width="720" height="1600" loading="lazy" decoding="async"><figcaption class="ph-label">Verifikasi</figcaption></figure>
-<figure class="phone"><img src="img/shots/android-password.webp" alt="Kata sandi BeatPlay Android" width="1080" height="2400" loading="lazy" decoding="async"><figcaption class="ph-label">Kata sandi</figcaption></figure>
+<figure class="phone"><img src="img/shots/android-home.webp?v=35b8d013" alt="Beranda BeatPlay di Android" width="720" height="1600" loading="lazy" decoding="async"><figcaption class="ph-label">Beranda</figcaption></figure>
+<figure class="phone"><img src="img/shots/android-lyrics.webp?v=92e3e92d" alt="Lirik BeatPlay di Android" width="720" height="1600" loading="lazy" decoding="async"><figcaption class="ph-label">Lirik</figcaption></figure>
+<figure class="phone"><img src="img/shots/android-auth.webp?v=83cf9b08" alt="Layar masuk BeatPlay Android" width="1080" height="2400" loading="lazy" decoding="async"><figcaption class="ph-label">Masuk</figcaption></figure>
+<figure class="phone"><img src="img/shots/android-register.webp?v=ae4064e0" alt="Daftar BeatPlay Android" width="1080" height="2400" loading="lazy" decoding="async"><figcaption class="ph-label">Daftar</figcaption></figure>
+<figure class="phone"><img src="img/shots/android-verify.webp?v=5e2057f1" alt="Verifikasi email BeatPlay Android" width="720" height="1600" loading="lazy" decoding="async"><figcaption class="ph-label">Verifikasi</figcaption></figure>
+<figure class="phone"><img src="img/shots/android-password.webp?v=78f6d510" alt="Kata sandi BeatPlay Android" width="1080" height="2400" loading="lazy" decoding="async"><figcaption class="ph-label">Kata sandi</figcaption></figure>
 </div>
 </div>
 </div>
@@ -188,7 +257,7 @@
 <section id="premium" class="section">
 <div class="wrap">
 <div class="section-head" data-reveal>
-<p class="eyebrow">03 <span class="sep">/</span> BeatPlay Premium</p>
+<p class="eyebrow">05 <span class="sep">/</span> BeatPlay Premium</p>
 <h2 class="h2">Tanpa iklan.<br><span class="out">Tanpa jeda.</span></h2>
 <p class="lead">Akun gratis memutar iklan singkat setiap beberapa lagu. Premium menghilangkannya sekaligus, dan pembayaran diverifikasi manual lewat QRIS.</p>
 </div>
@@ -224,7 +293,7 @@
 <section id="unduh" class="section">
 <div class="wrap">
 <div class="section-head" data-reveal>
-<p class="eyebrow">04 <span class="sep">/</span> Mulai sekarang</p>
+<p class="eyebrow">06 <span class="sep">/</span> Mulai sekarang</p>
 <h2 class="h2">Tekan play.<br><span class="out">Jadi dirimu.</span></h2>
 <p class="lead">Gratis. Buat akun sekali dengan email, verifikasi, lalu langsung mendengarkan.</p>
 </div>
@@ -236,6 +305,7 @@
 <p>Installer .msi. Java runtime dan libVLC sudah di dalam.</p>
 <span class="file">beatplay-1.5.21.msi · ±140 MB</span>
 <a class="btn wide" href="download.html?platform=windows">Unduh Windows</a>
+<div class="ck" data-reveal><span class="ck-label">SHA-256 · beatplay-1.5.21.msi · 146.808.840 B</span><code class="ck-hash">6408a4c7aa58b2e2739fcefca1a8de6955b4347a251ee44e6a1a03efc6a28c5b</code><button class="ck-copy" type="button" data-copy="6408a4c7aa58b2e2739fcefca1a8de6955b4347a251ee44e6a1a03efc6a28c5b" aria-label="Salin SHA-256 Windows">Salin</button></div>
 </article>
 <article class="plat" data-reveal style="--d:.06s">
 <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16"/><path d="m7 9 3 3-3 3"/><path d="M13 15h4"/></svg></span>
@@ -243,6 +313,7 @@
 <p>Paket .deb / .rpm dan folder portable.</p>
 <span class="file">beatplay_1.5.21_amd64.deb · .rpm</span>
 <a class="btn wide" href="download.html?platform=linux">Unduh Linux</a>
+<div class="ck" data-reveal><span class="ck-label">SHA-256 · beatplay_1.5.21_amd64.deb · 96.492.506 B</span><code class="ck-hash">ef65a09d520a58d73bddd13c00fc4980403dd015f1ae9ae385dadb8438566e3f</code><button class="ck-copy" type="button" data-copy="ef65a09d520a58d73bddd13c00fc4980403dd015f1ae9ae385dadb8438566e3f" aria-label="Salin SHA-256 Linux">Salin</button></div><div class="ck" data-reveal><span class="ck-label">SHA-256 · beatplay-1.5.21-1.x86_64.rpm · 96.561.273 B</span><code class="ck-hash">a833a4de2f3d222f229fe6d862966d4085c5154fabf77aba48aa3f3ea7d2676c</code><button class="ck-copy" type="button" data-copy="a833a4de2f3d222f229fe6d862966d4085c5154fabf77aba48aa3f3ea7d2676c" aria-label="Salin SHA-256 Linux">Salin</button></div>
 </article>
 <article class="plat" data-reveal style="--d:.12s">
 <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19"/><path d="M10.5 5.5h3"/><circle cx="12" cy="18.5" r=".8" fill="currentColor" stroke="none"/></svg></span>
@@ -250,6 +321,7 @@
 <p>APK langsung dari GitHub. Perlu izin instalasi satu kali.</p>
 <span class="file">BeatPlay-1.5.5-android.apk · ±32 MB</span>
 <a class="btn wide" href="download.html?platform=android">Unduh Android</a>
+<div class="ck" data-reveal><span class="ck-label">SHA-256 · BeatPlay-1.5.5-android.apk · 33.481.524 B</span><code class="ck-hash">8dfd17225020298e1ea963e91acf97dd28f0c650deae473c65b99251db6c12b1</code><button class="ck-copy" type="button" data-copy="8dfd17225020298e1ea963e91acf97dd28f0c650deae473c65b99251db6c12b1" aria-label="Salin SHA-256 Android">Salin</button></div>
 </article>
 </div>
 
@@ -259,18 +331,36 @@
 </div>
 </div>
 </section>
+
+<section id="faq" class="section">
+<div class="wrap">
+<div class="section-head" data-reveal>
+<p class="eyebrow">06 <span class="sep">/</span> Pertanyaan umum</p>
+<h2 class="h2">Sering ditanyakan.<br><span class="out">Sudah kami jawab.</span></h2>
+<p class="lead">Belum ketemu jawabannya? Kirim pertanyaan lewat kolom dukungan di dalam aplikasi.</p>
+</div>
+
+<div class="faq" data-reveal>
+<details class="faq-item" open><summary>Apa saja yang dibutuhkan untuk mulai?</summary><div class="faq-body">Cukup satu akun BeatPlay. Daftar gratis dengan email di dalam aplikasi, lalu masukkan kode verifikasi 6 digit yang dikirim ke emailmu. Setelah itu bisa langsung mendengarkan. Tidak perlu akun Google dan tidak perlu kartu.</div></details>
+<details class="faq-item"><summary>Apa itu BeatPlay Wrapped 2026?</summary><div class="faq-body">Rekap tahunan otomatis: lagu, artis, dan genre yang paling sering kamu putar selama 2026, dikemas dalam kartu ringkas di beranda beserta halaman cerita yang bisa dibagikan. Tersedia di Android 1.5.5 ke atas.</div></details>
+<details class="faq-item"><summary>Kenapa liriknya bisa sinkron kata per kata?</summary><div class="faq-body">Setiap lagu punya penanda waktu per baris lirik. BeatPlay membaca penanda itu lalu menyorot kata yang sedang dinyanyikan, seperti teks karaoke, dan tetap sinkron walau kamu mempercepat lagu.</div></details>
+<details class="faq-item"><summary>Bagaimana cara bayar Premium lewat QRIS?</summary><div class="faq-body">Buka menu Premium di aplikasi, pilih paket, lalu pindai QRIS yang muncul dan bayar lewat aplikasi bank atau e-wallet apa pun. Kirim bukti transfer dari aplikasi. Setelah kami verifikasi (biasanya kurang dari 24 jam), status Premium aktif sampai masa aktif paket habis.</div></details>
+<details class="faq-item"><summary>Apakah BeatPlay aman?</summary><div class="faq-body">BeatPlay adalah pemutar musik independen untuk konten publik YouTube Music. Kami tidak memodifikasi berkas audio, tidak menjual data, dan tidak menyimpan kartu pembayaran. Pembayaran hanya lewat QRIS dan diverifikasi manual oleh tim kami.</div></details>
+</div>
+</div>
+</section>
 </main>
 
 <footer>
 <div class="wrap">
 <div class="foot">
 <div>
-<a class="brand" href="#top"><img src="img/logo-128.png" alt="BeatPlay"><span class="bt">BEAT</span><span class="bp">PLAY</span></a>
+<a class="brand" href="#top"><img src="img/logo-128.png?v=83cf9c28" alt="BeatPlay"><span class="bt">BEAT</span><span class="bp">PLAY</span></a>
 <p>Pemutar YouTube Music independen untuk Windows, Linux, dan Android. Tidak berafiliasi dengan Google atau YouTube.</p>
 </div>
 <div>
 <h4>Produk</h4>
-<ul><li><a href="#fitur">Fitur</a></li><li><a href="#tampilan">Tampilan</a></li><li><a href="#premium">Premium</a></li><li><a href="download.html">Unduh</a></li></ul>
+<ul><li><a href="#fitur">Fitur</a></li><li><a href="#tampilan">Tampilan</a></li><li><a href="#premium">Premium</a></li><li><a href="#changelog">Changelog</a></li><li><a href="#banding">Bandingkan</a></li><li><a href="#faq">FAQ</a></li><li><a href="download.html">Unduh</a></li></ul>
 </div>
 <div>
 <h4>Platform</h4>

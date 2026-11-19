@@ -85,8 +85,8 @@
     }
   }
 
-  /* ---- lightbox tangkapan layar ---------------------------------------- */
-  const zoomables = document.querySelectorAll(".shot img, .phone img");
+  /* ---- lightbox tangkapan layar (dengan navigasi) ---------------------- */
+  const zoomables = [...document.querySelectorAll(".shot img, .phone img")].filter((el) => el.src);
   if (zoomables.length) {
     const box = document.createElement("div");
     box.className = "lightbox";
@@ -95,21 +95,61 @@
     box.setAttribute("aria-modal", "true");
     box.setAttribute("aria-label", "Pratinjau tangkapan layar");
     box.innerHTML =
-      '<button class="lb-close" type="button" aria-label="Tutup pratinjau">×</button>' +
-      "<figure><img alt=\"\"><figcaption></figcaption></figure>";
+      '<button class="lb-close" type="button" aria-label="Tutup pratinjau">&times;</button>' +
+      '<button class="lb-nav lb-prev" type="button" aria-label="Tangkapan layar sebelumnya">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="m15 5-7 7 7 7"/></svg></button>' +
+      '<button class="lb-nav lb-next" type="button" aria-label="Tangkapan layar berikutnya">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="m9 5 7 7-7 7"/></svg></button>' +
+      "<figure><img alt=\"\"><figcaption></figcaption></figure>" +
+      '<div class="lb-status"><span class="lb-count" aria-hidden="true"></span></div>';
     document.body.appendChild(box);
 
     const preview = box.querySelector("img");
     const caption = box.querySelector("figcaption");
     const closeBtn = box.querySelector(".lb-close");
+    const prevBtn = box.querySelector(".lb-prev");
+    const nextBtn = box.querySelector(".lb-next");
+    const countEl = box.querySelector(".lb-count");
     let opener = null;
+    let group = [];
+    let index = 0;
 
-    const open = (source) => {
+    // Hanya gambar dalam tab yang sedang aktif, supaya panah berpindah
+    // secara berurutan di antara tangkapan layar yang sedang dilihat.
+    const visibleGroup = (source) => {
+      const pane = source.closest(".pane");
+      const scope = pane || document;
+      const found = [...scope.querySelectorAll(".shot img, .phone img")].filter((el) => el.src);
+      return found.length ? found : [source];
+    };
+
+    const render = () => {
+      const source = group[index];
       const figure = source.closest("figure");
       const label = figure && figure.querySelector("figcaption");
       preview.src = source.currentSrc || source.src;
       preview.alt = source.alt || "";
       caption.textContent = label ? label.textContent.trim() : source.alt || "Tangkapan layar";
+      const many = group.length > 1;
+      prevBtn.hidden = !many;
+      nextBtn.hidden = !many;
+      countEl.textContent = many ? index + 1 + " / " + group.length : "";
+    };
+
+    const step = (delta) => {
+      if (group.length < 2) return;
+      index = (index + delta + group.length) % group.length;
+      render();
+    };
+
+    const open = (source) => {
+      group = visibleGroup(source);
+      index = Math.max(0, group.indexOf(source));
+      render();
       box.hidden = false;
       document.body.style.overflow = "hidden";
       opener = source;
@@ -119,6 +159,7 @@
     const close = () => {
       box.hidden = true;
       preview.removeAttribute("src");
+      group = [];
       document.body.style.overflow = "";
       if (opener) opener.focus({ preventScroll: true });
       opener = null;
@@ -140,13 +181,100 @@
       if (event.target === box) close();
     });
     closeBtn.addEventListener("click", close);
+    prevBtn.addEventListener("click", () => step(-1));
+    nextBtn.addEventListener("click", () => step(1));
+
+    // Geser di layar sentuh untuk berpindah tangkapan layar.
+    let touchX = null;
+    let touchY = null;
+    box.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" || group.length < 2) return;
+      touchX = event.clientX;
+      touchY = event.clientY;
+    }, { passive: true });
+    box.addEventListener("pointerup", (event) => {
+      if (touchX === null || group.length < 2) return;
+      const dx = event.clientX - touchX;
+      const dy = event.clientY - touchY;
+      touchX = touchY = null;
+      if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4) step(dx < 0 ? 1 : -1);
+    }, { passive: true });
+
     window.addEventListener("keydown", (event) => {
       if (box.hidden) return;
       if (event.key === "Escape") close();
+      else if (event.key === "ArrowLeft") { event.preventDefault(); step(-1); }
+      else if (event.key === "ArrowRight") { event.preventDefault(); step(1); }
       else if (event.key === "Tab") {
         event.preventDefault();
         closeBtn.focus();
       }
+    });
+  }
+
+  /* ---- salin checksum --------------------------------------------------- */
+  const copyButtons = document.querySelectorAll("[data-copy]");
+  if (copyButtons.length) {
+    let live = document.querySelector(".sr-live");
+    if (!live) {
+      live = document.createElement("p");
+      live.className = "sr-live";
+      live.setAttribute("aria-live", "polite");
+      live.hidden = true;
+      document.body.appendChild(live);
+    }
+    const flash = (button, text) => {
+      const original = "Salin";
+      button.textContent = text;
+      button.classList.add("done");
+      window.setTimeout(() => {
+        button.textContent = original;
+        button.classList.remove("done");
+      }, 2000);
+    };
+
+    copyButtons.forEach((button) => {
+      button.addEventListener("click", async () => {
+        const value = button.dataset.copy;
+        let ok = false;
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(value);
+            ok = true;
+          }
+        } catch (error) {
+          ok = false;
+        }
+        if (!ok) {
+          // Cadangan untuk browser tanpa Clipboard API atau di halaman file://.
+          const area = document.createElement("textarea");
+          area.value = value;
+          area.setAttribute("readonly", "");
+          area.style.position = "fixed";
+          area.style.top = "-1000px";
+          document.body.appendChild(area);
+          area.select();
+          try { ok = document.execCommand("copy"); } catch (error) { ok = false; }
+          area.remove();
+        }
+        flash(button, ok ? "Tersalin" : "Gagal");
+        live.textContent = ok
+          ? "Checksum " + value.slice(0, 8) + "… tersalin"
+          : "Penyalinan gagal, salin manual";
+      });
+    });
+  }
+
+  /* ---- akordeon faq (satu terbuka) -------------------------------------- */
+  const faqItems = [...document.querySelectorAll(".faq-item")];
+  if (faqItems.length > 1) {
+    faqItems.forEach((item) => {
+      item.addEventListener("toggle", () => {
+        if (!item.open) return;
+        faqItems.forEach((other) => {
+          if (other !== item && other.open) other.open = false;
+        });
+      });
     });
   }
 
@@ -222,15 +350,7 @@
     }, { passive: true });
   }
 
-  /* ---- deteksi platform di halaman unduh -------------------------------- */
-  const tabs = document.querySelectorAll(".tabs button[data-p]");
-  // Hormati pilihan eksplisit (?platform=...), abaikan parameter lain seperti
-  // ?i=1 yang disisipkan tantangan JavaScript InfinityFree.
-  const hasPlatformParam = new URLSearchParams(window.location.search).has("platform");
-  if (tabs.length && !hasPlatformParam) {
-    const ua = navigator.userAgent;
-    const guess = /Android/i.test(ua) ? "android" : /Linux|X11/i.test(ua) ? "linux" : "";
-    const target = guess && [...tabs].find((b) => b.dataset.p === guess);
-    if (target && !target.classList.contains("on")) target.click();
-  }
+  /* ---- deteksi platform di halaman unduh -------------------------------
+   * Ditangani di download.html (inline, sebelum render pertama). Logika hanya
+   * boleh punya satu sumber supaya tidak balapan. */
 })();
