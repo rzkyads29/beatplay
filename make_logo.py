@@ -1,9 +1,9 @@
 """BeatPlay brand assets.
 
-Everything is rendered from the canonical emblem at ``app/iconv2.jpeg``:
-a 2048x2048 square with the neon "B" mark centred on its dark background.
-The app icon (Compose window + tray, Linux package, Windows .ico), the
-website favicon/brand mark, the website hero lockup and the promo mark all
+Everything is rendered from the canonical emblem at ``Logo baru.jpeg``:
+a square with the white sound-wave + play-triangle mark on its dark gradient
+background. The app icon (Compose window + tray, Linux package, Windows .ico),
+the website favicon/brand mark, the website hero lockup and the promo mark all
 come from it, so they can never drift apart.
 
 The hero lockup (``logo-lockup.png``) composes the emblem above the
@@ -24,7 +24,10 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-APP_SOURCE = os.path.join(ROOT, "app", "iconv2.jpeg")
+# The canonical emblem is the sound-wave + play triangle mark. Its mark sits
+# landscape inside a square dark canvas, so we crop to the mark and re-centre it
+# (see square_emblem) so it fills the app tile instead of looking small.
+APP_SOURCE = os.path.join(ROOT, "Logo baru.jpeg")
 JAKARTA_FONT = os.path.join(ROOT, "promo", "assets", "PlusJakartaSans.ttf")
 
 # The rounded-square app tile uses the same corner ratio as a squircle.
@@ -50,10 +53,24 @@ LOCKUP_FONT_SIZE = 152
 LOCKUP_TRACKING = -0.045  # em, same as the site's .brand
 
 
+# The mark occupies roughly the middle 66% of the source canvas. Crop to a
+# centred square just wider than the mark so it fills the app tile boldly
+# while keeping a little breathing room on every side.
+MARK_CROP_SIDE = 1120
+MARK_CENTER = (736, 695)
+
+
 def load_app_source() -> Image.Image:
     if not os.path.exists(APP_SOURCE):
         raise SystemExit(f"Logo source not found: {APP_SOURCE}")
-    return Image.open(APP_SOURCE).convert("RGB")
+    src = Image.open(APP_SOURCE).convert("RGB")
+    cx, cy = MARK_CENTER
+    half = MARK_CROP_SIDE // 2
+    box = (
+        max(cx - half, 0), max(cy - half, 0),
+        min(cx + half, src.width), min(cy + half, src.height),
+    )
+    return src.crop(box)
 
 
 def rounded_icon(size: int = ICON_SIZE) -> Image.Image:
@@ -71,7 +88,7 @@ def rounded_icon(size: int = ICON_SIZE) -> Image.Image:
 
 
 def _emblem_keyed() -> Image.Image:
-    """The emblem with its navy background keyed to alpha, glow preserved.
+    """The emblem with its dark background keyed to alpha, glow preserved.
 
     The background peak sits around 56-70 (JPEG noise) and the mark core
     starts around 140, so a ramp between 72 and 140 drops the background
