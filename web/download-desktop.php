@@ -131,16 +131,22 @@ function beatplay_latest_desktop_assets(): array
     return $assets;
 }
 
-/** @return array<string, mixed>|null */
+/** @return list<array<string, mixed>>|null */
 function beatplay_pick(array $assets, string $kind): ?array
 {
-    $ext = $kind === 'linux' ? ['deb', 'rpm'] : [$kind];
-    foreach ($ext as $candidate) {
+    // Kunci $assets adalah ekstensi berkas (msi/deb/rpm), bukan nama platform.
+    $candidates = match ($kind) {
+        'linux' => ['deb', 'rpm'],
+        'windows' => ['msi', 'exe'],
+        default => [$kind],
+    };
+    $picked = [];
+    foreach ($candidates as $candidate) {
         if (isset($assets[$candidate])) {
-            return $assets[$candidate];
+            $picked[] = $assets[$candidate];
         }
     }
-    return null;
+    return $picked === [] ? null : $picked;
 }
 
 header('Cache-Control: no-store, max-age=0');
