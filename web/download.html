@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/particles.js" defer></script>
+<script src="assets/ui.js" defer></script>
 </head>
 <body id="top">
 <div class="bg-glow" aria-hidden="true"></div>
@@ -25,10 +26,11 @@
 <div class="wrap">
 <a class="brand" href="index.html"><img src="img/logo-128.png" alt="BeatPlay"><span class="bt">BEAT</span><span class="bp">PLAY</span></a>
 <span class="sp"></span>
-<nav class="navlinks" aria-label="Navigasi utama">
+<nav class="navlinks" id="nav-main" aria-label="Navigasi utama">
 <a href="index.html#fitur">Fitur</a><a href="index.html#tampilan">Tampilan</a><a href="index.html#premium">Harga</a><a href="#unduh">Unduh</a>
 </nav>
 <a class="btn sm" href="#unduh">Unduh</a>
+<button class="navtoggle" type="button" aria-label="Buka navigasi" aria-expanded="false" aria-controls="nav-main"><span aria-hidden="true"></span></button>
 </div>
 </header>
 

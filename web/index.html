@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/particles.js" defer></script>
+<script src="assets/ui.js" defer></script>
 </head>
 <body id="top">
 <div class="bg-glow" aria-hidden="true"></div>
@@ -29,10 +30,11 @@
 <div class="wrap">
 <a class="brand" href="#top"><img src="img/logo-128.png" alt="BeatPlay"><span class="bt">BEAT</span><span class="bp">PLAY</span></a>
 <span class="sp"></span>
-<nav class="navlinks" aria-label="Navigasi utama">
+<nav class="navlinks" id="nav-main" aria-label="Navigasi utama">
 <a href="#fitur">Fitur</a><a href="#tampilan">Tampilan</a><a href="#premium">Harga</a><a href="download.html">Unduh</a>
 </nav>
 <a class="btn sm" href="download.html">Unduh</a>
+<button class="navtoggle" type="button" aria-label="Buka navigasi" aria-expanded="false" aria-controls="nav-main"><span aria-hidden="true"></span></button>
 </div>
 </header>
 
@@ -48,9 +50,9 @@
 <a class="btn sec" href="#tampilan">Intip tampilan</a>
 </div>
 <dl class="facts">
-<div><dt>Automix</dt><dd>2 detik</dd></div>
-<div><dt>Platform</dt><dd>3 sistem</dd></div>
-<div><dt>Installer</dt><dd>140 MB</dd></div>
+<div><dt>Automix</dt><dd data-count="2" data-suffix=" detik">2 detik</dd></div>
+<div><dt>Platform</dt><dd data-count="3" data-suffix=" sistem">3 sistem</dd></div>
+<div><dt>Installer</dt><dd data-count="140" data-suffix=" MB">140 MB</dd></div>
 <div><dt>Akun</dt><dd>Gratis</dd></div>
 </dl>
 </div>
@@ -74,7 +76,7 @@
 </div>
 </div>
 
-<section class="datasheet" aria-label="Setelan bawaan">
+<section class="datasheet" aria-label="Setelan bawaan" data-reveal>
 <div class="cell"><span class="k">Audio quality</span><div class="v">High</div><p>Streaming 256 kbps AAC saat jaringan memungkinkan.</p></div>
 <div class="cell"><span class="k">Normalisasi volume</span><div class="v">Aktif</div><p>Level tiap lagu disamakan, maksimal −1.4 dB.</p></div>
 <div class="cell"><span class="k">Automix</span><div class="v">2 detik</div><p>Peralihan antar lagu membaur, tanpa heningan.</p></div>

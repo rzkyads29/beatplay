@@ -373,3 +373,98 @@ footer{border-top:1px solid var(--line);background:var(--panel)}
   .ticker-track{animation:none}
   .js [data-reveal]{opacity:1;transform:none}
 }
+
+/* interaction polish ------------------------------------------------------
+   Sorot kursor, kemiringan jendela, lightbox, menu mobile, dan detail kecil
+   (seleksi teks, scrollbar, fokus keyboard). Semuanya hanya dekorasi —
+   tidak ada yang mengubah tata letak atau alur konten. */
+
+html{scroll-padding-top:82px}
+
+::selection{background:var(--accent);color:var(--accent-ink)}
+
+*{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.32)}
+
+:where(a,button,summary,input,textarea,[tabindex]):focus-visible{
+  outline:2px solid var(--ink);outline-offset:3px}
+
+.navlinks a.on{color:var(--ink);border-color:var(--ink)}
+.navlinks a[aria-current="true"]{color:var(--ink)}
+
+/* tombol menu (hanya tampil di layar sempit) */
+.navtoggle{display:none;width:40px;height:34px;flex:none;place-items:center;
+  border:1px solid var(--line-2);background:transparent;cursor:pointer;
+  transition:background .18s,border-color .18s}
+.navtoggle:hover{background:rgba(255,255,255,.05);border-color:var(--line-3)}
+.navtoggle span{position:relative;display:block;width:15px;height:1px;background:var(--ink);
+  box-shadow:0 -4px 0 var(--ink),0 4px 0 var(--ink);
+  transition:transform .2s ease,box-shadow .2s ease}
+.topbar.open .navtoggle span{box-shadow:none;transform:rotate(45deg)}
+.topbar.open .navtoggle span::after{content:"";position:absolute;left:0;top:0;
+  width:15px;height:1px;background:var(--ink);transform:rotate(90deg)}
+
+/* sorot kursor lembut di area hero */
+.hero{isolation:isolate}
+.hero::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:0;
+  transition:opacity .45s ease;
+  background:radial-gradient(560px circle at var(--mx,50%) var(--my,20%),rgba(255,255,255,.07),transparent 62%)}
+.hero:hover::after{opacity:1}
+
+/* jendela aplikasi sedikit mengikuti kursor */
+.frame{transition:transform .22s cubic-bezier(.2,.7,.2,1);transform-style:preserve-3d}
+.hero-visual:hover .frame{transition-duration:.06s}
+
+/* sorot di dalam kartu fitur */
+.feat::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;
+  transition:opacity .3s ease;
+  background:radial-gradient(260px circle at var(--fx,50%) var(--fy,50%),rgba(255,255,255,.07),transparent 66%)}
+.feat:hover::after{opacity:1}
+
+/* tepi ticker dibuat memudar, bukan terpotong tajam */
+.ticker{
+  mask-image:linear-gradient(90deg,transparent,#000 3.5%,#000 96.5%,transparent);
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 3.5%,#000 96.5%,transparent)}
+
+/* tangkapan layar bisa diperbesar */
+.shot img,.phone img{cursor:zoom-in}
+
+.lightbox{position:fixed;inset:0;z-index:300;display:grid;place-items:center;
+  padding:clamp(14px,4vw,48px);background:rgba(3,3,3,.93);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  animation:fade .22s ease both}
+.lightbox[hidden]{display:none}
+.lightbox figure{margin:0;display:flex;flex-direction:column;max-width:min(1200px,100%);
+  max-height:100%;border:1px solid var(--line-2);background:var(--panel)}
+.lightbox img{display:block;width:auto;height:auto;max-width:100%;
+  max-height:calc(100vh - 190px);object-fit:contain}
+.lightbox figcaption{display:flex;align-items:center;gap:10px;padding:11px 14px;
+  border-top:1px solid var(--line);font-family:var(--mono);font-size:10.5px;
+  text-transform:uppercase;letter-spacing:.15em;color:var(--muted)}
+.lightbox figcaption::before{content:"";width:6px;height:6px;background:var(--accent);flex:none}
+.lb-close{position:absolute;top:clamp(12px,3vw,26px);right:clamp(12px,3vw,26px);
+  display:grid;place-items:center;width:40px;height:40px;cursor:pointer;
+  border:1px solid var(--line-2);background:rgba(5,5,5,.85);color:var(--ink);
+  font-family:var(--mono);font-size:17px;line-height:1;
+  transition:background .18s,color .18s,border-color .18s}
+.lb-close:hover{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+
+@media(hover:none){
+  .hero::after,.feat::after{display:none}
+  .shot img,.phone img{cursor:default}
+}
+
+@media(max-width:820px){
+  .navtoggle{display:grid}
+  .topbar{isolation:isolate}
+  .topbar.open .navlinks{display:flex;position:absolute;z-index:2;left:0;right:0;top:100%;
+    flex-direction:column;align-items:stretch;gap:0;padding:6px var(--gut) 12px;
+    background:#050505;border-bottom:1px solid var(--line);
+    box-shadow:0 24px 48px rgba(0,0,0,.72)}
+  .topbar.open .navlinks a{padding:13px 2px;border-bottom:1px solid var(--line);font-size:12px}
+  .topbar.open .navlinks a:last-child{border-bottom:0}
+  .topbar.open .navlinks a::after{content:"→";float:right;color:var(--faint)}
+}
