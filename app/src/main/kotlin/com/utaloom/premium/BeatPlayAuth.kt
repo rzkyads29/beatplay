@@ -176,6 +176,33 @@ object BeatPlayAuth {
         }
     }
 
+    /**
+     * Lupa kata sandi: minta kode reset 6 digit ke email. Server selalu menjawab ok agar
+     * endpoint tak bisa dipakai mengintip email mana yang terdaftar.
+     */
+    suspend fun requestPasswordReset(serverUrl: String, email: String): Result<String?> =
+        withContext(Dispatchers.IO) {
+            send(
+                serverUrl,
+                "/api/auth/forgot",
+                """{"email":"${esc(normalizeEmail(email))}"}""",
+                retryUnsentOnly = true,
+            ).map { body ->
+                json.parseToJsonElement(body).jsonObject["dev_code"]
+                    ?.takeIf { it !is JsonNull }?.jsonPrimitive?.content
+            }
+        }
+
+    /** Tukar kode reset + kata sandi baru. Berhasil berarti sandi sudah diganti. */
+    suspend fun resetPassword(serverUrl: String, email: String, code: String, newPassword: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            send(
+                serverUrl,
+                "/api/auth/reset",
+                """{"email":"${esc(normalizeEmail(email))}","code":"${esc(code)}","password":"${esc(newPassword)}"}""",
+            ).map { }
+        }
+
     suspend fun login(serverUrl: String, email: String, password: String): Result<AuthResult> =
         withContext(Dispatchers.IO) {
             send(

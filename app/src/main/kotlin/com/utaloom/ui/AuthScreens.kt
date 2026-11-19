@@ -63,7 +63,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** Which panel of the authentication funnel is visible. */
-private enum class AuthStep { WELCOME, EMAIL, VERIFY }
+private enum class AuthStep { WELCOME, EMAIL, VERIFY, FORGOT }
 
 /** Sign in vs create account. */
 private enum class AuthMode { LOGIN, REGISTER }
@@ -86,6 +86,7 @@ fun AuthFlow(onDone: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var messageIsError by remember { mutableStateOf(false) }
+    var resetDevCode by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -190,6 +191,47 @@ fun AuthFlow(onDone: () -> Unit) {
         }
     }
 
+    fun submitReset(email: String, code: String, newPassword: String) {
+        if (busy) return
+        busy = true
+        message = null
+        scope.launch {
+            BeatPlayAuth.resetPassword(server, email.trim().lowercase(), code, newPassword)
+                .onSuccess {
+                    messageIsError = false
+                    message = "Kata sandi sudah diganti. Silakan masuk dengan kata sandi baru."
+                    mode = AuthMode.LOGIN
+                    step = AuthStep.EMAIL
+                    resetDevCode = null
+                }
+                .onFailure {
+                    messageIsError = true
+                    message = "Gagal ganti kata sandi: ${networkErrorMessage(it, server)}"
+                }
+            busy = false
+        }
+    }
+
+    fun requestReset(email: String) {
+        if (busy) return
+        busy = true
+        message = null
+        scope.launch {
+            BeatPlayAuth.requestPasswordReset(server, email.trim().lowercase())
+                .onSuccess { code ->
+                    resetDevCode = code
+                    messageIsError = false
+                    message = if (code != null) "Mode uji (SMTP belum aktif) — kode: $code"
+                              else "Kode reset dikirim ke $email (periksa folder spam)."
+                }
+                .onFailure {
+                    messageIsError = true
+                    message = "Gagal minta kode: ${networkErrorMessage(it, server)}"
+                }
+            busy = false
+        }
+    }
+
     Box(Modifier.fillMaxSize().background(Obsidian.bg)) {
         AmbientGlow(Modifier.fillMaxSize(), Obsidian.violet, 0.35f) {
             AmbientGlow(Modifier.align(Alignment.BottomEnd).size(520.dp), Obsidian.cyan, 0.22f) {}
@@ -203,7 +245,6 @@ fun AuthFlow(onDone: () -> Unit) {
                     AuthStep.WELCOME -> WelcomePanel(
                         onRegister = { mode = AuthMode.REGISTER; message = null; step = AuthStep.EMAIL },
                         onLogin = { mode = AuthMode.LOGIN; message = null; step = AuthStep.EMAIL },
-                        onSkip = { finish() },
                     )
                     AuthStep.EMAIL -> EmailPanel(
                         mode = mode,
@@ -213,6 +254,7 @@ fun AuthFlow(onDone: () -> Unit) {
                         messageIsError = messageIsError,
                         onBack = { step = AuthStep.WELCOME; message = null },
                         onSubmit = { email, password, isRegister -> submitEmail(email, password, isRegister) },
+                        onForgot = { step = AuthStep.FORGOT; message = null; resetDevCode = null },
                     )
                     AuthStep.VERIFY -> VerifyPanel(
                         email = pendingEmail,
@@ -226,6 +268,15 @@ fun AuthFlow(onDone: () -> Unit) {
                         onResend = { resend() },
                         onEdit = { step = AuthStep.EMAIL; message = null },
                         onSubmit = { submitCode() },
+                    )
+                    AuthStep.FORGOT -> ForgotPanel(
+                        busy = busy,
+                        message = message,
+                        messageIsError = messageIsError,
+                        resetDevCode = resetDevCode,
+                        onBack = { step = AuthStep.EMAIL; message = null; resetDevCode = null },
+                        onReset = { email, code, newPassword -> submitReset(email, code, newPassword) },
+                        onRequestReset = { email -> requestReset(email) },
                     )
                 }
             }
@@ -243,7 +294,7 @@ private fun BrandMark(size: androidx.compose.ui.unit.Dp = 84.dp) {
 }
 
 @Composable
-private fun WelcomePanel(onRegister: () -> Unit, onLogin: () -> Unit, onSkip: () -> Unit) {
+private fun WelcomePanel(onRegister: () -> Unit, onLogin: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
         BrandMark(96.dp)
         Text(
@@ -264,12 +315,6 @@ private fun WelcomePanel(onRegister: () -> Unit, onLogin: () -> Unit, onSkip: ()
         GradientButton("Daftar gratis", onRegister, Modifier.widthIn(max = 420.dp).fillMaxWidth())
         GlassButton("Masuk", onLogin, Modifier.widthIn(max = 420.dp).fillMaxWidth())
         Text(
-            "Lanjutkan tanpa akun",
-            color = Obsidian.slate500,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.clickable { onSkip() }.padding(8.dp),
-        )
-        Text(
             "Dengan melanjutkan, kamu menyetujui Ketentuan Layanan dan Kebijakan Privasi BeatPlay.",
             style = MaterialTheme.typography.labelSmall,
             color = Obsidian.slate500,
@@ -288,6 +333,7 @@ private fun EmailPanel(
     messageIsError: Boolean,
     onBack: () -> Unit,
     onSubmit: (String, String, Boolean) -> Unit,
+    onForgot: () -> Unit,
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -400,6 +446,14 @@ private fun EmailPanel(
                 },
             )
         }
+        if (!register) {
+            Text(
+                "Lupa kata sandi?",
+                color = Obsidian.slate400,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.clickable(enabled = !busy) { onForgot() }.padding(top = 4.dp),
+            )
+        }
     }
 }
 
@@ -460,6 +514,119 @@ private fun VerifyPanel(
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.clickable(enabled = !busy) { onEdit() },
         )
+        message?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = if (messageIsError) Obsidian.danger else Obsidian.cyan)
+        }
+    }
+}
+
+/**
+ * Lupa kata sandi: minta kode reset ke email, lalu isi kode + kata sandi baru.
+ * Dua tahap dalam satu panel; `resetDevCode` hanya terisi saat SMTP server belum aktif.
+ */
+@Composable
+private fun ForgotPanel(
+    busy: Boolean,
+    message: String?,
+    messageIsError: Boolean,
+    resetDevCode: String?,
+    onBack: () -> Unit,
+    onReset: (String, String, String) -> Unit,
+    onRequestReset: (String) -> Unit,
+) {
+    var email by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirm by remember { mutableStateOf("") }
+    var reveal by remember { mutableStateOf(false) }
+    var requested by remember { mutableStateOf(false) }
+
+    val emailOk = isValidEmail(email)
+    val codeOk = code.length == 6
+    val passOk = newPassword.length >= 8
+    val confirmOk = newPassword == confirm
+    val canRequest = !busy && emailOk
+    val canReset = !busy && emailOk && codeOk && passOk && confirmOk
+
+    Column(
+        Modifier.widthIn(max = 460.dp).fillMaxWidth().glassPanel().padding(28.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            IconButton(onBack, enabled = !busy) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Kembali", tint = Obsidian.slate400) }
+            Text("Lupa kata sandi", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        }
+
+        OutlinedTextField(
+            email,
+            { email = it },
+            Modifier.fillMaxWidth(),
+            label = { Text("Email akun") },
+            singleLine = true,
+            enabled = !busy,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+        )
+
+        if (requested) {
+            Text(
+                "Masukkan kode reset 6 digit yang dikirim ke ${email.trim()}",
+                color = Obsidian.slate400,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            OtpBoxes(List(6) { code.getOrNull(it)?.toString() ?: "" }, onValueChange = { list -> code = list.joinToString("") })
+            if (resetDevCode != null) {
+                Text(
+                    "Mode uji (SMTP belum aktif) — kode: $resetDevCode",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Obsidian.cyan,
+                )
+            }
+            OutlinedTextField(
+                newPassword,
+                { newPassword = it },
+                Modifier.fillMaxWidth(),
+                label = { Text("Kata sandi baru (min. 8 karakter)") },
+                singleLine = true,
+                enabled = !busy,
+                visualTransformation = if (reveal) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton({ reveal = !reveal }) {
+                        Icon(if (reveal) Icons.Default.VisibilityOff else Icons.Default.Visibility, "Tampilkan kata sandi", tint = Obsidian.slate400)
+                    }
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
+            )
+            OutlinedTextField(
+                confirm,
+                { confirm = it },
+                Modifier.fillMaxWidth(),
+                label = { Text("Ulangi kata sandi baru") },
+                singleLine = true,
+                enabled = !busy,
+                isError = confirm.isNotEmpty() && !confirmOk,
+                visualTransformation = if (reveal) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+            )
+        }
+
+        GradientButton(
+            when {
+                busy -> "Memproses..."
+                !requested -> "Kirim kode reset"
+                else -> "Ganti kata sandi"
+            },
+            {
+                if (!requested) {
+                    onRequestReset(email)
+                    requested = true
+                } else if (canReset) {
+                    onReset(email, code, newPassword)
+                }
+            },
+            Modifier.fillMaxWidth(),
+            enabled = if (requested) canReset else canRequest,
+        )
+
         message?.let {
             Text(it, style = MaterialTheme.typography.bodySmall, color = if (messageIsError) Obsidian.danger else Obsidian.cyan)
         }

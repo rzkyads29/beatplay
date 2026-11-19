@@ -179,7 +179,7 @@ private fun DrawerItem(label: String, icon: ImageVector, badge: String? = null, 
         Text(label, Modifier.weight(1f), fontWeight = if (accent) FontWeight.SemiBold else FontWeight.Normal)
         if (badge != null) {
             Box(Modifier.clip(CircleShape).background(Obsidian.violet).padding(horizontal = 8.dp, vertical = 2.dp)) {
-                Text(badge, color = Color.White, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                Text(badge, color = Obsidian.onAccent, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -241,7 +241,7 @@ private fun CreateOption(title: String, subtitle: String, icon: ImageVector, onC
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Box(Modifier.size(42.dp).clip(CircleShape).background(accentBrush()), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = Color.White)
+            Icon(icon, null, tint = Obsidian.onAccent)
         }
         Column(Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.SemiBold)

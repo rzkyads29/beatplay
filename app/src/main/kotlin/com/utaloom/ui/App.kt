@@ -109,7 +109,8 @@ fun BeatPlayApp(vlcError: String? = null, fullscreen: Boolean, onFullscreenChang
     val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
     val loggedIn = !settings.beatPlayAuthToken.isNullOrBlank()
-    val showOnboarding = !settings.onboardingComplete && !loggedIn
+    // Login wajib: tanpa sesi BeatPlay, app tak bisa dipakai (tidak ada lagi lewat/tamu).
+    val showOnboarding = !loggedIn
 
     LaunchedEffect(player.current, fullscreen) {
         if (player.current == null) {
@@ -285,8 +286,8 @@ private fun Sidebar(onAvatar: () -> Unit, onCreate: () -> Unit) {
             contentAlignment = Alignment.Center,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Default.Add, null, tint = Color.White)
-                Text("Buat", color = Color.White, fontWeight = FontWeight.SemiBold)
+                Icon(Icons.Default.Add, null, tint = Obsidian.onAccent)
+                Text("Buat", color = Obsidian.onAccent, fontWeight = FontWeight.SemiBold)
             }
         }
         Spacer(Modifier.weight(1f))
@@ -339,7 +340,7 @@ private fun BottomNavigation(onCreate: () -> Unit) {
             NavTab("Premium", Icons.Default.WorkspacePremium, current == Screen.Premium) { Nav.root(Screen.Premium) }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.size(40.dp).clip(CircleShape).background(accentBrush()).clickableCompat(onCreate), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Add, "Buat", tint = Color.White)
+                    Icon(Icons.Default.Add, "Buat", tint = Obsidian.onAccent)
                 }
                 Text("Buat", style = MaterialTheme.typography.labelSmall, color = Obsidian.slate400)
             }
