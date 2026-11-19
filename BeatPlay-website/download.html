@@ -4,61 +4,77 @@
 <meta charset="utf-8">
 <script>document.documentElement.classList.add('js');</script>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Download BeatPlay</title>
-<meta name="description" content="Download BeatPlay untuk Windows, Linux, dan Android. File resmi dari GitHub Releases.">
-<meta name="theme-color" content="#07060f">
+<title>Unduh BeatPlay — Windows, Linux, Android</title>
+<meta name="description" content="Unduh BeatPlay untuk Windows, Linux, dan Android. File resmi dari GitHub Releases.">
+<meta name="theme-color" content="#050505">
 <link rel="icon" href="img/logo-128.png">
 <link rel="icon" href="img/favicon-32.png" sizes="32x32">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="assets/site.css">
 </head>
 <body id="top">
-<div class="aurora" aria-hidden="true"></div>
-<div class="grid-lines" aria-hidden="true"></div>
+<div class="bg-glow" aria-hidden="true"></div>
+<div class="bg-grid" aria-hidden="true"></div>
 <div class="progress" aria-hidden="true"></div>
 
-<nav><div class="wrap">
-<a class="brand" href="index.html"><img src="img/logo-128.png" alt="BeatPlay"><span class="brand-name">Beat<span class="word">Play</span></span></a>
+<header class="topbar">
+<div class="wrap">
+<a class="brand" href="index.html"><img src="img/logo-128.png" alt="BeatPlay"><span class="bt">BEAT</span><span class="bp">PLAY</span></a>
 <span class="sp"></span>
-<span class="links"><a href="index.html#fitur">Fitur</a><a href="index.html#tampilan">Tampilan</a><a href="index.html#premium">Premium</a></span>
-<a class="btn small" href="#unduh">Download</a>
-</div></nav>
-
-<main class="wrap" id="unduh">
-<header class="page-hero" data-reveal>
-<p class="eyebrow"><span class="dot" aria-hidden="true"></span>Unduhan resmi</p>
-<h1>Download <span class="grad">BeatPlay.</span></h1>
-<p>Gratis. Tanpa akun. Pilih platformmu dan mulai mendengarkan.</p>
+<nav class="navlinks" aria-label="Navigasi utama">
+<a href="index.html#fitur">Fitur</a><a href="index.html#tampilan">Tampilan</a><a href="index.html#premium">Harga</a><a href="#unduh">Unduh</a>
+</nav>
+<a class="btn sm" href="#unduh">Unduh</a>
+</div>
 </header>
 
-<div style="text-align:center;--d:.08s" data-reveal>
-<div class="tabs" role="tablist" aria-label="Pilih platform">
-<button class="tab on" data-p="windows">Windows</button>
-<button class="tab" data-p="linux">Linux</button>
-<button class="tab" data-p="android">Android</button>
+<main id="unduh">
+<section class="page-hero">
+<div class="wrap">
+<p class="eyebrow"><span class="live">Unduhan resmi</span><span class="sep">/</span>GitHub Releases</p>
+<h1 class="h1">Unduh <span class="out">BeatPlay.</span></h1>
+<p>Gratis. Pilih platformmu, pasang, lalu buat akun dengan email. Tanpa langganan otomatis.</p>
 </div>
+</section>
+
+<div class="page-body">
+<div class="wrap">
+<div class="tabs" role="tablist" aria-label="Pilih platform" data-reveal>
+<button class="on" data-p="windows" role="tab" aria-selected="true">Windows</button>
+<button data-p="linux" role="tab" aria-selected="false">Linux</button>
+<button data-p="android" role="tab" aria-selected="false">Android</button>
 </div>
 
-<div class="grid" data-reveal style="--d:.12s">
-<div class="card main glass">
-<div class="live"><i aria-hidden="true"></i><span id="live-label">MEMUAT RILIS…</span></div>
+<div class="grid" data-reveal style="--d:.08s">
+<div class="card main">
+<div class="status"><i aria-hidden="true"></i><span id="live-label">MEMUAT RILIS…</span></div>
 <h2 id="plat-title">Halo, Windows.</h2>
-<div class="ver" id="ver">…</div>
+<div class="vline" id="ver">…</div>
 <div id="files"><p class="spin">Memuat daftar file…</p></div>
-<div class="note">✔ File resmi BeatPlay, siap dipasang.</div>
+<div class="tip">✔ File resmi BeatPlay, siap dipasang.</div>
 </div>
-<div class="card glass">
+<div class="card">
 <p class="kicker">Sebelum tekan play</p>
 <ol class="steps" id="steps"></ol>
-<div class="note" id="side-note"></div>
+<div class="tip" id="side-note"></div>
+</div>
+</div>
 </div>
 </div>
 </main>
 
-<footer><div class="wrap footer-inner">
-<a class="brand" href="index.html"><img src="img/logo-128.png" alt="BeatPlay"><span class="brand-name">Beat<span class="word">Play</span></span></a>
-<p>© 2026 BeatPlay · Proyek independen · Tidak berafiliasi dengan Google atau YouTube.</p>
-<a href="index.html">Kembali ke beranda ↑</a>
-</div></footer>
+<footer>
+<div class="wrap">
+<div class="foot-bar">
+<a class="brand" href="index.html"><img src="img/logo-128.png" alt="BeatPlay"><span class="bt">BEAT</span><span class="bp">PLAY</span></a>
+<span class="sp"></span>
+<span>© 2026 BeatPlay</span>
+<a href="index.html">← Kembali ke beranda</a>
+</div>
+</div>
+</footer>
 
 <script>
 const REPO = "rzkyads29/beatplay";
@@ -73,11 +89,11 @@ const PLATFORMS = {
     // tanpa lewat api.github.com, jadi tidak kena rate limit 60 req/jam per IP.
     // Resolve via download-desktop.php (server-side) supaya tidak kena rate limit
     // api.github.com di sisi klien. Fallback ke URL tag eksplisit bila PHP gagal.
-    files: [{ name: "beatplay-1.5.20.msi", size: 146481160, url: "https://github.com/" + REPO + "/releases/download/v1.5.20/beatplay-1.5.20.msi" }],
+    files: [{ name: "beatplay-1.5.20.msi", size: 184135688, url: "https://github.com/" + REPO + "/releases/download/v1.5.20/beatplay-1.5.20.msi" }],
     resolve: "download-desktop.php?kind=windows",
-    steps: [["Download installer MSI.", "Pilih file Windows dari rilis terbaru."],
+    steps: [["Unduh installer MSI.", "Pilih file Windows dari rilis terbaru."],
             ["Buka dan ikuti instalasi.", "Java runtime dan libVLC sudah disertakan."],
-            ["Buka BeatPlay.", "Temukan lagu favorit dan mulai mendengarkan."]],
+            ["Buka BeatPlay.", "Daftar atau masuk dengan email, lalu mulai mendengarkan."]],
     note: "<b>Catatan SmartScreen.</b> Installer belum ditandatangani, jadi Windows bisa menampilkan peringatan. Pastikan file berasal dari link di halaman ini sebelum melanjutkan."
   },
   linux: {
@@ -87,17 +103,17 @@ const PLATFORMS = {
       { name: "beatplay-1.5.20-1.x86_64.rpm", size: 96258105, url: "https://github.com/" + REPO + "/releases/download/v1.5.20/beatplay-1.5.20-1.x86_64.rpm" },
     ],
     resolve: "download-desktop.php?kind=linux",
-    steps: [["Download paketnya.", "Pilih .deb (Debian/Ubuntu) atau .rpm (Fedora)."],
+    steps: [["Unduh paketnya.", "Pilih .deb (Debian/Ubuntu) atau .rpm (Fedora)."],
             ["Install paketnya.", "Debian/Ubuntu: <code>sudo apt install ./beatplay_*.deb</code>. Butuh VLC dari package manager."],
-            ["Buka BeatPlay.", "Temukan lagu favorit dan mulai mendengarkan."]],
+            ["Buka BeatPlay.", "Daftar atau masuk dengan email, lalu mulai mendengarkan."]],
     note: "<b>Distro lain:</b> gunakan folder portable bila tersedia di rilis."
   },
   android: {
     title: "Halo, Android.",
     manual: true,
-    steps: [["Download APK.", "Tombol Download langsung mengunduh file resmi BeatPlay."],
+    steps: [["Unduh APK.", "Tombol Download langsung mengunduh file resmi BeatPlay."],
             ["Buka file APK.", "Izinkan instalasi dari browser atau file manager yang kamu gunakan."],
-            ["Install, lalu tekan play.", "Memerlukan Android 8.0 atau lebih baru."]],
+            ["Install, lalu buat akun.", "Memerlukan Android 8.0 atau lebih baru. Verifikasi email 6 digit."]],
     note: "<b>Catatan:</b> APK tidak dari Play Store, jadi Android meminta izin instalasi manual satu kali. Versi 1.5.4 dapat memperbarui instalasi BeatPlay lama tanpa menghapus data. Unduhan langsung dari GitHub Release."
   }
 };
@@ -107,6 +123,7 @@ if (!PLATFORMS[current]) current = "windows";
 
 function fmtSize(b) {
   if (b == null) return "";
+  if (typeof b === "string") return b; // ukuran sudah diformat manual (mis. "30,5 MB")
   const u = ["B", "KB", "MB", "GB"];
   let i = 0;
   while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
@@ -114,11 +131,15 @@ function fmtSize(b) {
 }
 
 function fileRow(f) {
-  return '<div class="file"><div class="meta"><b>' + f.name + '</b><span>' + fmtSize(f.size) + '</span></div><a class="btn" href="' + f.url + '">Download</a></div>';
+  return '<div class="dlrow"><div class="meta"><b>' + f.name + '</b><span>' + fmtSize(f.size) + '</span></div><a class="btn" href="' + f.url + '">Unduh</a></div>';
 }
 
 async function render() {
-  document.querySelectorAll(".tab").forEach(b => b.classList.toggle("on", b.dataset.p === current));
+  document.querySelectorAll(".tabs button").forEach(b => {
+    const on = b.dataset.p === current;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-selected", on ? "true" : "false");
+  });
   const cfg = PLATFORMS[current];
   document.getElementById("plat-title").textContent = cfg.title;
   document.getElementById("steps").innerHTML = cfg.steps.map(s => "<li><b>" + s[0] + "</b><span>" + s[1] + "</span></li>").join("");
@@ -156,22 +177,18 @@ async function render() {
   }
 }
 
-document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => {
+document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => {
   current = b.dataset.p;
   history.replaceState(null, "", "?platform=" + current);
   render();
-  const grid = document.querySelector(".grid");
-  grid.classList.remove("swap");
-  void grid.offsetWidth;
-  grid.classList.add("swap");
 }));
 
 render();
 
 (() => {
-  const nav = document.querySelector("nav");
+  const bar = document.querySelector(".topbar");
   const onScroll = () => {
-    nav.classList.toggle("scrolled", window.scrollY > 8);
+    bar.classList.toggle("scrolled", window.scrollY > 8);
     const max = document.documentElement.scrollHeight - window.innerHeight;
     document.documentElement.style.setProperty("--progress", max > 0 ? (window.scrollY / max).toFixed(4) : 0);
   };
@@ -184,14 +201,11 @@ render();
     items.forEach(el => el.classList.add('in'));
   } else {
     const io = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('in');
-          io.unobserve(entry.target);
-        }
+      entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
       });
     }, {threshold:.08, rootMargin:'0px 0px -36px 0px'});
-    items.forEach(el => io.observe(el));
+    items.forEach(e => io.observe(e));
   }
 })();
 </script>
