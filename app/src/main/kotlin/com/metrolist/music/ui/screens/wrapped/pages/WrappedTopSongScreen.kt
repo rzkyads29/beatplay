@@ -120,6 +120,7 @@ fun WrappedTopSongScreen(topSong: SongWithStats?, isVisible: Boolean) {
                         ),
                     placeholder = painterResource(R.drawable.app_logo),
                     error = painterResource(R.drawable.app_logo),
+                    fallback = painterResource(R.drawable.app_logo),
                     contentScale = ContentScale.Crop
                 )
             }

@@ -48,6 +48,7 @@ import com.metrolist.music.ui.screens.wrapped.WrappedConstants
 import com.metrolist.music.ui.screens.wrapped.components.AnimatedBackground
 import com.metrolist.music.ui.screens.wrapped.components.ShapeType
 import com.metrolist.music.ui.screens.wrapped.components.WrappedEyebrow
+import com.metrolist.music.ui.screens.wrapped.components.WrappedTitle
 import com.metrolist.music.ui.theme.bbh_bartle
 import kotlinx.coroutines.delay
 
@@ -77,12 +78,9 @@ fun WrappedTop5SongsScreen(topSongs: List<SongWithStats>, isVisible: Boolean) {
                 visible = visible,
                 enter = fadeIn(animationSpec = tween(1000, delayMillis = 200)) + slideInVertically(animationSpec = tween(1000, delayMillis = 200))
             ) {
-                Text(
+                WrappedTitle(
                     text = stringResource(id = R.string.wrapped_top_5_songs_title),
-                    fontSize = 40.sp,
-                    lineHeight = 48.sp,
-                    color = Color.White,
-                    textAlign = TextAlign.Center
+                    modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
 
@@ -115,6 +113,7 @@ fun WrappedTop5SongsScreen(topSongs: List<SongWithStats>, isVisible: Boolean) {
                                     .clip(RoundedCornerShape(6.dp)),
                                 placeholder = painterResource(R.drawable.app_logo),
                                 error = painterResource(R.drawable.app_logo),
+                                fallback = painterResource(R.drawable.app_logo),
                                 contentScale = ContentScale.Crop
                             )
                             Spacer(modifier = Modifier.width(16.dp))

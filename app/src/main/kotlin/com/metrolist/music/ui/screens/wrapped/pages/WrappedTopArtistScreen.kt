@@ -99,6 +99,9 @@ fun WrappedTopArtistScreen(topArtist: Artist?, imageUrl: String?, isVisible: Boo
                     )
                     .padding(4.dp)
                     .clip(CircleShape),
+                placeholder = painterResource(R.drawable.app_logo),
+                error = painterResource(R.drawable.app_logo),
+                fallback = painterResource(R.drawable.app_logo),
                 contentScale = ContentScale.Crop
             )
         }

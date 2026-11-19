@@ -182,10 +182,10 @@ fun WrappedTopAlbumScreen(topAlbum: Album?, isVisible: Boolean) {
                     text = stringResource(R.string.wrapped_top_album_title),
                     style = TextStyle(
                         fontFamily = bbh_bartle,
-                        fontSize = 34.sp,
+                        fontSize = 32.sp,
                         color = Color.White,
                         textAlign = TextAlign.Center,
-                        lineHeight = 42.sp
+                        lineHeight = 46.sp
                     )
                 )
             }
@@ -207,6 +207,7 @@ fun WrappedTopAlbumScreen(topAlbum: Album?, isVisible: Boolean) {
                         ),
                     placeholder = painterResource(R.drawable.app_logo),
                     error = painterResource(R.drawable.app_logo),
+                    fallback = painterResource(R.drawable.app_logo),
                     contentScale = ContentScale.Crop
                 )
             }
@@ -269,10 +270,10 @@ fun WrappedTop5AlbumsScreen(topAlbums: List<Album>, isVisible: Boolean) {
                     text = stringResource(R.string.wrapped_top_5_albums_title),
                     style = TextStyle(
                         fontFamily = bbh_bartle,
-                        fontSize = 40.sp,
+                        fontSize = 32.sp,
                         color = Color.White,
                         textAlign = TextAlign.Center,
-                        lineHeight = 48.sp
+                        lineHeight = 46.sp
                     )
                 )
             }
@@ -306,6 +307,7 @@ fun WrappedTop5AlbumsScreen(topAlbums: List<Album>, isVisible: Boolean) {
                                     .clip(RoundedCornerShape(6.dp)),
                                 placeholder = painterResource(R.drawable.app_logo),
                                 error = painterResource(R.drawable.app_logo),
+                                fallback = painterResource(R.drawable.app_logo),
                                 contentScale = ContentScale.Crop
                             )
                             Spacer(modifier = Modifier.width(16.dp))
