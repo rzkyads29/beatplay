@@ -69,7 +69,17 @@ fun StatsScreen() {
         item { SectionTitle("Artis teratas • sepanjang waktu") }
         if (stats.artists.isEmpty()) item { Text("Belum ada statistik artis.", Modifier.padding(24.dp)) }
         itemsIndexed(stats.artists.take(50), key = { _, artist -> "stats-artist-${artist.name}" }) { index, artist ->
-            ListItem(headlineContent = { Text("${index + 1}. ${artist.name}") }, supportingContent = { Text("${artist.plays} pemutaran") }, trailingContent = { Text(hours(artist.listenedMs)) }, modifier = Modifier.padding(horizontal = 12.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)
+                    .clip(RoundedCornerShape(14.dp)).background(Obsidian.glassFill).padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text("${index + 1}.", Modifier.width(28.dp), fontWeight = FontWeight.Bold, color = Obsidian.slate400)
+                Text(artist.name, Modifier.weight(1f), fontWeight = FontWeight.Medium)
+                Text("${artist.plays} pemutaran", style = MaterialTheme.typography.bodySmall, color = Obsidian.slate400)
+                Text(hours(artist.listenedMs), style = MaterialTheme.typography.bodySmall, color = Obsidian.cyan)
+            }
         }
         item { SectionTitle("Baru Diputar") }
         if (days.isEmpty()) item { Text("Belum ada waktu mendengarkan yang terukur.", Modifier.padding(24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
