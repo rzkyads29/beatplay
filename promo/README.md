@@ -17,7 +17,9 @@ siap unggah, caption, skrip video, dan panduan langkah demi langkah.
 | `carousel-3.html` | 1080×1350 | Carousel IG/FB — slide 3 (premium + ajakan) |
 | `poster.html` | 1080×1350 | Poster versi lama, masih bisa dipakai |
 | `beatplay-promo.html` | 1920×1080 (16:9) | Animasi promo 40 detik — berjalan sendiri seperti video pendek |
-| `beatplay-promo.src.html` | — | Versi sumber animasi (gambar pakai path relatif, mudah diedit) |
+| `beatplay-promo.src.html` | — | Versi sumber animasi 16:9 (gambar pakai path relatif, mudah diedit) |
+| `beatplay-promo-vertical.html` | 1080×1920 (9:16) | Animasi sama, format tegak untuk TikTok/Reels/Shorts |
+| `beatplay-promo-vertical.src.html` | — | Versi sumber animasi 9:16 |
 | `prompt-animasi-beatplay.md` | — | Prompt siap pakai untuk membuat/mengubah animasi dengan AI |
 | `promo.css` | — | Sistem desain bersama (warna, tipografi, komponen) |
 | `render_all.py` | — | Render semua template jadi PNG resolusi tinggi |
@@ -27,38 +29,43 @@ siap unggah, caption, skrip video, dan panduan langkah demi langkah.
 | `VIDEO_SCRIPT.md` | — | Skrip video pendek (TikTok / Reels / Shorts) |
 | `PANDUAN_PROMOSI.md` | — | Panduan promosi lengkap: unggah, jadwal, etika, FAQ |
 
-## Animasi web 40 detik (`beatplay-promo.html`)
+## Animasi web 40 detik (`beatplay-promo.html`, `-vertical`)
 
 Satu file HTML mandiri (tanpa server, tanpa build) yang memutar animasi promo
 tepat 40 detik seperti video pendek — 8 scene, teks, warna, dan transisi. Bergaya
 **dark brutalist** sesuai situs BeatPlay (hitam `#050505`, putih, Space Grotesk +
-JetBrains Mono).
+JetBrains Mono). Tersedia **dua rasio**:
+
+- `beatplay-promo.html` → **16:9** (1920×1080) untuk YouTube, pratinjau link, header blog.
+- `beatplay-promo-vertical.html` → **9:16** (1080×1920) untuk TikTok, Reels, YouTube Shorts.
+  Tata letak ditumpuk (kartu fitur 2 kolom, harga bertingkat, jendela + ponsel susun vertikal).
 
 **Cara pakai**
 
-- Buka `beatplay-promo.html` di browser (klik dua kali). Animasi jalan otomatis,
-  lalu menampilkan tombol **Putar ulang**.
+- Buka file-nya di browser (klik dua kali). Animasi jalan otomatis, lalu menampilkan
+  tombol **Putar ulang**.
 - Kontrol: <kbd>Spasi</kbd> = jeda/lanjut, <kbd>R</kbd> = ulang.
 - Pratinjau satu scene: tambahkan `?scene=N` (1–8), mis.
-  `beatplay-promo.html?scene=6` → hanya scene platform.
-- Semua durasi/urutan scene bisa diubah di satu tempat: objek `const SCENES = [...]`
-  di dalam file. Ukuran kanvas 16:9 dan otomatis pas di layar mana pun (letterbox).
+  `beatplay-promo-vertical.html?scene=6` → hanya scene platform.
+- Semua durasi/urutan scene ada di satu tempat: objek `const SCENES = [...]` di dalam
+  file. Kanvas 16:9 / 9:16 otomatis pas di layar mana pun (letterbox).
 - Menghormati `prefers-reduced-motion` (pengguna yang mematikan animasi tetap
   melihat semua scene tanpa gerak).
 
 **Jadikan video (mp4)**
 
-- Rekam layar penuh 1920×1080 selama 40 detik (OBS Studio / Xbox Game Bar), atau
+- Rekam layar penuh (OBS Studio / Xbox Game Bar): 1920×1080 untuk versi 16:9,
+  1080×1920 untuk versi tegak, selama 40 detik — atau
 - Render headless (Playwright screenshot tiap frame → `ffmpeg -framerate 30`).
-  Animasi deterministik, jadi hasilnya mulus. Bingkai 16:9 cocok untuk YouTube,
-  pratinjau link, dan header blog.
+  Animasi deterministik, jadi hasilnya mulus.
 
 **Mengubah animasi**
 
-- Cepat: buka `beatplay-promo.html` (gambar sudah tertanam/base64).
-- Rapi: edit `beatplay-promo.src.html` (gambar pakai path relatif ke `../web/img/`),
-  lalu tempel ulang base64 bila perlu. Prompt untuk AI ada di
-  `prompt-animasi-beatplay.md`.
+- Cepat: buka `beatplay-promo.html` / `beatplay-promo-vertical.html` (gambar sudah
+  tertanam/base64).
+- Rapi: edit `beatplay-promo.src.html` / `beatplay-promo-vertical.src.html`
+  (gambar pakai path relatif ke `../web/img/`), lalu tempel ulang base64 bila perlu.
+  Prompt untuk AI ada di `prompt-animasi-beatplay.md`.
 
 ## Render ulang gambar
 
