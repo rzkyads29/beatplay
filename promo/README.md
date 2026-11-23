@@ -16,6 +16,9 @@ siap unggah, caption, skrip video, dan panduan langkah demi langkah.
 | `carousel-2.html` | 1080×1350 | Carousel IG/FB — slide 2 (fitur) |
 | `carousel-3.html` | 1080×1350 | Carousel IG/FB — slide 3 (premium + ajakan) |
 | `poster.html` | 1080×1350 | Poster versi lama, masih bisa dipakai |
+| `beatplay-promo.html` | 1920×1080 (16:9) | Animasi promo 40 detik — berjalan sendiri seperti video pendek |
+| `beatplay-promo.src.html` | — | Versi sumber animasi (gambar pakai path relatif, mudah diedit) |
+| `prompt-animasi-beatplay.md` | — | Prompt siap pakai untuk membuat/mengubah animasi dengan AI |
 | `promo.css` | — | Sistem desain bersama (warna, tipografi, komponen) |
 | `render_all.py` | — | Render semua template jadi PNG resolusi tinggi |
 | `assets/` | — | Logo, tangkapan layar, font, QR code |
@@ -23,6 +26,39 @@ siap unggah, caption, skrip video, dan panduan langkah demi langkah.
 | `CAPTION_PROMOSI.md` | — | Caption siap salin-tempel per platform + kalender konten |
 | `VIDEO_SCRIPT.md` | — | Skrip video pendek (TikTok / Reels / Shorts) |
 | `PANDUAN_PROMOSI.md` | — | Panduan promosi lengkap: unggah, jadwal, etika, FAQ |
+
+## Animasi web 40 detik (`beatplay-promo.html`)
+
+Satu file HTML mandiri (tanpa server, tanpa build) yang memutar animasi promo
+tepat 40 detik seperti video pendek — 8 scene, teks, warna, dan transisi. Bergaya
+**dark brutalist** sesuai situs BeatPlay (hitam `#050505`, putih, Space Grotesk +
+JetBrains Mono).
+
+**Cara pakai**
+
+- Buka `beatplay-promo.html` di browser (klik dua kali). Animasi jalan otomatis,
+  lalu menampilkan tombol **Putar ulang**.
+- Kontrol: <kbd>Spasi</kbd> = jeda/lanjut, <kbd>R</kbd> = ulang.
+- Pratinjau satu scene: tambahkan `?scene=N` (1–8), mis.
+  `beatplay-promo.html?scene=6` → hanya scene platform.
+- Semua durasi/urutan scene bisa diubah di satu tempat: objek `const SCENES = [...]`
+  di dalam file. Ukuran kanvas 16:9 dan otomatis pas di layar mana pun (letterbox).
+- Menghormati `prefers-reduced-motion` (pengguna yang mematikan animasi tetap
+  melihat semua scene tanpa gerak).
+
+**Jadikan video (mp4)**
+
+- Rekam layar penuh 1920×1080 selama 40 detik (OBS Studio / Xbox Game Bar), atau
+- Render headless (Playwright screenshot tiap frame → `ffmpeg -framerate 30`).
+  Animasi deterministik, jadi hasilnya mulus. Bingkai 16:9 cocok untuk YouTube,
+  pratinjau link, dan header blog.
+
+**Mengubah animasi**
+
+- Cepat: buka `beatplay-promo.html` (gambar sudah tertanam/base64).
+- Rapi: edit `beatplay-promo.src.html` (gambar pakai path relatif ke `../web/img/`),
+  lalu tempel ulang base64 bila perlu. Prompt untuk AI ada di
+  `prompt-animasi-beatplay.md`.
 
 ## Render ulang gambar
 

@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BeatPlay — Animasi Promo 40s</title>
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+/* ============================================================
+   BeatPlay — animasi promo 40 detik (single-file, 16:9)
+   Palet & gaya diambil persis dari assets/site.css.
+   ============================================================ */
+:root{
+  color-scheme:dark;
+  --bg:#050505; --panel:#0a0a0a; --panel2:#0e0e0f;
+  --ink:#f8fafc; --muted:#9ca3af; --faint:#6b7280;
+  --line:rgba(255,255,255,.10); --line2:rgba(255,255,255,.18); --line3:rgba(255,255,255,.30);
+  --accent:#ffffff; --accent-ink:#050505;
+  --ok:#22c55e; --warn:#f59e0b;
+  --sans:"Space Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --snap:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);overflow:hidden}
+body{font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased}
+#stage{position:fixed;inset:0;display:grid;place-items:center;background:#000}
+/* font-size = 1% dari lebar frame -> semua ukuran pakai em, skala otomatis */
+#frame{position:relative;width:min(100vw,177.78vh);height:min(56.25vw,100vh);
+  overflow:hidden;background:var(--bg);font-size:min(1vw,1.7778vh);cursor:none}
+
+/* ---------- lapisan dekoratif ---------- */
+.glow{position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(70% 46% at 50% -12%,rgba(255,255,255,.07),transparent 68%)}
+.grid{position:absolute;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.038) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.038) 1px,transparent 1px);
+  background-size:3.34em 3.34em;
+  -webkit-mask-image:radial-gradient(120% 100% at 50% 0%,#000 8%,transparent 78%);
+  mask-image:radial-gradient(120% 100% at 50% 0%,#000 8%,transparent 78%)}
+.particles{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.9}
+
+/* ---------- kerangka scene ---------- */
+.scene{position:absolute;inset:0;z-index:1;opacity:0;visibility:hidden}
+.scene.active{opacity:1;visibility:visible}
+.pad{position:absolute;inset:0;padding:4.6em 5em;display:flex;flex-direction:column}
+.center{align-items:center;justify-content:center;text-align:center}
+
+.k{font-family:var(--mono);font-size:.78em;font-weight:500;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--muted)}
+.k.faint{color:var(--faint)}
+.num{position:absolute;top:4.6em;left:5em;font-family:var(--mono);font-size:.72em;
+  letter-spacing:.16em;color:var(--faint);text-transform:uppercase}
+.num b{color:var(--ink);font-weight:600}
+.h1{margin:0;font-size:6.2em;font-weight:700;line-height:.98;letter-spacing:-.02em;text-transform:uppercase}
+.h2{font-size:3.4em;font-weight:700;line-height:1.04;letter-spacing:-.02em;margin:0;text-transform:uppercase}
+.lead{margin:.55em 0 0;max-width:30ch;color:var(--muted);font-size:1.02em;line-height:1.6}
+.out{background:var(--accent);color:var(--accent-ink);padding:.02em .16em;display:inline-block}
+.rule{height:1px;background:var(--line3);width:0}
+.rise{display:block;transform:translateY(118%);opacity:0}
+.hide{overflow:hidden}
+.tag{display:inline-flex;align-items:center;gap:.5em;font-family:var(--mono);font-size:.7em;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  border:1px solid var(--line2);padding:.42em .8em}
+.tag i{width:.5em;height:.5em;background:var(--ok);display:block;flex:none}
+
+/* animasi masuk (hanya saat scene aktif) */
+@keyframes rise{to{transform:translateY(0);opacity:1}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(.5em)}to{opacity:1;transform:translateY(0)}}
+@keyframes growW{to{width:100%}}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+.scene.active .rise{animation:rise .7s var(--snap) both;animation-delay:var(--d,0s)}
+.scene.active .fadeUp{animation:fadeUp .6s var(--snap) both;animation-delay:var(--d,0s)}
+
+/* ---------- SCENE 1 — cold open ---------- */
+.s1 .typedrow{display:flex;align-items:center;justify-content:flex-start;gap:.1em;font-family:var(--mono);
+  font-size:1.05em;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;min-height:1.4em;
+  width:calc(42ch + 9em)}
+.s1 .type{display:inline-block;white-space:nowrap;overflow:hidden;width:0}
+.scene.active.s1 .type{animation:typing 1.5s steps(42,end) .35s both}
+@keyframes typing{from{width:0}to{width:calc(42ch + 6.4em)}}
+.s1 .caret{width:.62em;height:1.15em;background:var(--ink);display:inline-block}
+.scene.active.s1 .caret{animation:blink 1s steps(1) .35s infinite}
+.s1 .wordmark{display:flex;align-items:center;gap:.015em;margin-top:.5em;
+  font-size:11.5em;font-weight:700;line-height:1;letter-spacing:-.035em}
+.s1 .wordmark span{display:inline-block;transform:translateY(.85em);opacity:0}
+.scene.active.s1 .wordmark span{animation:rise .5s var(--snap) both;animation-delay:var(--d,0s)}
+.s1 .wordmark .sep{width:.14em;height:.78em;background:var(--accent);margin:0 .12em;transform:none;opacity:1}
+.scene.active.s1 .wordmark .sep{animation:none !important;transform:none;opacity:1}
+.s1 .scanline{position:absolute;left:50%;top:50%;width:44em;height:1px;transform:translate(-50%,-50%);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);opacity:0}
+.scene.active.s1 .scanline{animation:scan 1s var(--snap) 1.85s both}
+@keyframes scan{0%{opacity:0;transform:translate(-50%,-50%) scaleX(.2)}
+  35%{opacity:1;transform:translate(-50%,-50%) scaleX(1)}
+  100%{opacity:0;transform:translate(-50%,-50%) scaleX(1)}}
+
+/* ---------- SCENE 2 — headline ---------- */
+.s2 .stack{margin-top:.6em}
+.s2 .h1+.h1{margin-top:.06em}
+.s2 .rule{margin-top:1.1em;height:2px}
+.scene.active.s2 .rule{animation:growW .9s var(--snap) .55s both}
+.s2 .kick{margin-bottom:.9em}
+
+/* ---------- SCENE 3 — automix ---------- */
+.s3 .wavewrap{position:relative;height:12em;margin-top:1.2em}
+.wave{position:absolute;top:0;bottom:0;display:flex;align-items:center;gap:.34em}
+.wa{left:8%;} .wb{right:8%;} .wm{left:50%;transform:translateX(-50%);justify-content:center;opacity:0}
+.wave i{width:.5em;background:var(--ink);display:block;height:var(--h,1em);
+  transform-origin:center;border-radius:0}
+.wm i{background:#fff}
+.scene.active.s3 .wa{animation:wa 5s var(--snap) both}
+.scene.active.s3 .wb{animation:wb 5s var(--snap) both}
+.scene.active.s3 .wm{animation:wm 5s linear both}
+.scene.active.s3 .wave i{animation:barGrow .5s var(--snap) both;animation-delay:calc(var(--d,0s) + var(--i)*.02s)}
+@keyframes wa{0%{opacity:0;transform:translateX(-3em)}12%{opacity:1;transform:translateX(0)}
+  44%{opacity:1;transform:translateX(0)}78%{opacity:0;transform:translateX(30em)}100%{opacity:0;transform:translateX(30em)}}
+@keyframes wb{0%{opacity:0;transform:translateX(3em)}12%{opacity:1;transform:translateX(0)}
+  44%{opacity:1;transform:translateX(0)}78%{opacity:0;transform:translateX(-30em)}100%{opacity:0;transform:translateX(-30em)}}
+@keyframes wm{0%,46%{opacity:0}62%{opacity:1}100%{opacity:1}}
+@keyframes barGrow{from{height:.2em}to{height:var(--h,1em)}}
+
+/* ---------- SCENE 4 — lirik karaoke ---------- */
+.s4 .ly{font-size:3.1em;font-weight:600;line-height:1.25;letter-spacing:-.01em;
+  display:flex;flex-wrap:wrap;gap:0 .28em;max-width:26ch}
+.s4 .ly .w{color:var(--faint)}
+.scene.active.s4 .ly .w{animation:lit .35s step-end both;animation-delay:calc(.5s + var(--i)*.5s)}
+@keyframes lit{from{color:var(--faint)}to{color:var(--ink)}}
+.s4 .lybar{margin-top:1.1em;height:2px;width:24em;background:var(--line);position:relative}
+.s4 .lybar i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--ink)}
+.scene.active.s4 .lybar i{animation:growW 2.6s linear .4s both}
+.s4 .lycur{display:inline-block;width:.5em;height:1.9em;background:var(--ink);vertical-align:-.28em}
+.scene.active.s4 .lycur{animation:blink 1s steps(1) infinite}
+
+/* ---------- SCENE 5 — 7 fitur ---------- */
+.s5 .fgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:.7em;margin-top:1.4em}
+.fcard{border:1px solid var(--line);background:var(--panel);padding:1.15em 1.2em;
+  display:flex;flex-direction:column;gap:.5em;position:relative;overflow:hidden}
+.fcard .fn{font-family:var(--mono);font-size:.66em;letter-spacing:.14em;color:var(--faint)}
+.fcard .ft{font-size:1.28em;font-weight:600;line-height:1.12}
+.fcard::before{content:"";position:absolute;left:0;top:0;height:2px;width:0;background:var(--accent)}
+.scene.active .fcard{animation:fadeUp .5s var(--snap) both;animation-delay:var(--d,0s)}
+.scene.active .fcard::before{animation:growW .5s var(--snap) both;animation-delay:calc(var(--d,0s) + .12s)}
+.s5 .counter{margin-top:1.5em;display:flex;gap:2.4em;align-items:flex-end;opacity:0}
+.scene.active.s5 .counter{animation:fadeUp .5s var(--snap) 3.9s both}
+.s5 .cbox .cn{font-family:var(--mono);font-size:4.4em;font-weight:700;line-height:.9;
+  font-variant-numeric:tabular-nums;color:var(--ink)}
+.s5 .cbox .cl{font-family:var(--mono);font-size:.72em;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.s5 .cdiv{width:1px;align-self:stretch;background:var(--line)}
+
+/* ---------- SCENE 6 — platform ---------- */
+.s6 .devices{display:flex;gap:1.4em;align-items:stretch;margin-top:1.2em;height:31em;min-height:0}
+.win{flex:1;border:1px solid var(--line2);background:var(--panel);display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.winbar{display:flex;align-items:center;gap:.6em;padding:.7em .9em;border-bottom:1px solid var(--line);
+  font-family:var(--mono);font-size:.68em;letter-spacing:.1em;color:var(--muted);flex:none}
+.winbar .dots i{width:.52em;height:.52em;border-radius:50%;background:var(--line3);display:inline-block;margin-right:.28em}
+.winbar .name{color:var(--ink)}
+.winbar .v{margin-left:auto;border:1px solid var(--line);padding:.15em .5em}
+.win img{width:100%;flex:1;min-height:0;display:block;object-fit:cover;object-position:top}
+.phone{width:12em;flex:none;border:1px solid var(--line2);background:var(--panel);padding:.55em;
+  display:flex;align-items:center;justify-content:center}
+.phone img{width:100%;display:block}
+.s6 .chips{display:flex;gap:.6em;margin-top:1em}
+.s6 .chips .tag.off{color:var(--faint);border-color:var(--line)}
+
+/* ---------- SCENE 7 — premium ---------- */
+.s7 .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:1em;margin-top:1.5em}
+.plan{border:1px solid var(--line);background:var(--panel);padding:1.6em 1.5em;position:relative;
+  display:flex;flex-direction:column;gap:.5em}
+.plan.hot{border-color:var(--accent);background:var(--panel2)}
+.plan .lab{font-family:var(--mono);font-size:.68em;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.plan .price{font-size:3.3em;font-weight:700;letter-spacing:-.03em;line-height:1;margin:.15em 0}
+.plan .price small{font-size:.34em;font-weight:600;color:var(--muted);margin-left:.2em;letter-spacing:0}
+.plan .term{color:var(--muted);font-size:.92em}
+.plan .flag{position:absolute;top:-1px;right:-1px;background:var(--accent);color:var(--accent-ink);
+  font-family:var(--mono);font-size:.6em;letter-spacing:.12em;text-transform:uppercase;padding:.35em .6em}
+.plan ul{list-style:none;margin:.6em 0 0;padding:0;display:grid;gap:.4em}
+.plan li{display:flex;align-items:center;gap:.5em;color:var(--muted);font-size:.86em}
+.plan li::before{content:"";width:.45em;height:.45em;background:var(--ok);flex:none}
+.s7 .pay{margin-top:1.1em;display:flex;align-items:center;gap:.6em}
+.scene.active.s7 .plan{animation:fadeUp .55s var(--snap) both;animation-delay:var(--d,0s)}
+
+/* ---------- SCENE 8 — CTA + fade ---------- */
+.s8 .btn{display:inline-block;background:var(--accent);color:var(--accent-ink);
+  font-family:var(--mono);font-size:1.15em;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  padding:.95em 1.8em;margin-top:1.4em}
+.s8 .url{font-family:var(--mono);font-size:.92em;letter-spacing:.1em;color:var(--muted);margin-top:1.1em}
+.s8 .logo{width:4.4em;height:4.4em;margin-top:1.6em}
+.s8 .endveil{position:absolute;inset:0;background:#050505;opacity:0;z-index:5}
+.scene.active.s8 .endveil{animation:veil 1.5s linear 4.5s both}
+@keyframes veil{to{opacity:1}}
+.s8 .endcur{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;
+  width:.7em;height:1.6em;background:var(--ink);opacity:0}
+.scene.active.s8 .endcur{animation:blink 1s steps(1) 5.2s infinite;opacity:1}
+
+/* ---------- HUD ---------- */
+.progress{position:absolute;top:0;left:0;right:0;height:2px;z-index:200;background:rgba(255,255,255,.08)}
+.progress i{display:block;height:100%;width:0;background:var(--accent)}
+.counter-hud{position:absolute;left:5em;bottom:3.4em;z-index:200;font-family:var(--mono);
+  font-size:.7em;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.counter-hud b{color:var(--muted);font-weight:500}
+.flash{position:absolute;inset:0;z-index:300;background:#fff;opacity:0;pointer-events:none}
+.flash.on{opacity:.85}
+.replay{position:absolute;left:50%;bottom:3.2em;transform:translateX(-50%);z-index:320;
+  background:transparent;border:1px solid var(--line2);color:var(--ink);cursor:pointer;
+  font-family:var(--mono);font-size:.78em;letter-spacing:.16em;text-transform:uppercase;
+  padding:.7em 1.4em;opacity:0;pointer-events:none}
+.replay.show{opacity:1;pointer-events:auto}
+.replay:hover{background:var(--accent);color:var(--accent-ink)}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce){
+  .scene.active *{animation-duration:.001s !important;animation-delay:0s !important}
+  .particles{opacity:.35}
+}
+</style>
+</head>
+<body>
+<div id="stage">
+<div id="frame">
+
+  <!-- dekorasi -->
+  <div class="glow"></div>
+  <div class="grid"></div>
+  <canvas class="particles" id="particles"></canvas>
+
+  <!-- ============ SCENE 1 : COLD OPEN ============ -->
+  <section class="scene s1" data-scene="1">
+    <div class="pad center">
+      <div class="typedrow"><span class="type">PEMUTAR YOUTUBE MUSIC  ·  DESKTOP + PONSEL</span><i class="caret"></i></div>
+      <div class="wordmark">
+        <span style="--d:.95s">B</span><span style="--d:1.02s">E</span><span style="--d:1.09s">A</span><span style="--d:1.16s">T</span>
+        <span class="sep"></span>
+        <span style="--d:1.23s">P</span><span style="--d:1.30s">L</span><span style="--d:1.37s">A</span><span style="--d:1.44s">Y</span>
+      </div>
+    </div>
+    <div class="scanline"></div>
+  </section>
+
+  <!-- ============ SCENE 2 : HEADLINE ============ -->
+  <section class="scene s2" data-scene="2">
+    <div class="pad center">
+      <div class="kick k rise hide" style="--d:.05s"><span>Aplikasi musik independen</span></div>
+      <div class="stack">
+        <h1 class="h1 hide"><span class="rise" style="--d:.15s">Musik favoritmu.</span></h1>
+        <h1 class="h1 hide"><span class="rise" style="--d:.32s"><span class="out">Dengan caramu.</span></span></h1>
+      </div>
+      <div class="rule" style="width:26em"></div>
+    </div>
+  </section>
+
+  <!-- ============ SCENE 3 : AUTOMIX ============ -->
+  <section class="scene s3" data-scene="3">
+    <div class="num"><b>01 / 07</b> · Automix</div>
+    <div class="pad" style="justify-content:center">
+      <h2 class="h2 hide"><span class="rise" style="--d:.1s">Baur tanpa jeda.</span></h2>
+      <p class="lead fadeUp" style="--d:.3s">Akhir sebuah lagu membaur mulus ke awal lagu berikutnya — tanpa heningan, tanpa potongan.</p>
+      <div class="wavewrap">
+        <div class="wave wa" style="--d:.4s"><i style="--h:1.2em;--i:0"></i><i style="--h:2.6em;--i:1"></i><i style="--h:1.6em;--i:2"></i><i style="--h:3.6em;--i:3"></i><i style="--h:2.2em;--i:4"></i><i style="--h:4.4em;--i:5"></i><i style="--h:2.9em;--i:6"></i><i style="--h:5.2em;--i:7"></i><i style="--h:3.4em;--i:8"></i><i style="--h:4.8em;--i:9"></i><i style="--h:2.4em;--i:10"></i><i style="--h:3.8em;--i:11"></i><i style="--h:1.8em;--i:12"></i><i style="--h:2.8em;--i:13"></i><i style="--h:1.2em;--i:14"></i></div>
+        <div class="wave wb" style="--d:.4s"><i style="--h:1.2em;--i:0"></i><i style="--h:2.6em;--i:1"></i><i style="--h:1.6em;--i:2"></i><i style="--h:3.6em;--i:3"></i><i style="--h:2.2em;--i:4"></i><i style="--h:4.4em;--i:5"></i><i style="--h:2.9em;--i:6"></i><i style="--h:5.2em;--i:7"></i><i style="--h:3.4em;--i:8"></i><i style="--h:4.8em;--i:9"></i><i style="--h:2.4em;--i:10"></i><i style="--h:3.8em;--i:11"></i><i style="--h:1.8em;--i:12"></i><i style="--h:2.8em;--i:13"></i><i style="--h:1.2em;--i:14"></i></div>
+        <div class="wave wm"><i style="--h:1em;--i:0"></i><i style="--h:2.2em;--i:1"></i><i style="--h:1.4em;--i:2"></i><i style="--h:3em;--i:3"></i><i style="--h:2em;--i:4"></i><i style="--h:4.2em;--i:5"></i><i style="--h:3em;--i:6"></i><i style="--h:5.6em;--i:7"></i><i style="--h:4.2em;--i:8"></i><i style="--h:5.6em;--i:9"></i><i style="--h:3.4em;--i:10"></i><i style="--h:4.6em;--i:11"></i><i style="--h:2.2em;--i:12"></i><i style="--h:3.2em;--i:13"></i><i style="--h:1.4em;--i:14"></i><i style="--h:2.4em;--i:15"></i><i style="--h:1em;--i:16"></i></div>
+      </div>
+      <div class="tag fadeUp" style="--d:2.4s;margin-top:1em"><i></i>Crossfade ±2 detik</div>
+    </div>
+  </section>
+
+  <!-- ============ SCENE 4 : LIRIK ============ -->
+  <section class="scene s4" data-scene="4">
+    <div class="num"><b>02 / 07</b> · Lirik sinkron</div>
+    <div class="pad" style="justify-content:center">
+      <h2 class="h2 hide"><span class="rise" style="--d:.1s">Lirik mengikuti tiap kata.</span></h2>
+      <div class="ly" style="margin-top:1.1em">
+        <span class="w" style="--i:0">Kita</span><span class="w" style="--i:1">berdansa</span><span class="w" style="--i:2">di</span><span class="w" style="--i:3">bawah</span><span class="w" style="--i:4">bintang</span><i class="lycur" style="margin-left:.3em"></i>
+      </div>
+      <div class="lybar fadeUp" style="--d:.2s"><i></i></div>
+      <p class="lead" style="--d:.5s">Sorotan pindah kata demi kata, gaya karaoke — lengkap dengan terjemahan.</p>
+    </div>
+  </section>
+
+  <!-- ============ SCENE 5 : 7 FITUR ============ -->
+  <section class="scene s5" data-scene="5">
+    <div class="num"><b>03 / 07</b> · Fitur</div>
+    <div class="pad" style="justify-content:center">
+      <h2 class="h2 hide"><span class="rise" style="--d:.05s">Bukan cuma mendengar.</span></h2>
+      <div class="fgrid">
+        <div class="fcard" style="--d:.15s"><span class="fn">01</span><span class="ft">Automix</span></div>
+        <div class="fcard" style="--d:.57s"><span class="fn">02</span><span class="ft">Lirik sinkron</span></div>
+        <div class="fcard" style="--d:.99s"><span class="fn">03</span><span class="ft">Offline tetap jalan</span></div>
+        <div class="fcard" style="--d:1.41s"><span class="fn">04</span><span class="ft">Listen Together</span></div>
+        <div class="fcard" style="--d:1.83s"><span class="fn">05</span><span class="ft">Equalizer &amp; pitch</span></div>
+        <div class="fcard" style="--d:2.25s"><span class="fn">06</span><span class="ft">Tema dinamis</span></div>
+        <div class="fcard" style="--d:2.67s"><span class="fn">07</span><span class="ft">Volume ternormalisasi</span></div>
+      </div>
+      <div class="counter">
+        <div class="cbox"><div class="cn"><span id="cFitur" data-to="7" data-start="23.15" data-dur=".7">0</span></div><div class="cl">Fitur</div></div>
+        <div class="cdiv"></div>
+        <div class="cbox"><div class="cn"><span id="cPlat" data-to="3" data-start="23.55" data-dur=".6">0</span></div><div class="cl">Platform</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCENE 6 : PLATFORM ============ -->
+  <section class="scene s6" data-scene="6">
+    <div class="num"><b>04 / 07</b> · Platform</div>
+    <div class="pad" style="justify-content:center">
+      <h2 class="h2 hide"><span class="rise" style="--d:.05s">Satu aplikasi. <span class="out">Tiga platform.</span></span></h2>
+      <div class="devices">
+        <div class="win fadeUp" style="--d:.25s">
+          <div class="winbar"><span class="dots"><i></i><i></i><i></i></span><span class="name">beatplay.exe</span><span class="v">v1.5.21</span></div>
+          <img src="../web/img/shots/desktop-home.webp" alt="BeatPlay di desktop">
+        </div>
+        <div class="phone fadeUp" style="--d:.45s">
+          <img src="../web/img/shots/android-home.webp" alt="BeatPlay di Android">
+        </div>
+      </div>
+      <div class="chips">
+        <span class="tag fadeUp" style="--d:.6s"><i></i>Windows · .msi</span>
+        <span class="tag fadeUp" style="--d:.7s"><i></i>Linux · .deb / .rpm</span>
+        <span class="tag fadeUp" style="--d:.8s"><i></i>Android · 1.5.5</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCENE 7 : PREMIUM ============ -->
+  <section class="scene s7" data-scene="7">
+    <div class="num"><b>05 / 07</b> · Premium</div>
+    <div class="pad" style="justify-content:center">
+      <h2 class="h2 hide"><span class="rise" style="--d:.05s">Tanpa iklan. <span class="out">Tanpa jeda.</span></span></h2>
+      <div class="plans">
+        <div class="plan" style="--d:.25s"><span class="lab">1 bulan</span><div class="price">Rp20<small>rb</small></div><div class="term">30 hari penuh</div><ul><li>Tanpa iklan</li><li>Semua fitur</li><li>Aktif instan</li></ul></div>
+        <div class="plan hot" style="--d:.4s"><span class="flag">Paling populer</span><span class="lab">3 bulan · hemat</span><div class="price">Rp55<small>rb</small></div><div class="term">90 hari penuh</div><ul><li>Tanpa iklan</li><li>Semua fitur</li><li>Aktif instan</li></ul></div>
+        <div class="plan" style="--d:.55s"><span class="lab">12 bulan · hemat</span><div class="price">Rp199<small>rb</small></div><div class="term">365 hari penuh</div><ul><li>Tanpa iklan</li><li>Semua fitur</li><li>Aktif instan</li></ul></div>
+      </div>
+      <div class="pay fadeUp" style="--d:.75s"><i style="width:.55em;height:.55em;background:var(--ok);display:block"></i><span class="k">Pembayaran via QRIS · diverifikasi manual · tanpa langganan otomatis</span></div>
+    </div>
+  </section>
+
+  <!-- ============ SCENE 8 : CTA ============ -->
+  <section class="scene s8" data-scene="8">
+    <div class="pad center">
+      <h1 class="h1 hide"><span class="rise" style="--d:.1s">Tekan play.</span></h1>
+      <h1 class="h1 hide" style="margin-top:.06em"><span class="rise" style="--d:.26s"><span class="out">Jadi dirimu.</span></span></h1>
+      <a class="btn fadeUp" style="--d:.7s" href="https://beatplay.wuaze.com" target="_blank" rel="noopener">Unduh gratis</a>
+      <div class="url fadeUp" style="--d:.85s">beatplay.wuaze.com</div>
+      <img class="logo fadeUp" style="--d:1s" src="../web/img/logo-128.png" alt="BeatPlay">
+    </div>
+    <div class="endveil"></div>
+    <div class="endcur"></div>
+  </section>
+
+  <!-- HUD -->
+  <div class="progress"><i id="prog"></i></div>
+  <div class="counter-hud">Scene <b id="hud">01</b> / 08</div>
+  <div class="flash" id="flash"></div>
+  <button class="replay" id="replay" type="button">↺ Putar ulang</button>
+</div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* ---------- konfigurasi timeline (ubah durasi hanya di sini) ---------- */
+  const SCENES = [
+    { id: 1, start: 0,    end: 4.0,  enter: "cut"  },  // cold open
+    { id: 2, start: 4.0,  end: 9.0,  enter: "mask" },  // headline
+    { id: 3, start: 9.0,  end: 14.0, enter: "flash" }, // automix
+    { id: 4, start: 14.0, end: 19.0, enter: "flash" }, // lirik
+    { id: 5, start: 19.0, end: 24.0, enter: "flash" }, // 7 fitur
+    { id: 6, start: 24.0, end: 29.0, enter: "flash" }, // platform
+    { id: 7, start: 29.0, end: 34.0, enter: "flash" }, // premium
+    { id: 8, start: 34.0, end: 40.0, enter: "mask" }   // cta
+  ];
+  const TOTAL = 40;      // durasi animasi (detik)
+  const HOLD = 2;        // tahan frame akhir (detik)
+  const END = TOTAL + HOLD;
+
+  const frameEl = document.getElementById("frame");
+  const scenes = [...frameEl.querySelectorAll(".scene")];
+  const prog = document.getElementById("prog");
+  const hud = document.getElementById("hud");
+  const flashEl = document.getElementById("flash");
+  const replayEl = document.getElementById("replay");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- mode debug: ?scene=N (putar scene N lalu berhenti) ---------- */
+  const q = new URLSearchParams(location.search);
+  const qScene = parseInt(q.get("scene") || "", 10);
+  let offset = 0, limit = null, preview = null;
+  if (qScene >= 1 && qScene <= SCENES.length) {
+    offset = SCENES[qScene - 1].start;
+    limit = SCENES[qScene - 1].end;
+    preview = qScene - 1;               // kunci scene yang diminta
+  }
+
+  let t0 = performance.now();
+  let current = -1;
+  let ended = false;
+
+  function setScene(i) {
+    if (i === current) return;
+    const prev = current;
+    current = i;
+    scenes.forEach((el, k) => el.classList.toggle("active", k === i));
+    // transisi antar-scene: kilatan putih 2 frame, kecuali masuk pertama / mode mask
+    if (prev >= 0 && i >= 0) {
+      const spec = SCENES[i];
+      if (spec && spec.enter === "flash") triggerFlash();
+    }
+    if (i >= 0) hud.textContent = String(i + 1).padStart(2, "0");
+  }
+
+  let flashTimer = 0;
+  function triggerFlash() {
+    flashEl.classList.add("on");
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => flashEl.classList.remove("on"), 70);
+  }
+
+  /* ---------- count-up (dikendalikan timeline, bukan timer sendiri) ---------- */
+  const counters = [...frameEl.querySelectorAll("[data-to]")];
+  function updateCounters(t) {
+    for (const el of counters) {
+      const to = +el.dataset.to, start = +el.dataset.start, dur = +el.dataset.dur;
+      const p = Math.max(0, Math.min(1, (t - start) / dur));
+      el.textContent = String(Math.round(to * p)).padStart(2, "0");
+    }
+  }
+
+  function sceneAt(t) {
+    for (let i = SCENES.length - 1; i >= 0; i--) if (t >= SCENES[i].start) return i;
+    return -1;
+  }
+
+  /* ---------- master loop ---------- */
+  function loop(now) {
+    let t = offset + (now - t0) / 1000;
+    if (limit !== null && t >= limit) t = limit;      // mode ?scene=N
+    if (t >= END) { t = END; if (!ended) finish(); }
+
+    const i = preview !== null ? preview
+      : (t >= TOTAL ? SCENES.length - 1 : sceneAt(t));
+    setScene(i);
+    updateCounters(t);
+    prog.style.width = (Math.min(t, TOTAL) / TOTAL * 100) + "%";
+
+    if (t < END) requestAnimationFrame(loop);
+  }
+
+  function finish() {
+    ended = true;
+    replayEl.classList.add("show");
+  }
+
+  function reset() {
+    offset = 0; limit = null; ended = false;
+    replayEl.classList.remove("show");
+    current = -1;
+    scenes.forEach((el) => el.classList.remove("active"));
+    flashEl.classList.remove("on");
+    // paksa reflow agar animasi CSS dihitung ulang dari awal
+    void frameEl.offsetWidth;
+    t0 = performance.now();
+    requestAnimationFrame(loop);
+  }
+  replayEl.addEventListener("click", reset);
+
+  /* ---------- kontrol kecil: spasi = pause, R = ulang ---------- */
+  let paused = false, pauseAt = 0;
+  addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+      e.preventDefault();
+      if (!paused) { paused = true; pauseAt = performance.now(); }
+      else { paused = false; t0 += performance.now() - pauseAt; requestAnimationFrame(loop); }
+    } else if (e.key === "r" || e.key === "R") reset();
+  });
+
+  /* ---------- partikel putih halus (canvas) ---------- */
+  (function particles() {
+    const cv = document.getElementById("particles");
+    const ctx = cv.getContext("2d");
+    let w = 0, h = 0, dpr = 1, dots = [];
+    function size() {
+      dpr = Math.min(devicePixelRatio || 1, 2);
+      w = frameEl.clientWidth; h = frameEl.clientHeight;
+      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+      cv.style.width = w + "px"; cv.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const n = Math.max(40, Math.min(120, Math.round(w / 16)));
+      dots = Array.from({ length: n }, () => ({
+        x: Math.random() * w, y: Math.random() * h,
+        r: Math.random() * 1.2 + 0.3,
+        vx: (Math.random() - .5) * 0.10, vy: (Math.random() - .5) * 0.10,
+        a: Math.random() * .5 + .15
+      }));
+    }
+    function draw() {
+      ctx.clearRect(0, 0, w, h);
+      for (const d of dots) {
+        ctx.globalAlpha = d.a;
+        ctx.fillStyle = "#fff";
+        ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 6.2832); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    function tick() {
+      for (const d of dots) {
+        d.x += d.vx; d.y += d.vy;
+        if (d.x < -4) d.x = w + 4; if (d.x > w + 4) d.x = -4;
+        if (d.y < -4) d.y = h + 4; if (d.y > h + 4) d.y = -4;
+      }
+      draw();
+      requestAnimationFrame(tick);
+    }
+    size(); draw();
+    if (!reduce) requestAnimationFrame(tick);
+    addEventListener("resize", () => { size(); draw(); });
+  })();
+
+  /* ---------- mulai ---------- */
+  if (limit !== null) {                      // ?scene=N -> tanpa flash awal
+    setScene(qScene - 1);
+    t0 = performance.now();
+    requestAnimationFrame(loop);
+  } else {
+    requestAnimationFrame(loop);
+  }
+})();
+</script>
+</body>
+</html>
