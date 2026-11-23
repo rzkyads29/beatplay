@@ -44,12 +44,17 @@ const USE_JPEG = has("--jpeg");
 const DO_GIF = has("--gif");
 const DO_THUMBS = has("--thumbs");
 const DO_POSTER = has("--poster");
+const DO_TEASER = has("--teaser");            // hanya bikin GIF teaser dari mp4 yang ada
+const TEASER_START = parseFloat(opt("--from", "9.5"));
+const TEASER_DUR = parseFloat(opt("--len", "7"));
 const ONLY = opt("--only", "");
 
 const VERSIONS = {
   "16:9": { file: "beatplay-promo.html", w: 1920, h: 1080 },
-  "9:16": { file: "beatplay-promo-vertical.html", w: 1080, h: 1920 }
+  "9:16": { file: "beatplay-promo-vertical.html", w: 1080, h: 1920 },
+  "1:1": { file: "beatplay-promo-square.html", w: 1080, h: 1080 }
 };
+const GIF_WIDTH = { "16:9": 720, "9:16": 540, "1:1": 600 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const chrome = CHROME_CANDIDATES.find((p) => fs.existsSync(p));
@@ -181,7 +186,7 @@ async function renderVersion(name, cfg) {
 
     if (DO_GIF) {
       const gif = `${base}.gif`;
-      const width = name === "9:16" ? 540 : 960;
+      const width = GIF_WIDTH[name] || 720;
       await new Promise((resolve, reject) => {
         const g = spawn(FFMPEG, ["-y", "-hide_banner", "-loglevel", "error", "-i", mp4,
           "-vf", `fps=15,scale=${width}:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer`,
@@ -198,10 +203,29 @@ async function renderVersion(name, cfg) {
   }
 }
 
+/* ---------- GIF teaser pendek dari mp4 yang sudah ada ---------- */
+async function makeTeaser(name, cfg) {
+  const base = path.join(OUT, `beatplay-promo-${name.replace(":", "x")}`);
+  const mp4 = `${base}.mp4`;
+  if (!fs.existsSync(mp4)) { console.log(`   lewati ${name}: ${path.basename(mp4)} belum ada`); return; }
+  const gif = `${base}-teaser.gif`;
+  const width = GIF_WIDTH[name] || 720;
+  await new Promise((resolve, reject) => {
+    const g = spawn(FFMPEG, ["-y", "-hide_banner", "-loglevel", "error",
+      "-ss", String(TEASER_START), "-t", String(TEASER_DUR), "-i", mp4,
+      "-vf", `fps=15,scale=${width}:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer`,
+      "-loop", "0", gif], { stdio: "inherit" });
+    g.on("error", reject);
+    g.on("close", (c) => c === 0 ? resolve() : reject(new Error("teaser gagal")));
+  });
+  console.log(`   teaser ${path.basename(gif)}  ${TEASER_DUR}s  ${(fs.statSync(gif).size / 1048576).toFixed(1)} MB`);
+}
+
 /* ---------- jalan ---------- */
 const targets = ONLY ? [ONLY] : Object.keys(VERSIONS);
 for (const name of targets) {
   if (!VERSIONS[name]) { console.error(`Versi tidak dikenal: ${name}`); continue; }
+  if (DO_TEASER) { await makeTeaser(name, VERSIONS[name]); continue; }
   await renderVersion(name, VERSIONS[name]);
 }
 console.log("\nSelesai. Hasil ada di " + OUT);

@@ -20,6 +20,8 @@ siap unggah, caption, skrip video, dan panduan langkah demi langkah.
 | `beatplay-promo.src.html` | — | Versi sumber animasi 16:9 (gambar pakai path relatif, mudah diedit) |
 | `beatplay-promo-vertical.html` | 1080×1920 (9:16) | Animasi sama, format tegak untuk TikTok/Reels/Shorts |
 | `beatplay-promo-vertical.src.html` | — | Versi sumber animasi 9:16 |
+| `beatplay-promo-square.html` | 1080×1080 (1:1) | Animasi sama, format persegi untuk feed IG/FB |
+| `beatplay-promo-square.src.html` | — | Versi sumber animasi 1:1 |
 | `prompt-animasi-beatplay.md` | — | Prompt siap pakai untuk membuat/mengubah animasi dengan AI |
 | `render_video.mjs` | — | Render animasi jadi video mp4/gif + thumbnail (Node + CDP + ffmpeg) |
 | `promo.css` | — | Sistem desain bersama (warna, tipografi, komponen) |
@@ -35,11 +37,13 @@ siap unggah, caption, skrip video, dan panduan langkah demi langkah.
 Satu file HTML mandiri (tanpa server, tanpa build) yang memutar animasi promo
 tepat 40 detik seperti video pendek — 8 scene, teks, warna, dan transisi. Bergaya
 **dark brutalist** sesuai situs BeatPlay (hitam `#050505`, putih, Space Grotesk +
-JetBrains Mono). Tersedia **dua rasio**:
+JetBrains Mono). Tersedia **tiga rasio**:
 
 - `beatplay-promo.html` → **16:9** (1920×1080) untuk YouTube, pratinjau link, header blog.
 - `beatplay-promo-vertical.html` → **9:16** (1080×1920) untuk TikTok, Reels, YouTube Shorts.
   Tata letak ditumpuk (kartu fitur 2 kolom, harga bertingkat, jendela + ponsel susun vertikal).
+- `beatplay-promo-square.html` → **1:1** (1080×1080) untuk feed Instagram/Facebook.
+  Jendela desktop penuh + ponsel di bawahnya, harga 3 kolom.
 
 **Cara pakai**
 
@@ -63,17 +67,20 @@ mengalirkannya ke ffmpeg. Butuh **Node** + **ffmpeg** terpasang.
 
 ```bat
 cd promo
-node render_video.mjs                    :: 16:9 + 9:16, 30fps, mp4
-node render_video.mjs --only 9:16        :: hanya versi tegak
+node render_video.mjs                    :: 16:9 + 9:16 + 1:1, 30fps, mp4
+node render_video.mjs --only 9:16        :: hanya versi tegak (16:9 / 9:16 / 1:1)
 node render_video.mjs --clean            :: tanpa HUD
 node render_video.mjs --thumbs --poster  :: + PNG tiap scene + gambar cover
-node render_video.mjs --gif              :: + GIF (15fps, 720px)
+node render_video.mjs --gif              :: + GIF penuh (15fps)
+node render_video.mjs --teaser           :: GIF teaser pendek dari mp4 yang ada
+node render_video.mjs --teaser --from 20 --len 6   :: potongan teaser lain
 node render_video.mjs --jpeg             :: pipe JPEG (lebih cepat, sedikit lebih lunak)
 ```
 
 Hasil masuk ke `out/`, mis. `out/beatplay-promo-16x9.mp4` (1920×1080, 40s),
-`out/beatplay-promo-9x16.mp4` (1080×1920, 40s), plus `-poster.png` dan
-`-s1.png`…`-s8.png` (thumbnail per scene).
+`out/beatplay-promo-9x16.mp4` (1080×1920), `out/beatplay-promo-1x1.mp4` (1080×1080),
+plus `-poster.png` (cover), `-s1.png`…`-s8.png` (thumbnail per scene), dan
+`-teaser.gif` (cuplikan 7 detik untuk pratinjau/stiker).
 
 > Kalau tidak mau pakai skrip: rekam layar penuh selama 40 detik dengan
 > OBS Studio / Xbox Game Bar (1920×1080 atau 1080×1920).
