@@ -21,6 +21,7 @@ siap unggah, caption, skrip video, dan panduan langkah demi langkah.
 | `beatplay-promo-vertical.html` | 1080×1920 (9:16) | Animasi sama, format tegak untuk TikTok/Reels/Shorts |
 | `beatplay-promo-vertical.src.html` | — | Versi sumber animasi 9:16 |
 | `prompt-animasi-beatplay.md` | — | Prompt siap pakai untuk membuat/mengubah animasi dengan AI |
+| `render_video.mjs` | — | Render animasi jadi video mp4/gif + thumbnail (Node + CDP + ffmpeg) |
 | `promo.css` | — | Sistem desain bersama (warna, tipografi, komponen) |
 | `render_all.py` | — | Render semua template jadi PNG resolusi tinggi |
 | `assets/` | — | Logo, tangkapan layar, font, QR code |
@@ -47,17 +48,35 @@ JetBrains Mono). Tersedia **dua rasio**:
 - Kontrol: <kbd>Spasi</kbd> = jeda/lanjut, <kbd>R</kbd> = ulang.
 - Pratinjau satu scene: tambahkan `?scene=N` (1–8), mis.
   `beatplay-promo-vertical.html?scene=6` → hanya scene platform.
+- Mode mesin: `?render` mematikan autoplay dan menunggu `window.__render(t)`
+  (dipakai skrip video); `?clean` menyembunyikan HUD (progress bar + nomor scene).
 - Semua durasi/urutan scene ada di satu tempat: objek `const SCENES = [...]` di dalam
   file. Kanvas 16:9 / 9:16 otomatis pas di layar mana pun (letterbox).
 - Menghormati `prefers-reduced-motion` (pengguna yang mematikan animasi tetap
   melihat semua scene tanpa gerak).
 
-**Jadikan video (mp4)**
+**Jadikan video (mp4) — otomatis**
 
-- Rekam layar penuh (OBS Studio / Xbox Game Bar): 1920×1080 untuk versi 16:9,
-  1080×1920 untuk versi tegak, selama 40 detik — atau
-- Render headless (Playwright screenshot tiap frame → `ffmpeg -framerate 30`).
-  Animasi deterministik, jadi hasilnya mulus.
+Sudah tersedia skrip `render_video.mjs`: memakai Chrome DevTools Protocol untuk
+memanggil `window.__render(t)` tiap frame (deterministik, jadi mulus) lalu
+mengalirkannya ke ffmpeg. Butuh **Node** + **ffmpeg** terpasang.
+
+```bat
+cd promo
+node render_video.mjs                    :: 16:9 + 9:16, 30fps, mp4
+node render_video.mjs --only 9:16        :: hanya versi tegak
+node render_video.mjs --clean            :: tanpa HUD
+node render_video.mjs --thumbs --poster  :: + PNG tiap scene + gambar cover
+node render_video.mjs --gif              :: + GIF (15fps, 720px)
+node render_video.mjs --jpeg             :: pipe JPEG (lebih cepat, sedikit lebih lunak)
+```
+
+Hasil masuk ke `out/`, mis. `out/beatplay-promo-16x9.mp4` (1920×1080, 40s),
+`out/beatplay-promo-9x16.mp4` (1080×1920, 40s), plus `-poster.png` dan
+`-s1.png`…`-s8.png` (thumbnail per scene).
+
+> Kalau tidak mau pakai skrip: rekam layar penuh selama 40 detik dengan
+> OBS Studio / Xbox Game Bar (1920×1080 atau 1080×1920).
 
 **Mengubah animasi**
 

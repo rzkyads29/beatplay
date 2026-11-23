@@ -202,6 +202,7 @@ body{font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased
 .counter-hud{position:absolute;left:5em;bottom:3.4em;z-index:200;font-family:var(--mono);
   font-size:.7em;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
 .counter-hud b{color:var(--muted);font-weight:500}
+#frame.clean .counter-hud,#frame.clean .progress,#frame.clean .replay{display:none}
 .flash{position:absolute;inset:0;z-index:300;background:#fff;opacity:0;pointer-events:none}
 .flash.on{opacity:.85}
 .replay{position:absolute;left:50%;bottom:3.2em;transform:translateX(-50%);z-index:320;
@@ -396,6 +397,10 @@ body{font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased
     preview = qScene - 1;               // kunci scene yang diminta
   }
 
+  const RENDER = q.has("render");   // mode render frame-per-frame (tanpa rAF)
+  const CLEAN = q.has("clean");     // sembunyikan HUD (untuk video bersih)
+  if (CLEAN) frameEl.classList.add("clean");
+
   let t0 = performance.now();
   let current = -1;
   let ended = false;
@@ -408,7 +413,7 @@ body{font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased
     // transisi antar-scene: kilatan putih 2 frame, kecuali masuk pertama / mode mask
     if (prev >= 0 && i >= 0) {
       const spec = SCENES[i];
-      if (spec && spec.enter === "flash") triggerFlash();
+      if (spec && spec.enter === "flash" && !RENDER) triggerFlash();
     }
     if (i >= 0) hud.textContent = String(i + 1).padStart(2, "0");
   }
@@ -434,6 +439,32 @@ body{font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased
     for (let i = SCENES.length - 1; i >= 0; i--) if (t >= SCENES[i].start) return i;
     return -1;
   }
+
+  function needFlash(t) {
+    const s = SCENES[sceneAt(t)];
+    return !!(s && s.enter === "flash" && t - s.start < 0.08);
+  }
+
+  /* ---------- mode render: patok waktu t secara deterministik ----------
+   * Dipakai skrip video (render_video.mjs) untuk menangkap tiap frame tepat
+   * pada waktu t, tanpa bergantung pada kecepatan mesin. */
+  let particlesDraw = () => {};
+  window.__render = (t) => {
+    const tt = Math.max(0, Math.min(t, END));
+    const i = tt >= TOTAL ? SCENES.length - 1 : sceneAt(tt);
+    setScene(i);
+    updateCounters(tt);
+    prog.style.width = (Math.min(tt, TOTAL) / TOTAL * 100) + "%";
+    flashEl.classList.toggle("on", needFlash(tt));
+    for (const a of document.getAnimations()) {
+      const el = a.effect && a.effect.target;
+      const sc = el && el.closest ? el.closest(".scene") : null;
+      const S = sc ? SCENES[+sc.dataset.scene - 1].start : 0;
+      try { a.pause(); a.currentTime = Math.max(0, (tt - S) * 1000); } catch (_) {}
+    }
+    particlesDraw(tt);
+    return i + 1;
+  };
 
   /* ---------- master loop ---------- */
   function loop(now) {
@@ -491,37 +522,35 @@ body{font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const n = Math.max(40, Math.min(120, Math.round(w / 16)));
       dots = Array.from({ length: n }, () => ({
-        x: Math.random() * w, y: Math.random() * h,
+        x0: Math.random() * w, y0: Math.random() * h,
         r: Math.random() * 1.2 + 0.3,
         vx: (Math.random() - .5) * 0.10, vy: (Math.random() - .5) * 0.10,
         a: Math.random() * .5 + .15
       }));
     }
-    function draw() {
+    function drawAt(T) {
       ctx.clearRect(0, 0, w, h);
       for (const d of dots) {
+        const x = ((d.x0 + d.vx * 60 * T) % w + w) % w;
+        const y = ((d.y0 + d.vy * 60 * T) % h + h) % h;
         ctx.globalAlpha = d.a;
         ctx.fillStyle = "#fff";
-        ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 6.2832); ctx.fill();
+        ctx.beginPath(); ctx.arc(x, y, d.r, 0, 6.2832); ctx.fill();
       }
       ctx.globalAlpha = 1;
     }
-    function tick() {
-      for (const d of dots) {
-        d.x += d.vx; d.y += d.vy;
-        if (d.x < -4) d.x = w + 4; if (d.x > w + 4) d.x = -4;
-        if (d.y < -4) d.y = h + 4; if (d.y > h + 4) d.y = -4;
-      }
-      draw();
-      requestAnimationFrame(tick);
-    }
-    size(); draw();
-    if (!reduce) requestAnimationFrame(tick);
-    addEventListener("resize", () => { size(); draw(); });
+    function tick() { drawAt(performance.now() / 1000); requestAnimationFrame(tick); }
+    particlesDraw = drawAt;
+    size(); drawAt(0);
+    if (!reduce && !RENDER) requestAnimationFrame(tick);
+    addEventListener("resize", () => { size(); drawAt(performance.now() / 1000); });
   })();
 
   /* ---------- mulai ---------- */
-  if (limit !== null) {                      // ?scene=N -> tanpa flash awal
+  if (RENDER) {                              // mode render: tunggu __render(t)
+    current = -1;
+    window.__ready = true;
+  } else if (limit !== null) {               // ?scene=N -> tanpa flash awal
     setScene(qScene - 1);
     t0 = performance.now();
     requestAnimationFrame(loop);
